@@ -13,16 +13,14 @@ authors = ["Veritas Nexus Contributors"]
 readme = "README.md"
 keywords = ["ai", "machine-learning", "lie-detection", "multimodal", "explainable-ai"]
 categories = ["science", "algorithms", "machine-learning"]
-exclude = [
-    "target/",
-    "benches/*/target/",
-    "*.log",
-    ".vscode/",
-    ".idea/",
-    "docs/",
-    "plans/",
-    "memory_optimization_report.md",
-    "EDGE_CASE_TESTING_SUMMARY.md"
+include = [
+    "src/**/*",
+    "README.md",
+    "ETHICS.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
+    "Cargo.toml",
+    "examples/**/*"
 ]
 
 [package.metadata]
