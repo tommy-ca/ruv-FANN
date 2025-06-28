@@ -1,7 +1,136 @@
-//! Vision-based deception detection module
-//! 
-//! This module provides computer vision capabilities for detecting deception through
-//! facial expressions, micro-expressions, gaze patterns, and other visual cues.
+//! Vision-based deception detection module.
+//!
+//! This module provides state-of-the-art computer vision capabilities for detecting
+//! deception through analysis of facial expressions, micro-expressions, gaze patterns,
+//! and other non-verbal behavioral indicators. It combines traditional computer vision
+//! techniques with deep learning approaches for robust visual analysis.
+//!
+//! # Core Components
+//!
+//! - **Face Analysis**: [`FaceAnalyzer`] - Face detection, landmark extraction, and facial feature analysis
+//! - **Micro-Expressions**: [`MicroExpressionDetector`] - Detection of brief, involuntary facial expressions
+//! - **Performance**: [`SimdFaceAnalyzer`] - SIMD-optimized processing for real-time applications
+//! - **GPU Acceleration**: [`GpuVisionProcessor`] - CUDA/OpenCL acceleration for high-throughput processing
+//!
+//! # Supported Features
+//!
+//! ## Facial Analysis
+//! - Real-time face detection and tracking
+//! - 68-point facial landmark extraction
+//! - Head pose estimation (pitch, yaw, roll)
+//! - Facial Action Unit (AU) detection
+//! - Eye gaze direction and fixation analysis
+//! - Blink rate and pattern analysis
+//!
+//! ## Micro-Expression Detection
+//! - Seven universal micro-expressions (fear, anger, sadness, joy, surprise, disgust, contempt)
+//! - Temporal analysis of expression onset, apex, and offset
+//! - Expression intensity measurement
+//! - Baseline comparison for individual calibration
+//! - Cultural adaptation for expression interpretation
+//!
+//! ## Behavioral Indicators
+//! - Facial asymmetry analysis
+//! - Eye contact patterns and avoidance
+//! - Self-touching and grooming behaviors
+//! - Involuntary muscle tension indicators
+//! - Timing synchronization with speech
+//!
+//! # Examples
+//!
+//! Basic vision analysis:
+//!
+//! ```rust,no_run
+//! use veritas_nexus::modalities::vision::{VisionAnalyzer, VisionConfig, VisionInput};
+//! use veritas_nexus::ModalityAnalyzer;
+//!
+//! #[tokio::main]
+//! async fn main() -> veritas_nexus::Result<()> {
+//!     let config = VisionConfig::default();
+//!     let analyzer = VisionAnalyzer::new(config)?;
+//!     
+//!     let input = VisionInput {
+//!         image_data: load_image("interview_frame.jpg")?,
+//!         timestamp: Some(std::time::SystemTime::now()),
+//!         metadata: Default::default(),
+//!     };
+//!     
+//!     let result = analyzer.analyze(&input).await?;
+//!     
+//!     println!("Deception probability: {:.2}", result.probability());
+//!     println!("Confidence: {:.2}", result.confidence());
+//!     
+//!     // Examine detected features
+//!     for feature in result.features() {
+//!         println!("{}: {:.3}", feature.name, feature.value);
+//!     }
+//!     
+//!     Ok(())
+//! }
+//!
+//! fn load_image(path: &str) -> veritas_nexus::Result<Vec<u8>> {
+//!     // Implementation would load image file
+//!     Ok(vec![])
+//! }
+//! ```
+//!
+//! Advanced configuration with GPU acceleration:
+//!
+//! ```rust,no_run
+//! use veritas_nexus::modalities::vision::{VisionConfig, ImagePreprocessing, ModelPaths};
+//!
+//! let config = VisionConfig {
+//!     face_detection_threshold: 0.8,
+//!     micro_expression_sensitivity: 0.9,
+//!     max_faces: 3,
+//!     enable_gpu: true,
+//!     preprocessing: ImagePreprocessing {
+//!         target_width: 224,
+//!         target_height: 224,
+//!         normalize_mean: [0.485, 0.456, 0.406],
+//!         normalize_std: [0.229, 0.224, 0.225],
+//!         histogram_equalization: true,
+//!     },
+//!     model_paths: ModelPaths {
+//!         face_detection: "models/face_detection.onnx".to_string(),
+//!         landmark_detection: "models/landmarks.onnx".to_string(),
+//!         micro_expression: "models/micro_expr.onnx".to_string(),
+//!         action_units: "models/action_units.onnx".to_string(),
+//!     },
+//! };
+//! ```
+//!
+//! # Performance Considerations
+//!
+//! - **Real-time Processing**: Optimized for 30 FPS video analysis
+//! - **GPU Acceleration**: Significant speedup for batch processing
+//! - **SIMD Optimization**: CPU-optimized routines for embedded systems
+//! - **Memory Efficiency**: Streaming processing for long video sequences
+//! - **Model Compression**: Quantized models for mobile deployment
+//!
+//! # Accuracy and Robustness
+//!
+//! ## Strengths
+//! - High accuracy on frontal face orientations
+//! - Robust to lighting variations and image quality
+//! - Real-time performance on modern hardware
+//! - Cross-cultural micro-expression recognition
+//! - Temporal consistency in video sequences
+//!
+//! ## Limitations
+//! - Reduced accuracy with extreme head poses (> 45° rotation)
+//! - Performance degrades with occlusions (masks, hands, objects)
+//! - Sensitivity to camera quality and resolution
+//! - Cultural biases in expression interpretation
+//! - Difficulty with highly emotional or expressive individuals
+//!
+//! ## Best Practices
+//! - Ensure adequate lighting and camera positioning
+//! - Use multiple camera angles when possible
+//! - Calibrate baselines for individual subjects
+//! - Combine with audio analysis for better accuracy
+//! - Apply temporal smoothing for video sequences
+//! - Consider cultural context in interpretation
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -10,12 +139,14 @@ use thiserror::Error;
 
 pub mod face_analyzer;
 pub mod micro_expression;
+pub mod simd_optimized;
 
 #[cfg(feature = "gpu")]
 pub mod gpu_vision;
 
 pub use face_analyzer::FaceAnalyzer;
 pub use micro_expression::{MicroExpressionDetector, MicroExpressionType};
+pub use simd_optimized::{SimdFaceAnalyzer, SimdFaceDetector};
 
 #[cfg(feature = "gpu")]
 pub use gpu_vision::GpuVisionProcessor;
@@ -160,6 +291,9 @@ impl VisionInput {
         Err(VisionError::InvalidImageFormat("File loading not implemented".to_string()))
     }
 }
+
+/// Face features extracted from facial analysis
+pub type FaceFeatures<T> = VisionFeatures<T>;
 
 /// Vision feature vector containing extracted visual features
 #[derive(Debug, Clone)]

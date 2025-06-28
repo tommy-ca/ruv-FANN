@@ -407,6 +407,18 @@ pub enum VeritasError {
         /// Remediation actions taken
         actions_taken: Vec<String>,
     },
+    
+    /// Streaming/processing errors
+    #[error("Stream error: {0}")]
+    StreamError(String),
+    
+    /// I/O error variant (alias for consistency)
+    #[error("I/O error: {0}")]
+    IoError(#[from] std::io::Error),
+    
+    /// Fusion error variant (alias for consistency)
+    #[error("Fusion error: {0}")]
+    FusionError(String),
 }
 
 /// Data quality severity levels
@@ -435,6 +447,9 @@ impl fmt::Display for DataQualitySeverity {
 
 /// Result type alias for Veritas Nexus operations.
 pub type Result<T> = std::result::Result<T, VeritasError>;
+
+/// Type alias for fusion errors to maintain backward compatibility
+pub type FusionError = VeritasError;
 
 impl VeritasError {
     /// Creates a new input validation error.
@@ -749,6 +764,8 @@ impl VeritasError {
                 | Self::RecoveryFailed { should_retry: true, .. }
                 | Self::DataQuality { severity: DataQualitySeverity::Low | DataQualitySeverity::Medium, .. }
                 | Self::EdgeCase { can_handle: true, .. }
+                | Self::StreamError(_)
+                | Self::IoError(_)
         )
     }
 
@@ -791,17 +808,17 @@ impl VeritasError {
             | Self::Text { .. }
             | Self::Physiological { .. } 
             | Self::ModalityDegradation { .. } => "modality_processing",
-            Self::Fusion { .. } => "fusion",
+            Self::Fusion { .. } | Self::FusionError(_) => "fusion",
             Self::Reasoning { .. } => "reasoning",
             Self::NeuralNetwork { .. } | Self::Model { .. } | Self::Training { .. } => {
                 "machine_learning"
             }
             Self::Memory { .. } | Self::Gpu { .. } | Self::ResourceExhausted { .. }
             | Self::ResourcePoolExhausted { .. } => "resources",
-            Self::Io { .. } | Self::Network { .. } | Self::Database { .. } => "io",
+            Self::Io { .. } | Self::Network { .. } | Self::Database { .. } | Self::IoError(_) => "io",
             Self::Serialization(_) => "serialization",
             Self::Mcp { .. } => "mcp",
-            Self::Timeout { .. } | Self::Concurrency { .. } => "concurrency",
+            Self::Timeout { .. } | Self::Concurrency { .. } | Self::StreamError(_) => "concurrency",
             Self::FeatureExtraction { .. } => "feature_extraction",
             Self::Internal { .. } | Self::ExternalDependency { .. } | Self::RecoveryFailed { .. }
             | Self::HealthDegraded { .. } => "system",
@@ -836,6 +853,9 @@ impl VeritasError {
             Self::Timeout { .. } => Some(1000), // 1 second default
             Self::Network { .. } => Some(5000), // 5 seconds for network issues
             Self::Concurrency { .. } => Some(100), // 100ms for concurrency issues
+            Self::StreamError(_) => Some(500), // 500ms for stream errors
+            Self::IoError(_) => Some(1000), // 1 second for I/O errors
+            Self::FusionError(_) => Some(200), // 200ms for fusion retry
             _ => None,
         }
     }
@@ -865,6 +885,11 @@ impl VeritasError {
             Self::EdgeCase { can_handle: true, .. } => 2,
             Self::DataQuality { severity: DataQualitySeverity::Low, .. } => 1,
 
+            // I/O and streaming errors
+            Self::StreamError(_) => 4,
+            Self::IoError(_) => 4,
+            Self::FusionError(_) => 5,
+            
             // Default for other errors
             _ => 5,
         }
@@ -889,6 +914,9 @@ impl VeritasError {
             Self::Network { .. } => ErrorAction::RetryWithBackoff,
             Self::Memory { .. } => ErrorAction::Alert,
             Self::Internal { .. } => ErrorAction::Alert,
+            Self::StreamError(_) => ErrorAction::RetryWithBackoff,
+            Self::IoError(_) => ErrorAction::RetryWithBackoff,
+            Self::FusionError(_) => ErrorAction::RetryAfterDelay,
             _ => ErrorAction::Log,
         }
     }
@@ -902,6 +930,7 @@ impl VeritasError {
                 | Self::EdgeCase { can_handle: true, .. }
                 | Self::RateLimitExceeded { .. }
                 | Self::Backpressure { .. }
+                | Self::StreamError(_)
         )
     }
 }
@@ -1011,6 +1040,16 @@ impl VeritasError {
             format!("Unsupported language: {}", language.into()),
             "language"
         )
+    }
+    
+    /// Creates a new stream error.
+    pub fn stream_error(message: impl Into<String>) -> Self {
+        Self::StreamError(message.into())
+    }
+    
+    /// Creates a new fusion error.
+    pub fn fusion_error_simple(message: impl Into<String>) -> Self {
+        Self::FusionError(message.into())
     }
 }
 

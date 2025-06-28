@@ -63,6 +63,18 @@ impl SimdOperations for FallbackImplementation {
         Ok(())
     }
     
+    fn subtract(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()> {
+        if a.len() != b.len() || a.len() != result.len() {
+            return Err(VeritasError::SimdError("Array lengths must match".to_string()));
+        }
+        
+        for ((a_val, b_val), res) in a.iter().zip(b.iter()).zip(result.iter_mut()) {
+            *res = a_val - b_val;
+        }
+        
+        Ok(())
+    }
+    
     fn multiply(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()> {
         if a.len() != b.len() || a.len() != result.len() {
             return Err(VeritasError::SimdError("Array lengths must match".to_string()));

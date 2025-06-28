@@ -1,15 +1,143 @@
-//! Text modality analysis for deception detection
+//! Text modality analysis for deception detection.
 //!
-//! This module provides comprehensive text analysis capabilities including:
-//! - Linguistic feature extraction
-//! - BERT-based semantic embeddings
-//! - Deception pattern detection
-//! - Sentiment analysis
-//! - Multi-language support
+//! This module provides comprehensive natural language processing capabilities
+//! for detecting deception through linguistic analysis. It combines traditional
+//! linguistic features with modern deep learning approaches to identify patterns
+//! indicative of deceptive communication.
+//!
+//! # Core Components
+//!
+//! - **Text Analysis**: [`TextAnalyzer`] - Main entry point for text-based deception detection
+//! - **Linguistic Processing**: [`LinguisticAnalyzer`] - Extracts grammatical and stylistic features
+//! - **Deep Learning**: [`BertIntegration`] - BERT-based semantic embeddings and analysis
+//! - **Pattern Detection**: [`DeceptionPatternDetector`] - Specialized deception indicator recognition
+//! - **Performance**: [`SimdTextAnalyzer`] - SIMD-optimized processing for high-throughput scenarios
+//!
+//! # Supported Features
+//!
+//! ## Linguistic Analysis
+//! - Lexical diversity and complexity metrics
+//! - Syntactic patterns and grammatical structures
+//! - Discourse markers and hedging language
+//! - Emotional expression and sentiment analysis
+//! - Named entity recognition and contextual analysis
+//!
+//! ## Deception Indicators
+//! - Hesitation markers and verbal fillers
+//! - Cognitive load indicators (complexity, contradictions)
+//! - Temporal inconsistencies in narratives
+//! - Distancing language and responsibility attribution
+//! - Specificity and detail levels
+//!
+//! ## Multi-Language Support
+//! - Automatic language detection
+//! - Language-specific linguistic features
+//! - Cross-lingual semantic embeddings
+//! - Cultural and linguistic bias mitigation
+//!
+//! # Examples
+//!
+//! Basic text analysis:
+//!
+//! ```rust,no_run
+//! use veritas_nexus::modalities::text::{TextAnalyzer, TextAnalyzerConfig, TextInput};
+//! use veritas_nexus::ModalityAnalyzer;
+//!
+//! #[tokio::main]
+//! async fn main() -> veritas_nexus::Result<()> {
+//!     let config = TextAnalyzerConfig::default();
+//!     let analyzer = TextAnalyzer::new(config)?;
+//!     
+//!     let input = TextInput {
+//!         text: "I was definitely at home all evening and didn't go anywhere.".to_string(),
+//!         context: Default::default(),
+//!         language: None, // Auto-detect
+//!         timestamp: None,
+//!     };
+//!     
+//!     let result = analyzer.analyze(&input).await?;
+//!     
+//!     println!("Deception probability: {:.2}", result.probability());
+//!     println!("Confidence: {:.2}", result.confidence());
+//!     
+//!     // Examine contributing features
+//!     for feature in result.features() {
+//!         println!("{}: {:.3} (weight: {:.2})", 
+//!             feature.name, feature.value, feature.weight);
+//!     }
+//!     
+//!     Ok(())
+//! }
+//! ```
+//!
+//! Advanced configuration:
+//!
+//! ```rust,no_run
+//! use veritas_nexus::modalities::text::{
+//!     TextAnalyzerConfig, BertConfig, PreprocessingConfig, FeatureWeights
+//! };
+//!
+//! let config = TextAnalyzerConfig {
+//!     bert_config: BertConfig {
+//!         model_name: "distilbert-base-uncased".to_string(),
+//!         max_sequence_length: 512,
+//!         use_gpu: false,
+//!     },
+//!     preprocessing_config: PreprocessingConfig {
+//!         normalize_unicode: true,
+//!         remove_extra_whitespace: true,
+//!         preserve_case: false,
+//!         language_detection: true,
+//!     },
+//!     feature_weights: FeatureWeights {
+//!         linguistic_complexity: 0.25,
+//!         hesitation_markers: 0.20,
+//!         emotional_indicators: 0.15,
+//!         semantic_coherence: 0.25,
+//!         deception_patterns: 0.15,
+//!     },
+//!     enable_sentiment: true,
+//!     enable_ner: true,
+//!     enable_caching: true,
+//!     max_cache_size: 5000,
+//!     timeout_ms: 10000,
+//!     confidence_threshold: 0.6,
+//!     enable_parallel: true,
+//! };
+//! ```
+//!
+//! # Performance Considerations
+//!
+//! - **Caching**: Enable result caching for repeated analysis of similar texts
+//! - **Parallel Processing**: Use parallel feature extraction for large documents
+//! - **SIMD Optimization**: Consider [`SimdTextAnalyzer`] for high-throughput scenarios
+//! - **Model Size**: Balance accuracy vs. speed when choosing BERT model variants
+//! - **Preprocessing**: Efficient text normalization reduces downstream processing costs
+//!
+//! # Accuracy and Limitations
+//!
+//! ## Strengths
+//! - High accuracy on structured deceptive statements
+//! - Robust to variations in writing style and domain
+//! - Language-agnostic core features
+//! - Explainable feature-based scoring
+//!
+//! ## Limitations
+//! - Reduced accuracy on very short texts (< 50 words)
+//! - Cultural and demographic biases in linguistic patterns
+//! - Difficulty with creative or metaphorical language
+//! - Performance degrades with poor grammar or spelling
+//!
+//! ## Best Practices
+//! - Combine with other modalities for robust detection
+//! - Use confidence thresholds to filter uncertain predictions
+//! - Consider context and domain when interpreting results
+//! - Regularly retrain and validate models on diverse datasets
 
 mod linguistic_analyzer;
 mod bert_integration;
 mod deception_patterns;
+mod simd_optimized;
 
 pub use linguistic_analyzer::{
     LinguisticAnalyzer, Language, PreprocessingConfig, LinguisticFeatures, 
@@ -19,6 +147,7 @@ pub use linguistic_analyzer::{
 };
 pub use bert_integration::{BertIntegration, BertConfig, BertEmbedding};
 pub use deception_patterns::{DeceptionPatternDetector, FeatureWeights, DeceptionPatterns};
+pub use simd_optimized::{SimdTextAnalyzer, SimdPatternMatcher, SimdTextVectorizer};
 
 use crate::{
     ModalityAnalyzer, DeceptionScore, ModalityType, Feature, ExplanationTrace, 

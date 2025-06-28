@@ -16,6 +16,19 @@ pub mod simd;
 pub mod gpu;
 pub mod memory_pool;
 pub mod cache;
+pub mod cache_optimization;
+pub mod object_pool;
+pub mod object_pools;
+pub mod arena;
+pub mod string_cache;
+pub mod compact_types;
+pub mod memory_profiler;
+pub mod memory_profiling;
+pub mod memory_monitor;
+pub mod allocators;
+pub mod vectorization_hints;
+pub mod branch_optimization;
+pub mod benchmarks;
 
 #[cfg(feature = "profiling")]
 pub mod profiling;
@@ -25,6 +38,20 @@ pub use self::simd::{SimdProcessor, SimdConfig, SimdFeatures};
 pub use self::gpu::{GpuAccelerator, GpuConfig, GpuDevice};
 pub use self::memory_pool::{MemoryPool, MemoryConfig, MemoryInfo};
 pub use self::cache::{CacheOptimizedMatrix, CacheConfig};
+pub use self::cache_optimization::{
+    CacheAligned, LoopTiling, CacheAwareAlgorithms, Prefetcher, 
+    BlockedConvolution, CACHE_LINE_SIZE, L1_CACHE_SIZE, L2_CACHE_SIZE, L3_CACHE_SIZE
+};
+pub use self::object_pool::{ObjectPool, GlobalPools, Poolable, PooledObject, AudioChunk, ImageBuffer};
+pub use self::object_pools::{ObjectPool as ObjectPoolNew, GlobalPools as GlobalPoolsNew};
+pub use self::arena::{Arena, ScopedArena, ArenaString, ArenaVec};
+pub use self::string_cache::{intern, InternedString, OptimizedString, StringCache};
+pub use self::compact_types::{CompactFeatures, CompactAnalysisResult, CompactModality, FeatureKeyInterner};
+pub use self::memory_profiler::{MemoryProfiler, MemoryReport};
+pub use self::memory_profiling::{MemoryProfiler as NewMemoryProfiler, ProfilerConfig};
+pub use self::memory_monitor::{MemoryMonitor, MemoryPressure, AdaptiveMemoryManager, AdaptiveGCStrategy};
+pub use self::allocators::{SegregatedAllocator, ArenaAllocator, StackAllocator};
+pub use self::benchmarks::{BenchmarkSuite, BenchmarkResult, run_benchmarks};
 
 #[cfg(feature = "profiling")]
 pub use self::profiling::{Profiler, PerformanceMetrics, MetricsCollector};

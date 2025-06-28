@@ -496,13 +496,14 @@ pub struct FusionFeedback<T: Float> {
 }
 
 /// User feedback on system decisions
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum UserFeedback {
     /// User agrees with the decision
     Agree,
     /// User disagrees with the decision
     Disagree,
     /// User is uncertain about the decision
+    #[default]
     Uncertain,
     /// User provides custom feedback
     Custom(String),
@@ -599,7 +600,7 @@ pub struct SystemStatus {
 }
 
 /// Health status enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HealthStatus {
     /// System is operating normally
     Healthy,
@@ -608,6 +609,7 @@ pub enum HealthStatus {
     /// System has significant issues
     Unhealthy,
     /// System status is unknown
+    #[default]
     Unknown,
 }
 
@@ -854,9 +856,10 @@ pub struct Thought {
 }
 
 /// Types of reasoning
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum ReasoningType {
     /// Observational reasoning
+    #[default]
     Observation,
     /// Pattern recognition
     Pattern,
@@ -894,9 +897,10 @@ pub struct Action<T: Float> {
 }
 
 /// Types of actions agents can take
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum ActionType {
     /// Make a deception detection decision
+    #[default]
     MakeDecision,
     /// Analyze a specific modality
     AnalyzeModality,
@@ -909,13 +913,14 @@ pub enum ActionType {
 }
 
 /// Decision outcomes for deception detection
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Decision {
     /// Truth detected
     Truth,
     /// Deception detected
     Deception,
     /// Uncertain/unclear
+    #[default]
     Uncertain,
 }
 
@@ -930,13 +935,14 @@ impl fmt::Display for Decision {
 }
 
 /// Modality types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum ModalityType {
     /// Visual/vision modality
     Vision,
     /// Audio modality
     Audio,
     /// Text modality
+    #[default]
     Text,
     /// Physiological modality
     Physiological,
@@ -954,6 +960,9 @@ pub struct Feature<T: Float> {
     /// Feature type
     pub feature_type: String,
 }
+
+/// Feature vector containing multiple features
+pub type FeatureVector<T> = Vec<Feature<T>>;
 
 /// Reasoning trace for explainability
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1006,9 +1015,10 @@ pub struct ReasoningStep {
 }
 
 /// Types of reasoning steps
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum ReasoningStepType {
     /// Observation step
+    #[default]
     Observe,
     /// Thinking/reasoning step
     Think,
@@ -1171,6 +1181,245 @@ pub struct MemoryUsage {
     pub episodic_utilization: f64,
     /// Total memory entries
     pub total_entries: usize,
+}
+
+// ================================================================================================
+// FUSION-RELATED TYPES
+// ================================================================================================
+
+/// Attention weights for fusion strategies
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttentionWeights<T: Float> {
+    /// Weights for each modality
+    pub weights: std::collections::HashMap<ModalityType, T>,
+    /// Overall attention score
+    pub attention_score: T,
+}
+
+impl<T: Float> Default for AttentionWeights<T> {
+    fn default() -> Self {
+        Self {
+            weights: std::collections::HashMap::new(),
+            attention_score: T::zero(),
+        }
+    }
+}
+
+/// Combined features from multiple modalities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CombinedFeatures<T: Float> {
+    /// Features by modality
+    pub modality_features: std::collections::HashMap<ModalityType, Vec<T>>,
+    /// Combined feature vector
+    pub combined_vector: Vec<T>,
+}
+
+impl<T: Float> Default for CombinedFeatures<T> {
+    fn default() -> Self {
+        Self {
+            modality_features: std::collections::HashMap::new(),
+            combined_vector: Vec::new(),
+        }
+    }
+}
+
+/// Fused decision from multiple modalities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FusedDecision<T: Float> {
+    /// Final decision
+    pub decision: Decision,
+    /// Decision confidence
+    pub confidence: T,
+    /// Contribution from each modality
+    pub modality_contributions: std::collections::HashMap<ModalityType, T>,
+    /// Fusion method used
+    pub fusion_method: String,
+}
+
+impl<T: Float> Default for FusedDecision<T> {
+    fn default() -> Self {
+        Self {
+            decision: Decision::default(),
+            confidence: T::zero(),
+            modality_contributions: std::collections::HashMap::new(),
+            fusion_method: "default".to_string(),
+        }
+    }
+}
+
+/// Result from voting-based fusion
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VotingResult<T: Float> {
+    /// Vote counts for each decision
+    pub vote_counts: std::collections::HashMap<Decision, usize>,
+    /// Weighted votes if applicable
+    pub weighted_votes: std::collections::HashMap<Decision, T>,
+    /// Final decision based on voting
+    pub final_decision: Decision,
+    /// Confidence in the voting result
+    pub confidence: T,
+}
+
+impl<T: Float> Default for VotingResult<T> {
+    fn default() -> Self {
+        Self {
+            vote_counts: std::collections::HashMap::new(),
+            weighted_votes: std::collections::HashMap::new(),
+            final_decision: Decision::default(),
+            confidence: T::zero(),
+        }
+    }
+}
+
+/// Metadata for fusion operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FusionMetadata {
+    /// Fusion strategy used
+    pub strategy: String,
+    /// Modalities involved
+    pub modalities: Vec<ModalityType>,
+    /// Quality of input data
+    pub input_quality: std::collections::HashMap<ModalityType, f64>,
+    /// Processing parameters
+    pub parameters: std::collections::HashMap<String, String>,
+}
+
+impl Default for FusionMetadata {
+    fn default() -> Self {
+        Self {
+            strategy: "default".to_string(),
+            modalities: Vec::new(),
+            input_quality: std::collections::HashMap::new(),
+            parameters: std::collections::HashMap::new(),
+        }
+    }
+}
+
+/// Processing timing information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessingTiming {
+    /// Start time
+    pub start_time: std::time::SystemTime,
+    /// End time
+    pub end_time: std::time::SystemTime,
+    /// Duration
+    pub duration: Duration,
+    /// Breakdown by stage
+    pub stage_timings: std::collections::HashMap<String, Duration>,
+}
+
+impl Default for ProcessingTiming {
+    fn default() -> Self {
+        let now = std::time::SystemTime::now();
+        Self {
+            start_time: now,
+            end_time: now,
+            duration: Duration::from_millis(0),
+            stage_timings: std::collections::HashMap::new(),
+        }
+    }
+}
+
+/// Quality metrics for analysis results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QualityMetrics {
+    /// Overall quality score (0.0 to 1.0)
+    pub overall_score: f64,
+    /// Data quality score
+    pub data_quality: f64,
+    /// Model confidence
+    pub model_confidence: f64,
+    /// Completeness of analysis
+    pub completeness: f64,
+    /// Individual metric scores
+    pub metrics: std::collections::HashMap<String, f64>,
+}
+
+impl Default for QualityMetrics {
+    fn default() -> Self {
+        Self {
+            overall_score: 0.0,
+            data_quality: 0.0,
+            model_confidence: 0.0,
+            completeness: 0.0,
+            metrics: std::collections::HashMap::new(),
+        }
+    }
+}
+
+/// Performance metrics for analysis and processing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+    /// Processing time metrics
+    pub timing: ProcessingTiming,
+    /// Memory usage metrics
+    pub memory: MemoryUsage,
+    /// Throughput metrics
+    pub throughput: f64,
+    /// Accuracy metrics
+    pub accuracy: f64,
+    /// Additional custom metrics
+    pub custom_metrics: std::collections::HashMap<String, f64>,
+}
+
+impl Default for PerformanceMetrics {
+    fn default() -> Self {
+        Self {
+            timing: ProcessingTiming::default(),
+            memory: MemoryUsage::default(),
+            throughput: 0.0,
+            accuracy: 0.0,
+            custom_metrics: std::collections::HashMap::new(),
+        }
+    }
+}
+
+/// Cache entry for storing computed results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheEntry<T> {
+    /// Cached value
+    pub value: T,
+    /// Timestamp when cached
+    pub cached_at: std::time::SystemTime,
+    /// Time-to-live for cache entry
+    pub ttl: Duration,
+    /// Access count
+    pub access_count: usize,
+    /// Last access time
+    pub last_accessed: std::time::SystemTime,
+}
+
+impl<T> CacheEntry<T> {
+    /// Create a new cache entry
+    pub fn new(value: T, ttl: Duration) -> Self {
+        let now = std::time::SystemTime::now();
+        Self {
+            value,
+            cached_at: now,
+            ttl,
+            access_count: 0,
+            last_accessed: now,
+        }
+    }
+    
+    /// Check if entry is expired
+    pub fn is_expired(&self) -> bool {
+        self.cached_at.elapsed().unwrap_or(Duration::MAX) > self.ttl
+    }
+    
+    /// Update access tracking
+    pub fn mark_accessed(&mut self) {
+        self.access_count += 1;
+        self.last_accessed = std::time::SystemTime::now();
+    }
+}
+
+impl<T: Clone> CacheEntry<T> {
+    /// Get value and update access tracking
+    pub fn get(&mut self) -> T {
+        self.mark_accessed();
+        self.value.clone()
+    }
 }
 
 #[cfg(test)]

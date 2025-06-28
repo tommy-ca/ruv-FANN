@@ -1,0 +1,1 @@
+searchState.loadedDescShard("aligned_vec", 0, "")

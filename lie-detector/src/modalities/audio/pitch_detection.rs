@@ -4,6 +4,7 @@
 //! autocorrelation, YIN algorithm, and harmonic analysis for lie detection.
 
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 

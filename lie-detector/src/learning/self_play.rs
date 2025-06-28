@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 use chrono::Utc;
 
-use crate::error::Result;
+use crate::error::{Result, VeritasError};
 use crate::types::*;
 use super::*;
 

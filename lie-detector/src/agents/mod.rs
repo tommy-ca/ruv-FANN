@@ -11,6 +11,7 @@
 
 use async_trait::async_trait;
 use std::sync::Arc;
+use num_traits::Float;
 
 use crate::error::Result;
 use crate::types::*;

@@ -9,7 +9,7 @@
 //! - Loop tiling and blocking strategies
 
 use crate::{Result, VeritasError};
-use aligned_vec::AlignedVec;
+use crate::optimization::vectorization_hints::alignment::AlignedVec;
 use std::arch::x86_64::_mm_prefetch;
 
 /// Cache optimization configuration.
@@ -167,11 +167,11 @@ impl CacheOptimizedMatrix {
     /// Perform cache-blocked matrix multiplication: C = A * B.
     pub fn multiply(&self, other: &Self, result: &mut Self) -> Result<()> {
         if self.cols != other.rows {
-            return Err(VeritasError::Runtime("Matrix dimension mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Matrix dimension mismatch", "matrix_dimensions"));
         }
         
         if result.rows != self.rows || result.cols != other.cols {
-            return Err(VeritasError::Runtime("Result matrix size mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Result matrix size mismatch", "result_matrix"));
         }
         
         // Initialize result to zero
@@ -251,11 +251,11 @@ impl<T: Clone + Default> SoAData<T> {
     /// Push a tuple of values.
     pub fn push(&mut self, values: &[T]) -> Result<()> {
         if values.len() != self.arrays.len() {
-            return Err(VeritasError::Runtime("Value count mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Value count mismatch", "values"));
         }
         
         if self.len >= self.capacity {
-            return Err(VeritasError::Runtime("SoA capacity exceeded".to_string()));
+            return Err(VeritasError::memory_error("Structure of Arrays capacity exceeded"));
         }
         
         for (i, value) in values.iter().enumerate() {
@@ -332,11 +332,11 @@ impl CacheOptimizedLayer {
         let (rows, cols) = self.weights.dimensions();
         
         if weights.len() != rows * cols {
-            return Err(VeritasError::Runtime("Weight matrix size mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Weight matrix size mismatch", "weights"));
         }
         
         if biases.len() != self.biases.len() {
-            return Err(VeritasError::Runtime("Bias vector size mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Bias vector size mismatch", "bias"));
         }
         
         self.weights.copy_from_row_major(weights);
@@ -350,11 +350,11 @@ impl CacheOptimizedLayer {
         let (output_size, input_size) = self.weights.dimensions();
         
         if input.len() != input_size {
-            return Err(VeritasError::Runtime("Input size mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Input size mismatch", "input"));
         }
         
         if output.len() != output_size {
-            return Err(VeritasError::Runtime("Output size mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Output size mismatch", "output"));
         }
         
         // Cache-optimized matrix-vector multiplication

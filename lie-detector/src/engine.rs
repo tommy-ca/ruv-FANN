@@ -83,7 +83,7 @@ impl Engine {
     pub fn new(config: EngineConfig) -> Result<Self> {
         // Validate configuration
         if config.parallel_workers == 0 {
-            return Err(VeritasError::ConfigError("parallel_workers must be > 0".to_string()));
+            return Err(VeritasError::config_error("parallel_workers must be > 0"));
         }
         
         Ok(Self { config })

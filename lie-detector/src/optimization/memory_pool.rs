@@ -16,7 +16,7 @@ use std::ptr::NonNull;
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crossbeam_utils::CachePadded;
-use aligned_vec::AlignedVec;
+use crate::optimization::vectorization_hints::alignment::AlignedVec;
 
 /// Memory pool configuration.
 #[derive(Debug, Clone)]
@@ -184,8 +184,8 @@ impl MemoryPool {
     pub fn new(config: MemoryConfig) -> Result<Self> {
         if config.size_classes.len() != config.initial_pool_sizes.len() ||
            config.size_classes.len() != config.max_pool_sizes.len() {
-            return Err(VeritasError::MemoryError(
-                "Size class configuration arrays must have the same length".to_string()
+            return Err(VeritasError::config_error(
+                "Size class configuration arrays must have the same length"
             ));
         }
         
@@ -213,7 +213,7 @@ impl MemoryPool {
     /// Allocate memory from the pool.
     pub fn allocate(&self, size: usize) -> Result<NonNull<u8>> {
         if size == 0 {
-            return Err(VeritasError::MemoryError("Cannot allocate zero bytes".to_string()));
+            return Err(VeritasError::invalid_input("Cannot allocate zero bytes", "size"));
         }
         
         // Check memory limit
@@ -221,7 +221,7 @@ impl MemoryPool {
             let current_usage = self.statistics.total_allocated.load(Ordering::Relaxed) -
                                self.statistics.total_deallocated.load(Ordering::Relaxed);
             if current_usage + size > limit {
-                return Err(VeritasError::MemoryError("Memory limit exceeded".to_string()));
+                return Err(VeritasError::memory_error("Memory limit exceeded"));
             }
         }
         
@@ -360,11 +360,11 @@ impl MemoryPool {
     
     fn allocate_large(&self, size: usize) -> Result<NonNull<u8>> {
         let layout = Layout::from_size_align(size, self.config.alignment)
-            .map_err(|e| VeritasError::MemoryError(format!("Invalid layout: {}", e)))?;
+            .map_err(|e| VeritasError::memory_error(format!("Invalid layout: {}", e)))?;
         
         let ptr = unsafe {
             NonNull::new(std::alloc::alloc(layout))
-                .ok_or_else(|| VeritasError::MemoryError("Large allocation failed".to_string()))?
+                .ok_or_else(|| VeritasError::memory_error("Large allocation failed"))?
         };
         
         // Track large allocation
@@ -383,11 +383,11 @@ impl MemoryPool {
     
     fn allocate_large_aligned(&self, size: usize, alignment: usize) -> Result<NonNull<u8>> {
         let layout = Layout::from_size_align(size, alignment)
-            .map_err(|e| VeritasError::MemoryError(format!("Invalid layout: {}", e)))?;
+            .map_err(|e| VeritasError::memory_error(format!("Invalid layout: {}", e)))?;
         
         let ptr = unsafe {
             NonNull::new(std::alloc::alloc(layout))
-                .ok_or_else(|| VeritasError::MemoryError("Aligned allocation failed".to_string()))?
+                .ok_or_else(|| VeritasError::memory_error("Aligned allocation failed"))?
         };
         
         let allocation = LargeAllocation {
@@ -406,7 +406,7 @@ impl MemoryPool {
     fn deallocate_large(&self, ptr: NonNull<u8>, _size: usize) -> Result<()> {
         let mut large_allocs = self.large_allocations.lock().unwrap();
         let allocation = large_allocs.remove(&(ptr.as_ptr() as usize))
-            .ok_or_else(|| VeritasError::MemoryError("Large allocation not found".to_string()))?;
+            .ok_or_else(|| VeritasError::memory_error("Large allocation not found"))?;
         
         unsafe {
             std::alloc::dealloc(ptr.as_ptr(), allocation.layout);
@@ -510,14 +510,14 @@ impl SizeClassPool {
     
     fn preallocate(&self, count: usize, alignment: usize) -> Result<()> {
         let layout = Layout::from_size_align(self.size_class, alignment)
-            .map_err(|e| VeritasError::MemoryError(format!("Invalid layout: {}", e)))?;
+            .map_err(|e| VeritasError::memory_error(format!("Invalid layout: {}", e)))?;
         
         let mut free_blocks = self.free_blocks.lock().unwrap();
         
         for _ in 0..count {
             let ptr = unsafe {
                 NonNull::new(std::alloc::alloc(layout))
-                    .ok_or_else(|| VeritasError::MemoryError("Preallocation failed".to_string()))?
+                    .ok_or_else(|| VeritasError::memory_error("Preallocation failed"))?
             };
             
             free_blocks.push(ptr);
@@ -542,15 +542,15 @@ impl SizeClassPool {
         let current_total = self.total_blocks.load(Ordering::Relaxed);
         
         if current_total >= self.max_blocks {
-            return Err(VeritasError::MemoryError("Pool size limit exceeded".to_string()));
+            return Err(VeritasError::memory_error("Pool size limit exceeded"));
         }
         
         let layout = Layout::from_size_align(self.size_class, alignment)
-            .map_err(|e| VeritasError::MemoryError(format!("Invalid layout: {}", e)))?;
+            .map_err(|e| VeritasError::memory_error(format!("Invalid layout: {}", e)))?;
         
         let ptr = unsafe {
             NonNull::new(std::alloc::alloc(layout))
-                .ok_or_else(|| VeritasError::MemoryError("Block allocation failed".to_string()))?
+                .ok_or_else(|| VeritasError::memory_error("Block allocation failed"))?
         };
         
         self.total_blocks.fetch_add(1, Ordering::Relaxed);
@@ -571,7 +571,7 @@ impl SizeClassPool {
         let trim_count = free_blocks.len() / 2; // Trim half of free blocks
         
         let layout = Layout::from_size_align(self.size_class, 64)
-            .map_err(|e| VeritasError::MemoryError(format!("Invalid layout: {}", e)))?;
+            .map_err(|e| VeritasError::memory_error(format!("Invalid layout: {}", e)))?;
         
         for _ in 0..trim_count {
             if let Some(ptr) = free_blocks.pop() {
@@ -625,7 +625,7 @@ impl<T: Clone> ZeroCopyTensor<T> {
         let new_total: usize = new_shape.iter().product();
         
         if total_elements != new_total {
-            return Err(VeritasError::MemoryError("Shape mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Shape mismatch in tensor view", "new_shape"));
         }
         
         Ok(Self {
@@ -639,7 +639,7 @@ impl<T: Clone> ZeroCopyTensor<T> {
     /// Create a slice of the tensor.
     pub fn slice(&self, ranges: &[std::ops::Range<usize>]) -> Result<Self> {
         if ranges.len() != self.shape.len() {
-            return Err(VeritasError::MemoryError("Range dimension mismatch".to_string()));
+            return Err(VeritasError::invalid_input("Range dimension mismatch in tensor slice", "ranges"));
         }
         
         let mut new_offset = self.offset;
@@ -648,7 +648,7 @@ impl<T: Clone> ZeroCopyTensor<T> {
         
         for (i, range) in ranges.iter().enumerate() {
             if range.end > self.shape[i] {
-                return Err(VeritasError::MemoryError("Range out of bounds".to_string()));
+                return Err(VeritasError::invalid_input("Range out of bounds in tensor slice", "ranges"));
             }
             
             new_offset += range.start * self.strides[i];

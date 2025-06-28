@@ -22,6 +22,12 @@ pub mod aarch64;
 // Fallback implementation for unsupported architectures
 pub mod fallback;
 
+// Core SIMD operations
+pub mod core_ops;
+
+// Runtime SIMD selection
+pub mod runtime_select;
+
 // Re-export platform-specific optimizations
 #[cfg(target_arch = "x86_64")]
 pub use self::x86_64::*;
@@ -31,6 +37,15 @@ pub use self::aarch64::*;
 
 #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
 pub use self::fallback::*;
+
+// Re-export core SIMD operations
+pub use self::core_ops::SimdCoreOps;
+
+// Re-export runtime selection functionality
+pub use self::runtime_select::{
+    SimdDispatcher, SimdLevel, SimdInfo, 
+    get_simd_level, is_simd_available, get_simd_info
+};
 
 /// SIMD feature detection and capabilities.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -275,6 +290,15 @@ impl SimdProcessor {
         self.implementation.add(a, b, result)
     }
     
+    /// Perform element-wise subtraction.
+    pub fn subtract(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()> {
+        if a.len() != b.len() || a.len() != result.len() {
+            return Err(VeritasError::SimdError("Array lengths must match".to_string()));
+        }
+        
+        self.implementation.subtract(a, b, result)
+    }
+    
     /// Perform element-wise multiplication.
     pub fn multiply(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()> {
         if a.len() != b.len() || a.len() != result.len() {
@@ -347,6 +371,9 @@ pub trait SimdOperations {
     
     /// Element-wise addition
     fn add(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()>;
+    
+    /// Element-wise subtraction
+    fn subtract(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()>;
     
     /// Element-wise multiplication
     fn multiply(&self, a: &[f32], b: &[f32], result: &mut [f32]) -> Result<()>;

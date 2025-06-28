@@ -12,6 +12,7 @@ use chrono::Utc;
 
 use crate::error::{Result, VeritasError};
 use crate::types::*;
+use crate::learning::ActivationFunction;
 use super::*;
 
 /// Main neuro-symbolic reasoning system
@@ -51,6 +52,59 @@ pub struct SymbolicEngine {
     inference_chains: Vec<InferenceChain>,
     /// Reasoning context
     context: ReasoningContext,
+}
+
+/// Explanation generator for neuro-symbolic reasoning
+pub struct ExplanationGenerator {
+    /// Template library for explanations
+    templates: HashMap<String, String>,
+    /// Generation configuration
+    config: ExplanationConfig,
+}
+
+impl ExplanationGenerator {
+    /// Create new explanation generator
+    pub fn new() -> Self {
+        let mut templates = HashMap::new();
+        templates.insert(
+            "neural_confidence".to_string(),
+            "Neural network analysis shows {confidence:.2}% confidence in {prediction}".to_string(),
+        );
+        templates.insert(
+            "symbolic_rule".to_string(),
+            "Symbolic rule '{rule}' applies: {conclusion}".to_string(),
+        );
+        templates.insert(
+            "multimodal_fusion".to_string(),
+            "Combined evidence from {modalities} indicates {result}".to_string(),
+        );
+        
+        Self {
+            templates,
+            config: ExplanationConfig::default(),
+        }
+    }
+}
+
+/// Configuration for explanation generation
+#[derive(Debug, Clone)]
+pub struct ExplanationConfig {
+    /// Maximum explanation length
+    pub max_length: usize,
+    /// Include technical details
+    pub include_technical: bool,
+    /// Confidence threshold for detailed explanations
+    pub detail_threshold: f64,
+}
+
+impl Default for ExplanationConfig {
+    fn default() -> Self {
+        Self {
+            max_length: 500,
+            include_technical: false,
+            detail_threshold: 0.7,
+        }
+    }
 }
 
 /// Feature extractor trait for different modalities

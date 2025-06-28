@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use chrono::Utc;
 use uuid::Uuid;
+use num_traits::Float;
 
 use crate::error::{Result, VeritasError};
 use crate::types::*;

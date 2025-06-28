@@ -8,10 +8,11 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use chrono::Utc;
 use uuid::Uuid;
+use num_traits::Float;
 
 use crate::error::{Result, VeritasError};
 use crate::types::*;
-use super::{ReactAgent, AgentStats, MemoryUsage, Memory, ReasoningEngine, ActionEngine};
+use super::{ReactAgent, AgentStats, MemoryUsage, Memory, MemoryType, MemoryEntry, ReasoningEngine, ActionEngine};
 
 /// Default implementation of the ReAct agent
 pub struct DefaultReactAgent<T: Float> {

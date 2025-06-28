@@ -5,12 +5,37 @@ name = "veritas-nexus"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Multi-modal lie detection system with explainable AI - Text Analysis Module"
-repository = "https://github.com/yourusername/veritas-nexus"
-authors = ["Your Name <your.email@example.com>"]
+description = "Advanced multi-modal lie detection system with explainable AI, featuring text, vision, audio, and physiological analysis with ReAct reasoning"
+repository = "https://github.com/ruv-FANN/veritas-nexus"
+homepage = "https://github.com/ruv-FANN/veritas-nexus"
+documentation = "https://docs.rs/veritas-nexus"
+authors = ["Veritas Nexus Contributors"]
 readme = "README.md"
-keywords = ["ai", "neural-networks", "lie-detection", "nlp", "text-analysis"]
-categories = ["science", "algorithms", "text-processing"]
+keywords = ["ai", "machine-learning", "lie-detection", "multimodal", "explainable-ai"]
+categories = ["science", "algorithms", "machine-learning"]
+exclude = [
+    "target/",
+    "benches/*/target/",
+    "*.log",
+    ".vscode/",
+    ".idea/",
+    "docs/",
+    "plans/",
+    "memory_optimization_report.md",
+    "EDGE_CASE_TESTING_SUMMARY.md"
+]
+
+[package.metadata]
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-all-features]
+denylist = ["benchmarking"]
+skip_feature_sets = [["gpu", "parallel"]]
+
+[package.metadata.workspaces]
+no_individual_tags = true
 
 [features]
 default = ["parallel"]
@@ -26,14 +51,19 @@ thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
+# System information
+num_cpus = "1.16"
+
 # Numerical computing
 num-traits = "0.2"
+num-complex = "0.4"
 ndarray = "0.15"
+aligned-vec = "0.5"
 
 # Neural networks and ML (optional for GPU)
-candle-core = { version = "0.4", optional = true }
-candle-nn = { version = "0.4", optional = true }
-candle-transformers = { version = "0.4", optional = true }
+candle-core = { version = "0.6", optional = true }
+candle-nn = { version = "0.6", optional = true }
+candle-transformers = { version = "0.6", optional = true }
 tokenizers = "0.15"
 hf-hub = { version = "0.3", optional = true }
 
@@ -42,10 +72,29 @@ regex = "1.10"
 unicode-normalization = "0.1"
 unicode-segmentation = "1.10"
 whatlang = "0.16"
+ropey = "1.6"
+bytes = "1.5"
 
-# Performance
+# Performance and concurrency
 rayon = { version = "1.8", optional = true }
 crossbeam = { version = "0.8", optional = true }
+crossbeam-utils = "0.8"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+parking_lot = "0.12"
+dashmap = "5.5"
+ahash = "0.8"
+smallstr = "0.3"
+hashbrown = "0.14"
+bitvec = "1.0"
+lru = "0.12"
+memmap2 = "0.9"
+arrayvec = "0.7"
+smallvec = "1.11"
+indexmap = "2.2"
+tinyvec = "1.6"
+ordered-float = "4.2"
+half = "2.4"
 
 # Logging and monitoring
 tracing = "0.1"
@@ -59,9 +108,15 @@ async-trait = "0.1"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 nalgebra = { version = "0.33", features = ["serde-serialize"] }
+raw-cpuid = "11.0"
 
 # Lazy static for shared data
 once_cell = "1.19"
+lazy_static = "1.4"
+
+# Random number generation
+rand = "0.8"
+fastrand = "2.0"
 
 # Testing
 criterion = { version = "0.5", optional = true }
@@ -73,7 +128,7 @@ tempfile = "3.8"
 pretty_assertions = "1.4"
 
 # Property-based testing
-proptest = "1.4"
+proptest = "1.0"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 
@@ -86,10 +141,8 @@ rstest = "0.18"
 test-case = "3.3"
 serial_test = "3.0"
 float-cmp = "0.9"
-rand = "0.8"
 rand_chacha = "0.3"
 fake = { version = "2.9", features = ["derive"] }
-once_cell = "1.19"
 env_logger = "0.10"
 log = "0.4"
 
@@ -143,3 +196,4 @@ opt-level = 3
 lto = true
 codegen-units = 1
 debug = true
+

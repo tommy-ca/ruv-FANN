@@ -19,11 +19,13 @@ pub mod voice_analyzer;
 pub mod pitch_detection;
 pub mod stress_features;
 pub mod mfcc;
+pub mod simd_optimized;
 
 pub use voice_analyzer::VoiceAnalyzer;
 pub use pitch_detection::{PitchDetector, PitchFeatures};
 pub use stress_features::{StressFeatures, StressDetector};
 pub use mfcc::{MfccExtractor, MfccFeatures};
+pub use simd_optimized::{SimdFFT, SimdMfccExtractor, SimdPitchDetector, SimdVoiceStressAnalyzer};
 
 /// Core audio analysis trait for the modality system
 pub trait AudioAnalyzer: Send + Sync {

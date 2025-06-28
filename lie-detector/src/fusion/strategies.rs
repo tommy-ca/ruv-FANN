@@ -6,7 +6,7 @@
 //! - Hybrid Fusion: Combine both early and late fusion approaches
 //! - Weighted Voting: Democratic voting with confidence weighting
 
-use crate::error::{FusionError, Result};
+use crate::error::{Result, VeritasError, FusionError};
 use crate::fusion::{FeedbackData, FusionStrategy, utils};
 use crate::types::{
     CombinedFeatures, DeceptionScore, FusedDecision, FusionMetadata, ModalityType,

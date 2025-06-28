@@ -12,6 +12,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
+use num_traits::Float;
 
 use crate::error::{Result, VeritasError};
 use crate::types::*;

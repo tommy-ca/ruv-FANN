@@ -4,7 +4,7 @@
 //! from different modalities (vision, audio, text, physiological) into a unified
 //! decision with explainable reasoning.
 
-use crate::error::{FusionError, Result};
+use crate::error::{Result, VeritasError, FusionError};
 use crate::types::{
     AttentionWeights, CombinedFeatures, DeceptionScore, FusedDecision, ModalityType, VotingResult,
 };
@@ -16,6 +16,7 @@ use std::sync::Arc;
 pub mod strategies;
 pub mod attention_fusion;
 pub mod temporal_alignment;
+pub mod simd_optimized;
 
 #[cfg(test)]
 mod tests;
@@ -24,6 +25,7 @@ mod tests;
 pub use attention_fusion::{AttentionFusion, AttentionConfig};
 pub use strategies::{EarlyFusion, LateFusion, HybridFusion, WeightedVoting};
 pub use temporal_alignment::{TemporalAligner, AlignmentConfig};
+pub use simd_optimized::{SimdFusionOps, SimdAttentionFusion, SimdFusionMetrics, FusionQualityMetrics};
 
 /// Core trait for fusion strategies
 pub trait FusionStrategy<T: Float + Send + Sync>: Send + Sync {
