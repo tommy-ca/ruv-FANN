@@ -12,7 +12,7 @@ documentation = "https://docs.rs/veritas-nexus"
 authors = ["Veritas Nexus Contributors"]
 readme = "README.md"
 keywords = ["ai", "machine-learning", "lie-detection", "multimodal", "explainable-ai"]
-categories = ["science", "algorithms", "machine-learning"]
+categories = ["science", "algorithms"]
 include = [
     "src/**/*",
     "README.md",
