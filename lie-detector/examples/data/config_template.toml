@@ -1,0 +1,129 @@
+# Veritas Nexus Configuration Template
+# Copy this file and modify settings as needed
+
+[model]
+# Model configuration
+vision_model = "resnet50"
+audio_model = "wav2vec2" 
+text_model = "bert-base-uncased"
+physiological_model = "lstm"
+
+# Model precision settings
+vision_precision = "balanced"  # fast, balanced, accurate
+audio_precision = "balanced"
+text_precision = "balanced"
+
+# Model paths (optional - will use defaults if not specified)
+# model_cache_dir = "/path/to/model/cache"
+# custom_model_path = "/path/to/custom/models"
+
+[fusion]
+# Fusion strategy configuration
+default_strategy = "adaptive"  # early, late, attention, adaptive
+enable_uncertainty_quantification = true
+confidence_threshold = 0.5
+
+# Modality weights (used for weighted fusion strategies)
+[fusion.weights]
+vision = 0.35
+audio = 0.25
+text = 0.25
+physiological = 0.15
+
+[performance]
+# Performance and resource settings
+batch_size = 32
+max_concurrent_analyses = 4
+memory_limit_mb = 4096
+enable_gpu = true
+gpu_device = 0
+
+# Caching settings
+enable_caching = true
+cache_size = 1000
+cache_ttl_seconds = 3600
+
+[streaming]
+# Real-time streaming configuration
+target_fps = 30.0
+audio_chunk_size_ms = 100
+sync_window_ms = 200
+max_latency_ms = 500
+buffer_size = 128
+
+[processing]
+# Processing timeouts and limits
+analysis_timeout_ms = 30000
+video_max_resolution = [1920, 1080]
+audio_max_sample_rate = 48000
+text_max_length = 10000
+
+# Quality thresholds
+min_video_quality = 0.6
+min_audio_quality = 0.6
+min_text_quality = 0.5
+
+[logging]
+# Logging configuration
+level = "info"  # error, warn, info, debug, trace
+enable_performance_metrics = true
+enable_detailed_traces = false
+log_file = "veritas_nexus.log"
+
+[security]
+# Security and privacy settings
+enable_data_encryption = false
+anonymize_results = false
+audit_logging = true
+max_session_duration_hours = 24
+
+[export]
+# Result export settings
+default_format = "json"  # json, csv, xml, html
+include_metadata = true
+include_reasoning_traces = true
+include_feature_explanations = true
+
+# Output directories
+output_dir = "output"
+backup_dir = "backup"
+temp_dir = "temp"
+
+[validation]
+# Input validation settings
+require_at_least_one_modality = true
+validate_file_existence = true
+check_file_formats = true
+max_file_size_mb = 100
+
+[features]
+# Feature flags
+enable_explanation_engine = true
+enable_alternative_scenarios = true
+enable_confidence_intervals = true
+enable_batch_processing = true
+enable_mcp_server = false
+
+[mcp]
+# MCP server configuration (if enabled)
+port = 3000
+host = "localhost"
+max_connections = 100
+enable_auth = false
+api_key = ""
+
+[training]
+# Training configuration (if training features enabled)
+enable_training = false
+training_data_dir = "training_data"
+validation_split = 0.2
+max_epochs = 100
+learning_rate = 0.001
+early_stopping_patience = 10
+
+[custom]
+# Custom application-specific settings
+# Add your own configuration keys here
+application_name = "Veritas Nexus"
+version = "0.1.0"
+environment = "development"  # development, staging, production

@@ -1,0 +1,136 @@
+{
+  "test_cases": [
+    {
+      "id": "truthful_001",
+      "text": "I took the money from the cash register because I needed to pay for my mother's emergency surgery. I know it was wrong, but I was desperate and planned to return it as soon as I got my paycheck.",
+      "expected_label": "truthful",
+      "reasoning": "Direct admission with clear motivation and specific details",
+      "language": "english",
+      "complexity": "medium"
+    },
+    {
+      "id": "deceptive_001", 
+      "text": "Well, I kind of think maybe I might have possibly seen something like that happening, but I'm not really sure because it was sort of dark and confusing, you know?",
+      "expected_label": "deceptive",
+      "reasoning": "High hedging frequency, uncertainty markers, vague language",
+      "language": "english",
+      "complexity": "low"
+    },
+    {
+      "id": "truthful_002",
+      "text": "I was working late in my office on the 15th floor from 6 PM to 9 PM. My colleague Sarah can confirm this, and the security cameras will show me entering and leaving the building.",
+      "expected_label": "truthful", 
+      "reasoning": "Specific details, verifiable information, clear timeline",
+      "language": "english",
+      "complexity": "medium"
+    },
+    {
+      "id": "deceptive_002",
+      "text": "I definitely never took anything from anywhere at any time. I was nowhere near that place and I have never even been in that building before in my entire life.",
+      "expected_label": "deceptive",
+      "reasoning": "Excessive denial, overgeneralization, repetitive negation",
+      "language": "english", 
+      "complexity": "low"
+    },
+    {
+      "id": "uncertain_001",
+      "text": "I was probably at home that evening, but I might have gone out for groceries. I usually shop on weekdays but sometimes on weekends too.",
+      "expected_label": "uncertain",
+      "reasoning": "Genuine uncertainty without deceptive indicators",
+      "language": "english",
+      "complexity": "low"
+    },
+    {
+      "id": "truthful_003",
+      "text": "The incident occurred at approximately 2:30 PM when I observed an individual matching the suspect's description remove approximately $200 from the cash register. I immediately reported this to management.",
+      "expected_label": "truthful",
+      "reasoning": "Precise timing, specific amounts, immediate action taken",
+      "language": "english",
+      "complexity": "high"
+    },
+    {
+      "id": "deceptive_003",
+      "text": "I think perhaps maybe someone else could have possibly done something like that, but it wasn't me because I would never do anything wrong ever.",
+      "expected_label": "deceptive", 
+      "reasoning": "Blame shifting, excessive hedging, moral superiority claims",
+      "language": "english",
+      "complexity": "low"
+    },
+    {
+      "id": "multilingual_spanish",
+      "text": "Definitivamente no tomé el dinero. Estaba en casa con mi familia toda la noche viendo televisión.",
+      "expected_label": "deceptive",
+      "reasoning": "Strong denial in Spanish with basic alibi",
+      "language": "spanish",
+      "complexity": "medium"
+    },
+    {
+      "id": "multilingual_french", 
+      "text": "Je n'ai absolument pas pris cet argent. J'étais en réunion avec mes collègues à ce moment-là.",
+      "expected_label": "truthful",
+      "reasoning": "Clear denial in French with specific alibi",
+      "language": "french",
+      "complexity": "medium"
+    },
+    {
+      "id": "complex_narrative",
+      "text": "The situation is quite complex. At approximately 2:15 PM, I was finishing a conference call with our Tokyo office when I noticed unusual activity near the reception area. Upon closer observation, I witnessed what appeared to be unauthorized access to the petty cash drawer. I documented the time and immediately contacted security, providing a detailed description of the individual involved.",
+      "expected_label": "truthful",
+      "reasoning": "Detailed narrative with precise timing and appropriate actions",
+      "language": "english", 
+      "complexity": "high"
+    },
+    {
+      "id": "stress_indicators",
+      "text": "Look, I don't know what you want me to say here. This whole thing is just... it's really stressful, okay? I mean, I might have been there, or maybe I wasn't. Things have been really confusing lately.",
+      "expected_label": "deceptive",
+      "reasoning": "Emotional distress, uncertainty, deflection",
+      "language": "english",
+      "complexity": "medium"
+    },
+    {
+      "id": "baseline_truthful",
+      "text": "My name is John Smith. I work as an accountant at ABC Corporation. I have been employed there for five years. I live at 123 Main Street with my wife and two children.",
+      "expected_label": "truthful",
+      "reasoning": "Baseline factual information, typically truthful",
+      "language": "english", 
+      "complexity": "low"
+    },
+    {
+      "id": "temporal_confusion",
+      "text": "I was there yesterday, or maybe it was last week. Time has been weird lately. I think it was around lunchtime, but it could have been in the evening. Definitely not in the morning though.",
+      "expected_label": "deceptive",
+      "reasoning": "Temporal confusion, contradictory statements",
+      "language": "english",
+      "complexity": "medium"
+    },
+    {
+      "id": "detailed_truthful",
+      "text": "I arrived at the office at 8:30 AM, checked my emails, attended the 9 AM team meeting in Conference Room B, worked on the quarterly report until lunch, and left the building at 5:15 PM. I have my badge swipe records and calendar entries to verify this timeline.",
+      "expected_label": "truthful",
+      "reasoning": "Detailed timeline with verifiable evidence",
+      "language": "english",
+      "complexity": "high"
+    },
+    {
+      "id": "emotional_manipulation",
+      "text": "I would never do such a thing! I'm a good person who goes to church every Sunday and volunteers at the animal shelter. My grandmother always taught me to be honest, and I would never dishonor her memory by lying.",
+      "expected_label": "deceptive",
+      "reasoning": "Character references instead of facts, emotional appeal",
+      "language": "english",
+      "complexity": "medium"
+    }
+  ],
+  "metadata": {
+    "total_samples": 15,
+    "languages": ["english", "spanish", "french"],
+    "complexity_levels": ["low", "medium", "high"],
+    "label_distribution": {
+      "truthful": 7,
+      "deceptive": 7, 
+      "uncertain": 1
+    },
+    "created_date": "2024-01-15",
+    "version": "1.0"
+  }
+}

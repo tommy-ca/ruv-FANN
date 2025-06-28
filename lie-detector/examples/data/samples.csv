@@ -1,0 +1,21 @@
+id,video_path,audio_path,text,label,confidence,environment,subject_age,baseline_available
+sample_001,video/interview_001.mp4,audio/interview_001.wav,"I was definitely not at the crime scene that night. I was home watching TV with my family.",deceptive,0.85,controlled,34,false
+sample_002,video/interview_002.mp4,audio/interview_002.wav,"I took the money because I needed it for my sick mother's medical bills.",truthful,0.92,controlled,28,false
+sample_003,,audio/interview_003.wav,"Maybe I was there, I'm not really sure. It was kind of dark and confusing.",deceptive,0.73,field,42,false
+sample_004,video/interview_004.mp4,,"Well, you know, it's sort of complicated to explain exactly what happened.",deceptive,0.68,field,36,false
+sample_005,video/interview_005.mp4,audio/interview_005.wav,"I clearly saw John take the money from the register at exactly 3:15 PM.",truthful,0.88,controlled,29,true
+sample_006,,,"I think maybe I might have possibly seen something, but I'm not completely certain.",deceptive,0.76,field,51,false
+sample_007,video/interview_007.mp4,audio/interview_007.wav,"No, I have never taken anything that doesn't belong to me in my entire life.",deceptive,0.82,controlled,45,false
+sample_008,video/interview_008.mp4,audio/interview_008.wav,"The incident occurred at approximately 2:30 PM when I witnessed the theft.",truthful,0.91,controlled,38,true
+sample_009,,audio/interview_009.wav,"I definitely remember being in a meeting during that time period.",truthful,0.79,field,33,false
+sample_010,video/interview_010.mp4,,"Perhaps someone else might have done it, but it definitely wasn't me.",deceptive,0.71,controlled,27,false
+sample_011,video/interview_011.mp4,audio/interview_011.wav,"I was working late in the office and several colleagues can confirm this.",truthful,0.86,controlled,41,true
+sample_012,,audio/interview_012.wav,"Well, I suppose it's possible that I might have been around that area.",deceptive,0.77,field,39,false
+sample_013,video/interview_013.mp4,audio/interview_013.wav,"I have the receipt from the store where I was shopping at that exact time.",truthful,0.94,controlled,30,true
+sample_014,video/interview_014.mp4,,"I'm not really sure what you want me to say about this whole situation.",uncertain,0.45,field,48,false
+sample_015,video/interview_015.mp4,audio/interview_015.wav,"I admit I made a mistake and I'm willing to face the consequences.",truthful,0.89,controlled,35,false
+sample_016,,,"Maybe, possibly, I could have been there, but I don't really remember clearly.",deceptive,0.74,field,44,false
+sample_017,video/interview_017.mp4,audio/interview_017.wav,"I was at my daughter's school play that evening and have photos to prove it.",truthful,0.93,controlled,37,true
+sample_018,video/interview_018.mp4,,"It's kind of hard to explain exactly what I was doing at that specific time.",deceptive,0.69,field,32,false
+sample_019,,audio/interview_019.wav,"I categorically deny any involvement in this alleged incident.",deceptive,0.78,controlled,46,false
+sample_020,video/interview_020.mp4,audio/interview_020.wav,"I was driving home from work and stopped at the grocery store around 6 PM.",truthful,0.87,controlled,31,true
