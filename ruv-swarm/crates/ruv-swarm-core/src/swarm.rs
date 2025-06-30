@@ -13,10 +13,15 @@ use std::collections::HashMap;
 /// Swarm configuration
 #[derive(Debug, Clone)]
 pub struct SwarmConfig {
+    /// The network topology type for agent connections
     pub topology_type: TopologyType,
+    /// Strategy for distributing tasks among agents
     pub distribution_strategy: DistributionStrategy,
+    /// Maximum number of agents allowed in the swarm
     pub max_agents: usize,
+    /// Whether to enable automatic scaling of agent count
     pub enable_auto_scaling: bool,
+    /// Interval in milliseconds between health checks
     pub health_check_interval_ms: u64,
 }
 
@@ -254,9 +259,14 @@ impl Swarm {
 /// Swarm metrics
 #[derive(Debug, Clone)]
 pub struct SwarmMetrics {
+    /// Total number of agents in the swarm
     pub total_agents: usize,
+    /// Number of agents currently active and available
     pub active_agents: usize,
+    /// Number of tasks waiting in the queue
     pub queued_tasks: usize,
+    /// Number of tasks currently assigned to agents
     pub assigned_tasks: usize,
+    /// Total number of inter-agent connections
     pub total_connections: usize,
 }

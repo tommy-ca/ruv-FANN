@@ -33,9 +33,13 @@ impl Default for TopologyType {
 /// Swarm topology configuration
 #[derive(Debug, Clone)]
 pub struct Topology {
+    /// The type of topology being used (mesh, star, ring, etc.)
     pub topology_type: TopologyType,
+    /// Map of agent IDs to their connected neighbors
     pub connections: HashMap<AgentId, HashSet<AgentId>>,
+    /// Named groups of agents for organizational purposes
     pub groups: HashMap<String, Vec<AgentId>>,
+    /// Optional hierarchical structure for tree-based topologies
     pub hierarchy: Option<HierarchyNode>,
 }
 
@@ -200,8 +204,11 @@ impl Topology {
 /// Hierarchy node for hierarchical topologies
 #[derive(Debug, Clone)]
 pub struct HierarchyNode {
+    /// The unique identifier of the agent at this hierarchy node
     pub agent_id: AgentId,
+    /// Child nodes in the hierarchy tree
     pub children: Vec<HierarchyNode>,
+    /// The depth level of this node in the hierarchy (0 = root)
     pub level: usize,
 }
 

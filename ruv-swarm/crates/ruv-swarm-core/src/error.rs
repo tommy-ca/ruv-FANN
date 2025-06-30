@@ -18,55 +18,65 @@ pub enum SwarmError {
     /// Agent not found in registry
     #[cfg_attr(feature = "std", error("Agent not found: {id}"))]
     AgentNotFound {
+        /// The unique identifier of the agent that was not found
         id: String,
     },
 
     /// Task execution failed
     #[cfg_attr(feature = "std", error("Task execution failed: {reason}"))]
     TaskExecutionFailed {
+        /// Description of why the task execution failed
         reason: String,
     },
 
     /// Invalid swarm topology
     #[cfg_attr(feature = "std", error("Invalid topology: {reason}"))]
     InvalidTopology {
+        /// Description of why the topology is invalid
         reason: String,
     },
 
     /// Communication error between agents
     #[cfg_attr(feature = "std", error("Communication error: {reason}"))]
     CommunicationError {
+        /// Description of the communication error
         reason: String,
     },
 
     /// Resource exhaustion
     #[cfg_attr(feature = "std", error("Resource exhausted: {resource}"))]
     ResourceExhausted {
+        /// The type of resource that was exhausted (e.g., "memory", "cpu", "connections")
         resource: String,
     },
 
     /// Timeout occurred
     #[cfg_attr(feature = "std", error("Operation timed out after {duration_ms}ms"))]
     Timeout {
+        /// The duration in milliseconds after which the operation timed out
         duration_ms: u64,
     },
 
     /// Agent capability mismatch
     #[cfg_attr(feature = "std", error("Agent {agent_id} lacks capability: {capability}"))]
     CapabilityMismatch {
+        /// The unique identifier of the agent lacking the capability
         agent_id: String,
+        /// The required capability that the agent lacks
         capability: String,
     },
 
     /// Orchestration strategy error
     #[cfg_attr(feature = "std", error("Strategy error: {reason}"))]
     StrategyError {
+        /// Description of the strategy error
         reason: String,
     },
 
     /// Serialization/deserialization error
     #[cfg_attr(feature = "std", error("Serialization error: {reason}"))]
     SerializationError {
+        /// Description of the serialization error
         reason: String,
     },
 
@@ -118,7 +128,9 @@ impl SwarmError {
 /// Agent-specific error type
 #[derive(Debug, Clone)]
 pub struct AgentError {
+    /// The unique identifier of the agent that encountered the error
     pub agent_id: String,
+    /// The specific swarm error that occurred
     pub error: SwarmError,
 }
 

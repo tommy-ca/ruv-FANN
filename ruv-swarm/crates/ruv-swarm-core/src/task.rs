@@ -25,9 +25,13 @@ impl fmt::Display for TaskId {
 /// Task priority levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TaskPriority {
+    /// Low priority task - executed when no higher priority tasks are available
     Low = 0,
+    /// Normal priority task - default priority level for most tasks
     Normal = 1,
+    /// High priority task - prioritized over normal and low priority tasks
     High = 2,
+    /// Critical priority task - highest priority, executed immediately
     Critical = 3,
 }
 
@@ -59,13 +63,21 @@ pub enum TaskStatus {
 /// Task definition
 #[derive(Debug, Clone)]
 pub struct Task {
+    /// Unique identifier for this task
     pub id: TaskId,
+    /// Type of task (e.g., "compute", "io", "network")
     pub task_type: String,
+    /// Priority level for task scheduling
     pub priority: TaskPriority,
+    /// Task data payload
     pub payload: TaskPayload,
+    /// List of capabilities required by agents to execute this task
     pub required_capabilities: Vec<String>,
+    /// Optional timeout in milliseconds for task execution
     pub timeout_ms: Option<u64>,
+    /// Current number of retry attempts
     pub retry_count: u32,
+    /// Maximum number of retry attempts allowed
     pub max_retries: u32,
 }
 
@@ -151,10 +163,15 @@ impl Clone for Box<dyn CustomPayload> {
 /// Task result
 #[derive(Debug, Clone)]
 pub struct TaskResult {
+    /// The unique identifier of the task that was executed
     pub task_id: TaskId,
+    /// Final status of the task execution
     pub status: TaskStatus,
+    /// Optional output data produced by the task
     pub output: Option<TaskOutput>,
+    /// Optional error message if the task failed
     pub error: Option<String>,
+    /// Total execution time in milliseconds
     pub execution_time_ms: u64,
 }
 

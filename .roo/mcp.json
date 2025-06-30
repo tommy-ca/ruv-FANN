@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "ruv-swarm": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "ruv-swarm",
+        "/workspaces/ruv-FANN/ruv-swarm/npm/bin/ruv-swarm-enhanced.js",
         "mcp",
         "start",
         "--protocol=stdio"

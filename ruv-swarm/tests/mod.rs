@@ -13,6 +13,7 @@ mod persistence_integration;
 mod performance_benchmarks;
 mod chaos_testing;
 mod failure_scenarios;
+mod integration_test;
 
 // Re-export common test utilities
 pub mod test_utils {

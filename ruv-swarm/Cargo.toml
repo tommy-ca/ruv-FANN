@@ -8,7 +8,12 @@ members = [
     "crates/ruv-swarm-persistence", # Fixed dependency conflicts
     "crates/ruv-swarm-transport",   # Fixed dependency conflicts
     "crates/ruv-swarm-wasm",
+    "crates/claude-parser",
+    "crates/swe-bench-adapter",      # SWE-Bench adapter for evaluation
     # "crates/ruv-swarm-wasm-unified", # Temporarily disabled due to path resolution issues
+    "ml-training",
+    "benchmarking",                   # Comprehensive benchmarking framework
+    "training-data",                  # ML training data generation
 ]
 
 resolver = "2"
