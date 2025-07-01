@@ -75,6 +75,7 @@
     "nanoid": "^5.0.4",
     "node-pty": "^1.0.0",
     "ora": "^7.0.1",
+    "ruv-swarm": "file:../../../../ruv-swarm/npm",
     "ws": "^8.14.2"
   },
   "devDependencies": {

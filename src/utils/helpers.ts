@@ -2,7 +2,15 @@
  * Utility helper functions for Claude-Flow
  */
 
+import { promisify } from 'util';
+import { exec } from 'child_process';
+
 // Utility helper functions
+
+/**
+ * Executes a command asynchronously and returns the result
+ */
+export const execAsync = promisify(exec);
 
 /**
  * Simple calculator function that adds two numbers

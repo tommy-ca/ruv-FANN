@@ -11,6 +11,8 @@ import { monitorCommand } from './simple-commands/monitor.js';
 import { startCommand } from './simple-commands/start.js';
 import { swarmCommand } from './simple-commands/swarm.js';
 import { batchManagerCommand } from './simple-commands/batch-manager.js';
+import { ruvSwarmAction } from './commands/ruv-swarm.js';
+import { configIntegrationAction } from './commands/config-integration.js';
 
 // Command registry for extensible CLI
 export const commandRegistry = new Map();
@@ -180,6 +182,117 @@ Batch operations support:
 Use with init command:
   claude-flow init --batch-init project1,project2,project3
   claude-flow init --config batch-config.json --parallel`
+  });
+
+  commandRegistry.set('ruv-swarm', {
+    handler: ruvSwarmAction,
+    description: 'Advanced AI swarm coordination with neural capabilities',
+    usage: 'ruv-swarm <command> [options]',
+    examples: [
+      'ruv-swarm init --topology mesh --max-agents 8',
+      'ruv-swarm spawn researcher --name "AI Researcher"',
+      'ruv-swarm orchestrate "Build a REST API"',
+      'ruv-swarm neural train --iterations 20',
+      'ruv-swarm benchmark --type swarm',
+      'ruv-swarm config show',
+      'ruv-swarm status --verbose'
+    ],
+    details: `
+Advanced swarm coordination features:
+  • 84.8% SWE-Bench solve rate
+  • 32.3% token reduction through coordination
+  • 2.8-4.4x speed improvement via parallel execution
+  • 27+ neural models for cognitive approaches
+  • Persistent memory across sessions
+  • Automatic topology optimization
+  
+Commands:
+  init        - Initialize swarm with specified topology
+  status      - Get current swarm status and metrics
+  spawn       - Spawn specialized agents (researcher, coder, analyst, etc.)
+  orchestrate - Coordinate complex tasks across agents
+  neural      - Neural pattern training and management
+  benchmark   - Performance testing and optimization
+  config      - Configuration management
+  memory      - Memory usage and coordination data`
+  });
+
+  // Additional ruv-swarm coordination commands
+  commandRegistry.set('swarm-init', {
+    handler: async (args, flags) => {
+      const { ruvSwarmAction } = await import('./commands/ruv-swarm.js');
+      return ruvSwarmAction({ args: ['init', ...args], flags });
+    },
+    description: 'Quick swarm initialization with topology selection',
+    usage: 'swarm-init [--topology <type>] [--max-agents <n>] [--strategy <type>]',
+    examples: [
+      'swarm-init --topology mesh --max-agents 8',
+      'swarm-init --topology hierarchical --strategy specialized',
+      'swarm-init --topology star --max-agents 5 --strategy balanced'
+    ]
+  });
+
+  commandRegistry.set('neural-spawn', {
+    handler: async (args, flags) => {
+      const { ruvSwarmAction } = await import('./commands/ruv-swarm.js');
+      return ruvSwarmAction({ args: ['spawn', ...args], flags });
+    },
+    description: 'Spawn neural agents with cognitive capabilities',
+    usage: 'neural-spawn <type> [--name <name>] [--capabilities <list>]',
+    examples: [
+      'neural-spawn researcher --name "Data Analyst"',
+      'neural-spawn coder --capabilities "typescript,react,api"',
+      'neural-spawn coordinator --name "Project Manager"'
+    ]
+  });
+
+  commandRegistry.set('memory-coordinate', {
+    handler: async (args, flags) => {
+      const { ruvSwarmAction } = await import('./commands/ruv-swarm.js');
+      return ruvSwarmAction({ args: ['memory', ...args], flags });
+    },
+    description: 'Coordinate memory across swarm agents',
+    usage: 'memory-coordinate [--detail <level>] [--sync] [--compress]',
+    examples: [
+      'memory-coordinate --detail summary',
+      'memory-coordinate --detail detailed --sync',
+      'memory-coordinate --compress --sync'
+    ]
+  });
+
+  commandRegistry.set('config-integration', {
+    handler: configIntegrationAction,
+    description: 'Enhanced configuration management with ruv-swarm integration',
+    usage: 'config-integration <command> [options]',
+    examples: [
+      'config-integration setup --enable-ruv-swarm',
+      'config-integration preset development',
+      'config-integration sync --force',
+      'config-integration status --verbose',
+      'config-integration export my-config.json',
+      'config-integration validate --fix'
+    ],
+    details: `
+Advanced configuration management features:
+  • Unified configuration across Claude-Flow and ruv-swarm
+  • Configuration presets for different environments
+  • Automatic synchronization between config systems
+  • Import/export capabilities with validation
+  • Real-time status monitoring and validation
+  
+Presets:
+  development  - Hierarchical topology, specialized strategy, 8 agents
+  research     - Mesh topology, adaptive strategy, 12 agents  
+  production   - Star topology, balanced strategy, 6 agents
+  
+Commands:
+  setup        - Initialize ruv-swarm integration
+  sync         - Synchronize configurations
+  status       - Show integration status
+  validate     - Validate all configurations
+  preset       - Apply configuration preset
+  export       - Export unified configuration
+  import       - Import and apply configuration`
   });
 }
 

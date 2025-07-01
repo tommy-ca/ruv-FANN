@@ -29,6 +29,7 @@ import { AuthManager, IAuthManager } from './auth.js';
 import { LoadBalancer, ILoadBalancer, RequestQueue } from './load-balancer.js';
 import { createClaudeFlowTools, ClaudeFlowToolContext } from './claude-flow-tools.js';
 import { createSwarmTools, SwarmToolContext } from './swarm-tools.js';
+import { createRuvSwarmTools, RuvSwarmToolContext, isRuvSwarmAvailable, initializeRuvSwarmIntegration } from './ruv-swarm-tools.js';
 import { platform, arch } from 'node:os';
 import { performance } from 'node:perf_hooks';
 
@@ -548,6 +549,61 @@ export class MCPServer implements IMCPServer {
       this.logger.info('Registered Swarm tools', { count: swarmTools.length });
     } else {
       this.logger.warn('Swarm components not available - Swarm tools not registered');
+    }
+
+    // Register ruv-swarm MCP tools if available
+    this.registerRuvSwarmTools();
+  }
+
+  /**
+   * Register ruv-swarm MCP tools if available
+   */
+  private async registerRuvSwarmTools(): Promise<void> {
+    try {
+      // Check if ruv-swarm is available
+      const available = await isRuvSwarmAvailable(this.logger);
+      
+      if (!available) {
+        this.logger.info('ruv-swarm not available - skipping ruv-swarm MCP tools registration');
+        return;
+      }
+
+      // Initialize ruv-swarm integration
+      const workingDirectory = process.cwd();
+      const integration = await initializeRuvSwarmIntegration(workingDirectory, this.logger);
+      
+      if (!integration.success) {
+        this.logger.warn('Failed to initialize ruv-swarm integration', { error: integration.error });
+        return;
+      }
+
+      // Create ruv-swarm tools
+      const ruvSwarmTools = createRuvSwarmTools(this.logger);
+      
+      for (const tool of ruvSwarmTools) {
+        // Wrap the handler to inject ruv-swarm context
+        const originalHandler = tool.handler;
+        tool.handler = async (input: unknown, context?: MCPContext) => {
+          const ruvSwarmContext: RuvSwarmToolContext = {
+            ...context,
+            workingDirectory,
+            sessionId: `mcp-session-${Date.now()}`,
+            swarmId: process.env.CLAUDE_SWARM_ID || `mcp-swarm-${Date.now()}`
+          };
+          
+          return await originalHandler(input, ruvSwarmContext);
+        };
+        
+        this.registerTool(tool);
+      }
+      
+      this.logger.info('Registered ruv-swarm MCP tools', { 
+        count: ruvSwarmTools.length,
+        integration: integration.data 
+      });
+      
+    } catch (error) {
+      this.logger.error('Error registering ruv-swarm MCP tools', error);
     }
   }
 
