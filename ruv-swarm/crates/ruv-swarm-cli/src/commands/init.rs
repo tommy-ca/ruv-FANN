@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::output::{OutputHandler, StatusLevel};
+use crate::onboarding::run_onboarding_flow;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwarmInit {
@@ -40,7 +41,18 @@ pub async fn execute(
     persistence: Option<String>,
     config_file: Option<String>,
     non_interactive: bool,
+    skip_onboarding: bool,
 ) -> Result<()> {
+    // Handle onboarding flow unless skipped
+    if !skip_onboarding && !non_interactive {
+        if let Err(e) = run_onboarding_flow(config, output).await {
+            output.warning(&format!("Onboarding flow failed: {}", e));
+            output.info("Continuing with standard initialization...");
+        }
+    } else if !skip_onboarding {
+        output.info("Skipping onboarding due to non-interactive mode");
+    }
+
     output.section("Initializing RUV Swarm");
 
     // Validate topology

@@ -377,6 +377,23 @@ import {
   AGENT_COGNITIVE_PROFILES,
 } from './neural-agent.js';
 
+// Onboarding system exports (GitHub PR #32 requirement)
+// Cross-platform onboarding integration components
+export {
+  // Core onboarding functionality
+  DefaultClaudeDetector,
+  DefaultMCPConfigurator, 
+  DefaultInteractivePrompt,
+  DefaultLaunchManager,
+  // Onboarding workflow orchestrator
+  runOnboardingFlow,
+  // Configuration types
+  ClaudeInfo,
+  MCPConfig,
+  MCPServerConfig,
+  OnboardingConfig,
+} from './onboarding/index.js';
+
 // Legacy exports - these are now provided by index-enhanced.js
 // Export all the legacy functions and classes directly
 export {
