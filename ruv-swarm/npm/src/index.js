@@ -375,6 +375,23 @@ import {
   AGENT_COGNITIVE_PROFILES
 } from './neural-agent.js';
 
+// Import onboarding capabilities
+import {
+  detectClaudeCode,
+  isVersionCompatible,
+  MCPConfig,
+  generateMCPConfig,
+  detectGitHubToken,
+  validateMCPConfig,
+  generateSwarmId,
+  InteractiveCLI,
+  createCLI,
+  launchClaudeCode,
+  SessionManager,
+  launchWithSession,
+  runOnboarding
+} from './onboarding/index.js';
+
 // Legacy exports - these are now provided by index-enhanced.js
 // Export all the legacy functions and classes directly
 export {
@@ -388,5 +405,19 @@ export {
   NeuralAgentFactory,
   NeuralNetwork,
   COGNITIVE_PATTERNS,
-  AGENT_COGNITIVE_PROFILES
+  AGENT_COGNITIVE_PROFILES,
+  // Onboarding exports
+  detectClaudeCode,
+  isVersionCompatible,
+  MCPConfig,
+  generateMCPConfig,
+  detectGitHubToken,
+  validateMCPConfig,
+  generateSwarmId,
+  InteractiveCLI,
+  createCLI,
+  launchClaudeCode,
+  SessionManager,
+  launchWithSession,
+  runOnboarding
 };

@@ -153,6 +153,21 @@ async function initializeSystem() {
 
 async function handleInit(args) {
     try {
+        // Check for onboarding flag
+        if (args.includes('--onboard')) {
+            const { runOnboarding } = await import('../src/onboarding/index.js');
+            const options = {
+                autoAccept: args.includes('-y') || args.includes('--yes'),
+                verbose: args.includes('-v') || args.includes('--verbose')
+            };
+            
+            const result = await runOnboarding(options);
+            if (!result.success) {
+                process.exit(1);
+            }
+            return;
+        }
+        
         const { mcpTools } = await initializeSystem();
         
         // Filter out flags to get positional arguments
@@ -885,6 +900,7 @@ Usage: ruv-swarm <command> [options]
 
 Commands:
   init [topology] [maxAgents]     Initialize swarm (--claude for integration)
+  launch [options]                Launch Claude Code with MCP configuration
   spawn <type> [name]             Spawn an agent (researcher, coder, analyst, etc.)
   orchestrate <task>              Orchestrate a task across agents
   status [--verbose]              Show swarm status
@@ -899,7 +915,9 @@ Commands:
   help                            Show this help message
 
 Examples:
-  ruv-swarm init mesh 5 --claude --force
+  ruv-swarm init --onboard                Run interactive onboarding
+  ruv-swarm init mesh 5 --claude --force  Initialize with Claude integration
+  ruv-swarm launch                         Launch Claude Code with MCP
   ruv-swarm spawn researcher "AI Research Specialist"
   ruv-swarm orchestrate "Build a REST API with authentication"
   ruv-swarm mcp start
