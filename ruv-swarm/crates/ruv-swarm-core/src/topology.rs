@@ -179,7 +179,10 @@ impl Topology {
         }
         
         // Use BFS to check connectivity
-        let start = self.connections.keys().next().unwrap();
+        let start = match self.connections.keys().next() {
+            Some(agent) => agent,
+            None => return true, // Empty graph is considered fully connected
+        };
         let mut visited = HashSet::new();
         let mut queue = vec![start.clone()];
         

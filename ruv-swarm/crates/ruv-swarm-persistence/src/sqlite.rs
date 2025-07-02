@@ -1,16 +1,16 @@
 //! SQLite backend implementation for native platforms
 
 use crate::{
-    models::*, QueryBuilder, Repository, Storage, StorageError, Transaction as TransactionTrait,
+    models::*, Storage, StorageError, Transaction as TransactionTrait,
 };
 use async_trait::async_trait;
 use parking_lot::Mutex;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{params, Connection, Transaction, OptionalExtension};
+use rusqlite::{params, OptionalExtension};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 type SqlitePool = Pool<SqliteConnectionManager>;
 type SqliteConn = PooledConnection<SqliteConnectionManager>;

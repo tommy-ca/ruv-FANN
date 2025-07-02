@@ -59,10 +59,10 @@ demangle-name-section = true
 dwarf-debug-info = true
 
 [profile.release]
-# Optimize for performance while keeping size reasonable
-opt-level = 3
-# Full LTO for maximum optimization including SIMD
-lto = "fat"
+# Optimize for size
+opt-level = "z"
+# LTO for cdylib targets
+lto = true
 # Strip debug symbols  
 strip = true
 # Single codegen unit for better optimization

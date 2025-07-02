@@ -253,7 +253,7 @@ pub struct BenchmarkScenario {
     pub validation_tests: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Difficulty {
     Easy,
     Medium,
@@ -287,7 +287,7 @@ impl ToString for ExecutionMode {
 }
 
 /// Result of a single scenario execution
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScenarioResult {
     pub run_id: String,
     pub scenario_name: String,
@@ -298,7 +298,7 @@ pub struct ScenarioResult {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ExecutionStatus {
     Running,
     Completed,

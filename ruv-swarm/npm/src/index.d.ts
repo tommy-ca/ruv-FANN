@@ -282,3 +282,6 @@ export declare function consoleLog(message: string): void;
 export declare function consoleError(message: string): void;
 export declare function consoleWarn(message: string): void;
 export declare function formatJsError(error: any): string;
+
+// Export DAA service types and interfaces
+export * from './daa-service';

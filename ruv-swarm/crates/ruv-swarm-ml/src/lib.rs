@@ -11,14 +11,23 @@ extern crate alloc;
 #[cfg(target_arch = "wasm32")]
 use alloc::{
     boxed::Box,
-    collections::HashMap,
     string::{String, ToString},
     vec::Vec,
     format,
+    vec,
 };
+
+#[cfg(target_arch = "wasm32")]
+use alloc::collections::BTreeMap as HashMap;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::collections::HashMap;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::format;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::vec;
 
 pub mod agent_forecasting;
 pub mod ensemble;

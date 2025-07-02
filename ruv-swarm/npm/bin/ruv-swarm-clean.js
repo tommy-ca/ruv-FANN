@@ -7,6 +7,8 @@
 import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
+import { daaMcpTools } from '../src/mcp-daa-tools.js';
+import mcpToolsEnhanced from '../src/mcp-tools-enhanced.js';
 
 // Input validation constants and functions
 const VALID_TOPOLOGIES = ['mesh', 'hierarchical', 'ring', 'star'];
@@ -146,6 +148,23 @@ async function initializeSystem() {
         // Pass the already initialized RuvSwarm instance to avoid duplicate initialization
         globalMCPTools = new EnhancedMCPTools(globalRuvSwarm);
         await globalMCPTools.initialize(globalRuvSwarm);
+        
+        // Initialize DAA MCP tools with the same instance
+        daaMcpTools.mcpTools = globalMCPTools;
+        await daaMcpTools.ensureInitialized();
+        
+        // Add DAA tool methods to the MCP tools object
+        const daaToolNames = [
+            'daa_init', 'daa_agent_create', 'daa_agent_adapt', 'daa_workflow_create',
+            'daa_workflow_execute', 'daa_knowledge_share', 'daa_learning_status',
+            'daa_cognitive_pattern', 'daa_meta_learning', 'daa_performance_metrics'
+        ];
+        
+        for (const toolName of daaToolNames) {
+            if (typeof daaMcpTools[toolName] === 'function') {
+                globalMCPTools[toolName] = daaMcpTools[toolName].bind(daaMcpTools);
+            }
+        }
     }
     
     return { ruvSwarm: globalRuvSwarm, mcpTools: globalMCPTools };
@@ -448,7 +467,7 @@ async function startMcpServer(args) {
                         capabilities: {
                             tools: true,
                             prompts: false,
-                            resources: false
+                            resources: true
                         }
                     }
                 }
@@ -478,11 +497,18 @@ async function stopMcpServer() {
 
 async function listMcpTools() {
     console.log('🛠️  Available MCP Tools:');
+    console.log('\n📊 Core Swarm Tools:');
     console.log('   mcp__ruv-swarm__swarm_init - Initialize a new swarm');
     console.log('   mcp__ruv-swarm__agent_spawn - Spawn new agents');
     console.log('   mcp__ruv-swarm__task_orchestrate - Orchestrate tasks');
     console.log('   mcp__ruv-swarm__swarm_status - Get swarm status');
-    console.log('   ... and 12 more tools');
+    console.log('   ... and 11 more core tools');
+    console.log('\n🤖 DAA (Decentralized Autonomous Agents) Tools:');
+    console.log('   mcp__ruv-swarm__daa_init - Initialize DAA service');
+    console.log('   mcp__ruv-swarm__daa_agent_create - Create autonomous agents');
+    console.log('   mcp__ruv-swarm__daa_workflow_create - Create DAA workflows');
+    console.log('   mcp__ruv-swarm__daa_learning_status - Get learning progress');
+    console.log('   ... and 6 more DAA tools');
     console.log('\nFor full documentation, run: ruv-swarm init --claude');
 }
 
@@ -513,6 +539,479 @@ async function configureMcp(args) {
     console.log('Run: ruv-swarm init --claude');
 }
 
+async function getResourceContent(uri) {
+    const resources = {
+        'swarm://docs/getting-started': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# Getting Started with ruv-swarm
+
+## Introduction
+ruv-swarm is a powerful WASM-powered neural swarm orchestration system that enhances Claude Code's capabilities through intelligent agent coordination.
+
+## Quick Start
+
+1. **Initialize a swarm:**
+   \`\`\`bash
+   mcp__ruv-swarm__swarm_init { topology: "mesh", maxAgents: 5 }
+   \`\`\`
+
+2. **Spawn agents:**
+   \`\`\`bash
+   mcp__ruv-swarm__agent_spawn { type: "researcher", name: "Doc Analyzer" }
+   mcp__ruv-swarm__agent_spawn { type: "coder", name: "Implementation Expert" }
+   \`\`\`
+
+3. **Orchestrate tasks:**
+   \`\`\`bash
+   mcp__ruv-swarm__task_orchestrate { task: "Build a REST API", strategy: "adaptive" }
+   \`\`\`
+
+## Key Concepts
+
+- **Agents**: Cognitive patterns that guide Claude Code's approach
+- **Topologies**: Organizational structures for agent coordination
+- **Memory**: Persistent state across sessions
+- **Neural Training**: Continuous improvement through learning
+
+## Best Practices
+
+1. Always batch operations in a single message
+2. Use memory for cross-agent coordination
+3. Monitor progress with status tools
+4. Train neural patterns for better results`
+            }]
+        },
+        'swarm://docs/topologies': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# Swarm Topologies
+
+## Available Topologies
+
+### 1. Mesh
+- **Description**: Fully connected network where all agents communicate
+- **Best for**: Complex problems requiring diverse perspectives
+- **Characteristics**: High coordination, maximum information sharing
+
+### 2. Hierarchical
+- **Description**: Tree-like structure with clear command chain
+- **Best for**: Large projects with clear subtasks
+- **Characteristics**: Efficient delegation, clear responsibilities
+
+### 3. Ring
+- **Description**: Circular arrangement with sequential processing
+- **Best for**: Pipeline tasks, sequential workflows
+- **Characteristics**: Low overhead, predictable flow
+
+### 4. Star
+- **Description**: Central coordinator with peripheral agents
+- **Best for**: Simple coordination tasks
+- **Characteristics**: Minimal complexity, central control
+
+## Choosing a Topology
+
+Consider:
+- Task complexity
+- Number of agents
+- Communication needs
+- Performance requirements`
+            }]
+        },
+        'swarm://docs/agent-types': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# Agent Types Guide
+
+## Available Agent Types
+
+### 1. Researcher
+- **Cognitive Pattern**: Divergent thinking
+- **Capabilities**: Information gathering, analysis, exploration
+- **Best for**: Research tasks, documentation review, learning
+
+### 2. Coder
+- **Cognitive Pattern**: Convergent thinking
+- **Capabilities**: Implementation, debugging, optimization
+- **Best for**: Writing code, fixing bugs, refactoring
+
+### 3. Analyst
+- **Cognitive Pattern**: Systems thinking
+- **Capabilities**: Pattern recognition, data analysis, insights
+- **Best for**: Architecture design, performance analysis
+
+### 4. Optimizer
+- **Cognitive Pattern**: Critical thinking
+- **Capabilities**: Performance tuning, efficiency improvements
+- **Best for**: Optimization tasks, bottleneck resolution
+
+### 5. Coordinator
+- **Cognitive Pattern**: Lateral thinking
+- **Capabilities**: Task management, delegation, synthesis
+- **Best for**: Project management, integration tasks
+
+### 6. Architect
+- **Cognitive Pattern**: Abstract thinking
+- **Capabilities**: System design, high-level planning
+- **Best for**: Architecture decisions, design patterns
+
+### 7. Tester
+- **Cognitive Pattern**: Critical evaluation
+- **Capabilities**: Quality assurance, edge case finding
+- **Best for**: Testing, validation, quality control`
+            }]
+        },
+        'swarm://docs/daa-guide': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# DAA Integration Guide
+
+## Decentralized Autonomous Agents
+
+DAA extends ruv-swarm with autonomous learning and adaptation capabilities.
+
+## Key Features
+
+1. **Autonomous Learning**: Agents learn from experience
+2. **Knowledge Sharing**: Cross-agent knowledge transfer
+3. **Adaptive Workflows**: Self-optimizing execution
+4. **Meta-Learning**: Transfer learning across domains
+
+## Using DAA Tools
+
+### Initialize DAA
+\`\`\`javascript
+mcp__ruv-swarm__daa_init {
+  enableLearning: true,
+  enableCoordination: true,
+  persistenceMode: "auto"
+}
+\`\`\`
+
+### Create Autonomous Agent
+\`\`\`javascript
+mcp__ruv-swarm__daa_agent_create {
+  id: "auto-001",
+  capabilities: ["learning", "optimization"],
+  cognitivePattern: "adaptive",
+  learningRate: 0.001
+}
+\`\`\`
+
+### Execute Workflow
+\`\`\`javascript
+mcp__ruv-swarm__daa_workflow_execute {
+  workflowId: "api-development",
+  agentIds: ["auto-001", "auto-002"],
+  parallelExecution: true
+}
+\`\`\`
+
+## Best Practices
+
+1. Start with low learning rates
+2. Enable knowledge sharing for complex tasks
+3. Monitor performance metrics regularly
+4. Use meta-learning for cross-domain tasks`
+            }]
+        },
+        'swarm://examples/rest-api': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# REST API Example
+
+## Building a Complete REST API with ruv-swarm
+
+### Step 1: Initialize Swarm
+\`\`\`javascript
+[BatchTool]:
+  mcp__ruv-swarm__swarm_init { topology: "hierarchical", maxAgents: 6 }
+  mcp__ruv-swarm__agent_spawn { type: "architect", name: "API Designer" }
+  mcp__ruv-swarm__agent_spawn { type: "coder", name: "Backend Dev" }
+  mcp__ruv-swarm__agent_spawn { type: "analyst", name: "DB Expert" }
+  mcp__ruv-swarm__agent_spawn { type: "tester", name: "QA Engineer" }
+  mcp__ruv-swarm__agent_spawn { type: "coordinator", name: "Project Lead" }
+\`\`\`
+
+### Step 2: Design Architecture
+\`\`\`javascript
+TodoWrite { todos: [
+  { id: "design", content: "Design API architecture", priority: "high" },
+  { id: "auth", content: "Implement authentication", priority: "high" },
+  { id: "crud", content: "Build CRUD endpoints", priority: "medium" },
+  { id: "tests", content: "Write tests", priority: "medium" }
+]}
+\`\`\`
+
+### Step 3: Implementation
+\`\`\`javascript
+[BatchTool]:
+  Bash "mkdir -p api/{src,tests,docs}"
+  Write "api/package.json" { ... }
+  Write "api/src/server.js" { ... }
+  Write "api/src/routes/auth.js" { ... }
+\`\`\`
+
+### Step 4: Testing
+\`\`\`javascript
+mcp__ruv-swarm__task_orchestrate {
+  task: "Run comprehensive tests",
+  strategy: "parallel"
+}
+\`\`\`
+
+## Complete Working Example
+
+See the full implementation in the ruv-swarm examples directory.`
+            }]
+        },
+        'swarm://examples/neural-training': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# Neural Training Example
+
+## Training Neural Agents for Specific Tasks
+
+### Step 1: Initialize Neural Network
+\`\`\`javascript
+mcp__ruv-swarm__neural_status { agentId: "coder-001" }
+\`\`\`
+
+### Step 2: Prepare Training Data
+\`\`\`javascript
+mcp__ruv-swarm__neural_train {
+  agentId: "coder-001",
+  iterations: 50
+}
+\`\`\`
+
+### Step 3: Monitor Training Progress
+\`\`\`javascript
+mcp__ruv-swarm__swarm_monitor {
+  duration: 30,
+  interval: 1
+}
+\`\`\`
+
+### Step 4: Analyze Patterns
+\`\`\`javascript
+mcp__ruv-swarm__neural_patterns {
+  pattern: "all"
+}
+\`\`\`
+
+## Training Tips
+
+1. Start with small iteration counts
+2. Monitor performance metrics
+3. Adjust learning rates based on results
+4. Use cognitive patterns that match your task
+
+## Advanced Training
+
+For complex tasks, combine multiple cognitive patterns:
+- Convergent for focused problem-solving
+- Divergent for creative solutions
+- Systems for architectural decisions`
+            }]
+        },
+        'swarm://schemas/swarm-config': {
+            contents: [{
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify({
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "Swarm Configuration",
+                    "type": "object",
+                    "properties": {
+                        "topology": {
+                            "type": "string",
+                            "enum": ["mesh", "hierarchical", "ring", "star"],
+                            "description": "Swarm topology type"
+                        },
+                        "maxAgents": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 5,
+                            "description": "Maximum number of agents"
+                        },
+                        "strategy": {
+                            "type": "string",
+                            "enum": ["balanced", "specialized", "adaptive"],
+                            "default": "balanced",
+                            "description": "Distribution strategy"
+                        },
+                        "enableNeuralNetworks": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Enable neural network features"
+                        },
+                        "memoryPersistence": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Enable persistent memory"
+                        }
+                    },
+                    "required": ["topology"]
+                }, null, 2)
+            }]
+        },
+        'swarm://schemas/agent-config': {
+            contents: [{
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify({
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "title": "Agent Configuration",
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["researcher", "coder", "analyst", "optimizer", "coordinator", "architect", "tester"],
+                            "description": "Agent type"
+                        },
+                        "name": {
+                            "type": "string",
+                            "maxLength": 100,
+                            "description": "Custom agent name"
+                        },
+                        "capabilities": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Agent capabilities"
+                        },
+                        "cognitivePattern": {
+                            "type": "string",
+                            "enum": ["convergent", "divergent", "lateral", "systems", "critical", "abstract"],
+                            "description": "Cognitive thinking pattern"
+                        },
+                        "learningRate": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.001,
+                            "description": "Learning rate for neural network"
+                        }
+                    },
+                    "required": ["type"]
+                }, null, 2)
+            }]
+        },
+        'swarm://performance/benchmarks': {
+            contents: [{
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify({
+                    "benchmarks": {
+                        "wasm_load_time": {
+                            "target": "200ms",
+                            "achieved": "98ms",
+                            "improvement": "51%"
+                        },
+                        "agent_spawn_time": {
+                            "target": "50ms",
+                            "achieved": "12ms",
+                            "improvement": "76%"
+                        },
+                        "memory_usage_10_agents": {
+                            "target": "50MB",
+                            "achieved": "18.5MB",
+                            "improvement": "63%"
+                        },
+                        "cross_boundary_latency": {
+                            "target": "0.5ms",
+                            "achieved": "0.15ms",
+                            "improvement": "70%"
+                        },
+                        "token_processing": {
+                            "target": "10K/sec",
+                            "achieved": "42.5K/sec",
+                            "improvement": "325%"
+                        }
+                    },
+                    "swe_bench_solve_rate": "84.8%",
+                    "token_reduction": "32.3%",
+                    "speed_improvement": "2.8-4.4x"
+                }, null, 2)
+            }]
+        },
+        'swarm://hooks/available': {
+            contents: [{
+                uri,
+                mimeType: 'text/markdown',
+                text: `# Available Claude Code Hooks
+
+## Pre-Operation Hooks
+
+### pre-task
+- **Purpose**: Initialize agent context before tasks
+- **Usage**: \`npx ruv-swarm hook pre-task --description "task"\`
+- **Features**: Auto-spawn agents, load context, optimize topology
+
+### pre-edit
+- **Purpose**: Prepare for file edits
+- **Usage**: \`npx ruv-swarm hook pre-edit --file "path"\`
+- **Features**: Auto-assign agents, validate permissions
+
+### pre-search
+- **Purpose**: Optimize search operations
+- **Usage**: \`npx ruv-swarm hook pre-search --query "search"\`
+- **Features**: Cache results, suggest alternatives
+
+## Post-Operation Hooks
+
+### post-edit
+- **Purpose**: Process file after editing
+- **Usage**: \`npx ruv-swarm hook post-edit --file "path"\`
+- **Features**: Auto-format, update memory, train neural patterns
+
+### post-task
+- **Purpose**: Finalize task execution
+- **Usage**: \`npx ruv-swarm hook post-task --task-id "id"\`
+- **Features**: Analyze performance, update metrics
+
+### notification
+- **Purpose**: Share updates across swarm
+- **Usage**: \`npx ruv-swarm hook notification --message "update"\`
+- **Features**: Broadcast to agents, update memory
+
+## Session Hooks
+
+### session-start
+- **Purpose**: Initialize session
+- **Usage**: \`npx ruv-swarm hook session-start\`
+- **Features**: Restore context, load memory
+
+### session-end
+- **Purpose**: Clean up session
+- **Usage**: \`npx ruv-swarm hook session-end\`
+- **Features**: Save state, generate summary
+
+### session-restore
+- **Purpose**: Restore previous session
+- **Usage**: \`npx ruv-swarm hook session-restore --session-id "id"\`
+- **Features**: Load memory, restore agent states`
+            }]
+        }
+    };
+
+    const resource = resources[uri];
+    if (!resource) {
+        throw new Error(`Resource not found: ${uri}`);
+    }
+    
+    return resource;
+}
+
 async function handleMcpRequest(request, mcpTools) {
     const response = {
         jsonrpc: '2.0',
@@ -526,7 +1025,10 @@ async function handleMcpRequest(request, mcpTools) {
                     protocolVersion: '2024-11-05',
                     capabilities: {
                         tools: {},
-                        resources: {}
+                        resources: {
+                            list: true,
+                            read: true
+                        }
                     },
                     serverInfo: {
                         name: 'ruv-swarm',
@@ -704,7 +1206,9 @@ async function handleMcpRequest(request, mcpTools) {
                                     pattern: { type: 'string', enum: ['all', 'convergent', 'divergent', 'lateral', 'systems', 'critical', 'abstract'], default: 'all', description: 'Cognitive pattern type' }
                                 }
                             }
-                        }
+                        },
+                        // Add DAA tools
+                        ...daaMcpTools.getToolDefinitions()
                     ]
                 };
                 break;
@@ -713,24 +1217,124 @@ async function handleMcpRequest(request, mcpTools) {
                 const toolName = request.params.name;
                 const toolArgs = request.params.arguments || {};
                 
-                // Call the appropriate mcpTools method
-                if (mcpTools[toolName]) {
-                    const result = await mcpTools[toolName](toolArgs);
+                let result = null;
+                let toolFound = false;
+                
+                // Try regular MCP tools first (use mcpToolsEnhanced instance)
+                if (typeof mcpToolsEnhanced[toolName] === 'function') {
+                    try {
+                        result = await mcpToolsEnhanced[toolName](toolArgs);
+                        toolFound = true;
+                    } catch (error) {
+                        response.error = {
+                            code: -32603,
+                            message: `MCP tool error: ${error.message}`,
+                            data: { tool: toolName, error: error.message }
+                        };
+                        break;
+                    }
+                }
+                // Try DAA tools if not found in regular tools
+                else if (typeof daaMcpTools[toolName] === 'function') {
+                    try {
+                        result = await daaMcpTools[toolName](toolArgs);
+                        toolFound = true;
+                    } catch (error) {
+                        response.error = {
+                            code: -32603,
+                            message: `DAA tool error: ${error.message}`,
+                            data: { tool: toolName, error: error.message }
+                        };
+                        break;
+                    }
+                }
+                
+                if (toolFound) {
                     // Format response with content array as required by Claude Code
-                    // Each content item must have a type (text, image, audio, resource)
                     response.result = {
                         content: [{
                             type: 'text',
                             text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
                         }]
                     };
-                } else {
                     response.error = {
                         code: -32601,
                         message: 'Method not found',
                         data: `Unknown tool: ${toolName}`
                     };
                 }
+                break;
+                
+            case 'resources/list':
+                response.result = {
+                    resources: [
+                        {
+                            uri: 'swarm://docs/getting-started',
+                            name: 'Getting Started Guide',
+                            description: 'Introduction to ruv-swarm and basic usage',
+                            mimeType: 'text/markdown'
+                        },
+                        {
+                            uri: 'swarm://docs/topologies',
+                            name: 'Swarm Topologies',
+                            description: 'Understanding mesh, hierarchical, ring, and star topologies',
+                            mimeType: 'text/markdown'
+                        },
+                        {
+                            uri: 'swarm://docs/agent-types',
+                            name: 'Agent Types Guide',
+                            description: 'Detailed guide on all agent types and their capabilities',
+                            mimeType: 'text/markdown'
+                        },
+                        {
+                            uri: 'swarm://docs/daa-guide',
+                            name: 'DAA Integration Guide',
+                            description: 'Using Decentralized Autonomous Agents effectively',
+                            mimeType: 'text/markdown'
+                        },
+                        {
+                            uri: 'swarm://examples/rest-api',
+                            name: 'REST API Example',
+                            description: 'Complete example of building a REST API with ruv-swarm',
+                            mimeType: 'text/markdown'
+                        },
+                        {
+                            uri: 'swarm://examples/neural-training',
+                            name: 'Neural Training Example',
+                            description: 'How to train neural agents for specific tasks',
+                            mimeType: 'text/markdown'
+                        },
+                        {
+                            uri: 'swarm://schemas/swarm-config',
+                            name: 'Swarm Configuration Schema',
+                            description: 'JSON schema for swarm configuration',
+                            mimeType: 'application/json'
+                        },
+                        {
+                            uri: 'swarm://schemas/agent-config',
+                            name: 'Agent Configuration Schema',
+                            description: 'JSON schema for agent configuration',
+                            mimeType: 'application/json'
+                        },
+                        {
+                            uri: 'swarm://performance/benchmarks',
+                            name: 'Performance Benchmarks',
+                            description: 'Latest performance benchmark results',
+                            mimeType: 'application/json'
+                        },
+                        {
+                            uri: 'swarm://hooks/available',
+                            name: 'Available Hooks',
+                            description: 'List of all available Claude Code hooks',
+                            mimeType: 'text/markdown'
+                        }
+                    ]
+                };
+                break;
+                
+            case 'resources/read':
+                const resourceUri = request.params.uri;
+                response.result = await getResourceContent(resourceUri);
                 break;
                 
             default:
@@ -753,16 +1357,16 @@ async function handleMcpRequest(request, mcpTools) {
 
 async function handleHook(args) {
     // Hook handler for Claude Code integration
-    const hooksCLI = require('../src/hooks/cli');
+    const { main: hooksCLIMain } = await import('../src/hooks/cli.js');
     
     // Pass through to hooks CLI with 'hook' already consumed
     process.argv = ['node', 'ruv-swarm', 'hook', ...args];
     
-    return hooksCLI.main();
+    return hooksCLIMain();
 }
 
 async function handleNeural(args) {
-    const { neuralCLI } = require('../src/neural');
+    const { neuralCLI } = await import('../src/neural.js');
     const subcommand = args[0] || 'help';
     
     try {
@@ -797,7 +1401,7 @@ Examples:
 }
 
 async function handleBenchmark(args) {
-    const { benchmarkCLI } = require('../src/benchmark');
+    const { benchmarkCLI } = await import('../src/benchmark.js');
     const subcommand = args[0] || 'help';
     
     try {
@@ -825,7 +1429,7 @@ Examples:
 }
 
 async function handlePerformance(args) {
-    const { performanceCLI } = require('../src/performance');
+    const { performanceCLI } = await import('../src/performance.js');
     const subcommand = args[0] || 'help';
     
     try {

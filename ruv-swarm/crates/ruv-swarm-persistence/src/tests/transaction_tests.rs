@@ -4,7 +4,6 @@ use crate::*;
 use crate::memory::MemoryStorage;
 use crate::models::*;
 use chrono::Utc;
-use uuid::Uuid;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -61,41 +60,53 @@ impl Transaction for MockTransaction {
 
 #[tokio::test]
 async fn test_transaction_commit() {
-    let transaction = Box::new(MockTransaction::new());
-    let tx_ref = transaction.as_ref();
+    let transaction = Arc::new(MockTransaction::new());
+    let tx_clone = transaction.clone();
     
     // Add operations
-    tx_ref.add_operation(TransactionOp::StoreAgent(AgentModel {
+    let now = Utc::now();
+    transaction.add_operation(TransactionOp::StoreAgent(AgentModel {
         id: "tx-agent-1".to_string(),
         name: "Transaction Agent".to_string(),
         agent_type: "test".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     })).await;
     
-    // Commit transaction
-    transaction.commit().await.unwrap();
+    // Commit transaction (this consumes the Box)
+    let boxed_tx = Box::new(MockTransaction {
+        operations: transaction.operations.clone(),
+        committed: transaction.committed.clone(),
+        rolled_back: transaction.rolled_back.clone(),
+    });
+    boxed_tx.commit().await.unwrap();
     
-    assert!(tx_ref.is_committed().await);
-    assert!(!tx_ref.is_rolled_back().await);
+    assert!(tx_clone.is_committed().await);
+    assert!(!tx_clone.is_rolled_back().await);
 }
 
 #[tokio::test]
 async fn test_transaction_rollback() {
-    let transaction = Box::new(MockTransaction::new());
-    let tx_ref = transaction.as_ref();
+    let transaction = Arc::new(MockTransaction::new());
+    let tx_clone = transaction.clone();
     
     // Add operations
-    tx_ref.add_operation(TransactionOp::DeleteAgent("agent-to-delete".to_string())).await;
+    transaction.add_operation(TransactionOp::DeleteAgent("agent-to-delete".to_string())).await;
     
-    // Rollback transaction
-    transaction.rollback().await.unwrap();
+    // Rollback transaction (this consumes the Box)
+    let boxed_tx = Box::new(MockTransaction {
+        operations: transaction.operations.clone(),
+        committed: transaction.committed.clone(),
+        rolled_back: transaction.rolled_back.clone(),
+    });
+    boxed_tx.rollback().await.unwrap();
     
-    assert!(!tx_ref.is_committed().await);
-    assert!(tx_ref.is_rolled_back().await);
+    assert!(!tx_clone.is_committed().await);
+    assert!(tx_clone.is_rolled_back().await);
 }
 
 #[tokio::test]
@@ -105,15 +116,17 @@ async fn test_transaction_isolation() {
     let storage2 = storage1.clone();
     
     // Agent that will be modified in transaction
+    let now = Utc::now();
     let agent = AgentModel {
         id: "isolation-test".to_string(),
         name: "Original Name".to_string(),
         agent_type: "test".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     };
     
     storage1.store_agent(&agent).await.unwrap();
@@ -141,15 +154,17 @@ async fn test_transaction_atomicity() {
     let storage = MemoryStorage::new();
     
     // Prepare multiple operations that should be atomic
+    let now = Utc::now();
     let agents: Vec<AgentModel> = (0..5).map(|i| AgentModel {
         id: format!("atomic-agent-{}", i),
         name: format!("Atomic Agent {}", i),
         agent_type: "worker".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     }).collect();
     
     // Simulate atomic operation
@@ -177,15 +192,21 @@ async fn test_concurrent_transactions() {
     
     // Create initial agent
     let agent_id = "concurrent-tx-agent".to_string();
+    let now = Utc::now();
     let initial_agent = AgentModel {
         id: agent_id.clone(),
         name: "Initial".to_string(),
         agent_type: "test".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!(["v1"]),
-        config: serde_json::json!({"counter": 0}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec!["v1".to_string()],
+        metadata: {
+            let mut map = std::collections::HashMap::new();
+            map.insert("counter".to_string(), serde_json::json!(0));
+            map
+        },
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     };
     
     storage.store_agent(&initial_agent).await.unwrap();
@@ -202,7 +223,7 @@ async fn test_concurrent_transactions() {
             let mut agent = storage_clone.get_agent(&agent_id_clone).await.unwrap().unwrap();
             
             // Modify
-            agent.config = serde_json::json!({"counter": i});
+            agent.metadata.insert("counter".to_string(), serde_json::json!(i));
             
             // Small delay to increase chance of conflict
             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -222,7 +243,7 @@ async fn test_concurrent_transactions() {
     // Verify final state
     let final_agent = storage.get_agent(&agent_id).await.unwrap().unwrap();
     // In a real transactional system, one of the updates would win
-    assert!(final_agent.config["counter"].is_number());
+    assert!(final_agent.metadata["counter"].is_number());
 }
 
 #[tokio::test]
@@ -230,29 +251,34 @@ async fn test_transaction_with_mixed_operations() {
     let transaction = MockTransaction::new();
     
     // Add various operation types
+    let now = Utc::now();
     transaction.add_operation(TransactionOp::StoreAgent(AgentModel {
         id: "new-agent".to_string(),
         name: "New Agent".to_string(),
         agent_type: "compute".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     })).await;
     
     transaction.add_operation(TransactionOp::StoreTask(TaskModel {
         id: "new-task".to_string(),
         task_type: "process".to_string(),
-        status: "pending".to_string(),
-        priority: 5,
+        status: TaskStatus::Pending,
+        priority: TaskPriority::Medium,
         payload: serde_json::json!({}),
         assigned_to: Some("new-agent".to_string()),
         result: None,
         error: None,
         retry_count: 0,
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        max_retries: 3,
+        dependencies: vec![],
+        created_at: now,
+        updated_at: now,
+        started_at: None,
         completed_at: None,
     })).await;
     
@@ -260,11 +286,12 @@ async fn test_transaction_with_mixed_operations() {
         id: "new-agent".to_string(),
         name: "New Agent".to_string(),
         agent_type: "compute".to_string(),
-        status: "running".to_string(), // Status changed
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Busy, // Status changed
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     })).await;
     
     // Verify operations were recorded
@@ -311,15 +338,17 @@ async fn test_transaction_savepoint() {
     let mut tx = SavepointTransaction::new();
     
     // Add operations
+    let now = Utc::now();
     tx.add_operation(TransactionOp::StoreAgent(AgentModel {
         id: "sp-agent-1".to_string(),
         name: "Agent 1".to_string(),
         agent_type: "test".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     }));
     
     // Create savepoint
@@ -330,11 +359,12 @@ async fn test_transaction_savepoint() {
         id: "sp-agent-2".to_string(),
         name: "Agent 2".to_string(),
         agent_type: "test".to_string(),
-        status: "idle".to_string(),
-        capabilities: serde_json::json!([]),
-        config: serde_json::json!({}),
-        created_at: Utc::now().timestamp(),
-        updated_at: Utc::now().timestamp(),
+        status: AgentStatus::Idle,
+        capabilities: vec![],
+        metadata: std::collections::HashMap::new(),
+        heartbeat: now,
+        created_at: now,
+        updated_at: now,
     }));
     
     tx.add_operation(TransactionOp::DeleteAgent("sp-agent-1".to_string()));
@@ -362,30 +392,40 @@ mod property_tests {
                 
                 // Add random operations
                 for i in 0..operation_count {
+                    let now = Utc::now();
                     let op = if i % 2 == 0 {
                         TransactionOp::StoreAgent(AgentModel {
                             id: format!("agent-{}", i),
                             name: format!("Agent {}", i),
                             agent_type: "test".to_string(),
-                            status: "idle".to_string(),
-                            capabilities: serde_json::json!([]),
-                            config: serde_json::json!({}),
-                            created_at: Utc::now().timestamp(),
-                            updated_at: Utc::now().timestamp(),
+                            status: AgentStatus::Idle,
+                            capabilities: vec![],
+                            metadata: std::collections::HashMap::new(),
+                            heartbeat: now,
+                            created_at: now,
+                            updated_at: now,
                         })
                     } else {
                         TransactionOp::StoreTask(TaskModel {
                             id: format!("task-{}", i),
                             task_type: "test".to_string(),
-                            status: "pending".to_string(),
-                            priority: (i % 10) as i32,
+                            status: TaskStatus::Pending,
+                            priority: match i % 4 {
+                                0 => TaskPriority::Low,
+                                1 => TaskPriority::Medium,
+                                2 => TaskPriority::High,
+                                _ => TaskPriority::Critical,
+                            },
                             payload: serde_json::json!({}),
                             assigned_to: None,
                             result: None,
                             error: None,
                             retry_count: 0,
-                            created_at: Utc::now().timestamp(),
-                            updated_at: Utc::now().timestamp(),
+                            max_retries: 3,
+                            dependencies: vec![],
+                            created_at: now,
+                            updated_at: now,
+                            started_at: None,
                             completed_at: None,
                         })
                     };

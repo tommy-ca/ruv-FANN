@@ -9,6 +9,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
     vec,
+    format,
 };
 use core::cmp::Ordering;
 
@@ -17,7 +18,6 @@ use wasm_bindgen::prelude::*;
 
 /// Time series data structure
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct TimeSeriesData {
     pub values: Vec<f32>,
     pub timestamps: Vec<f64>,
@@ -49,30 +49,46 @@ impl TimeSeriesData {
 
 #[cfg(feature = "wasm")]
 #[wasm_bindgen]
-impl TimeSeriesData {
+pub struct WasmTimeSeriesData {
+    inner: TimeSeriesData,
+}
+
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+impl WasmTimeSeriesData {
     #[wasm_bindgen(constructor)]
     pub fn new(values: Vec<f32>, timestamps: Vec<f64>, frequency: String, unique_id: String) -> Self {
         Self {
-            values,
-            timestamps,
-            frequency,
-            unique_id,
+            inner: TimeSeriesData {
+                values,
+                timestamps,
+                frequency,
+                unique_id,
+            }
         }
     }
     
     #[wasm_bindgen(getter)]
     pub fn length(&self) -> usize {
-        self.values.len()
+        self.inner.values.len()
     }
     
     #[wasm_bindgen(getter)]
-    pub fn mean_wasm(&self) -> f32 {
-        self.mean()
+    pub fn mean(&self) -> f32 {
+        self.inner.mean()
     }
     
     #[wasm_bindgen(getter)]
-    pub fn std_dev_wasm(&self) -> f32 {
-        self.std_dev()
+    pub fn std_dev(&self) -> f32 {
+        self.inner.std_dev()
+    }
+    
+    pub fn get_values(&self) -> Vec<f32> {
+        self.inner.values.clone()
+    }
+    
+    pub fn get_timestamps(&self) -> Vec<f64> {
+        self.inner.timestamps.clone()
     }
 }
 

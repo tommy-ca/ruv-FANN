@@ -64,6 +64,10 @@ enum Commands {
         /// Skip interactive setup
         #[arg(long)]
         non_interactive: bool,
+
+        /// Skip onboarding flow
+        #[arg(long)]
+        skip_onboarding: bool,
     },
 
     /// Spawn a new agent in the swarm
@@ -186,6 +190,7 @@ async fn main() -> Result<()> {
             persistence,
             config_file,
             non_interactive,
+            skip_onboarding,
         } => {
             init::execute(
                 &config,
@@ -194,6 +199,7 @@ async fn main() -> Result<()> {
                 persistence,
                 config_file,
                 non_interactive,
+                skip_onboarding,
             )
             .await
         }

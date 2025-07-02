@@ -24,7 +24,20 @@
           "task_results": "Retrieve results from completed tasks",
           "benchmark_run": "Execute performance benchmarks",
           "features_detect": "Detect runtime features and capabilities",
-          "memory_usage": "Get current memory usage statistics"
+          "memory_usage": "Get current memory usage statistics",
+          "neural_status": "Get neural agent status and performance metrics",
+          "neural_train": "Train neural agents with sample tasks",
+          "neural_patterns": "Get cognitive pattern information",
+          "daa_init": "Initialize DAA (Decentralized Autonomous Agents) service",
+          "daa_agent_create": "Create autonomous agents with learning capabilities",
+          "daa_agent_adapt": "Trigger agent adaptation based on feedback",
+          "daa_workflow_create": "Create autonomous workflows with DAA coordination",
+          "daa_workflow_execute": "Execute DAA workflows with autonomous agents",
+          "daa_knowledge_share": "Share knowledge between autonomous agents",
+          "daa_learning_status": "Get learning progress and status for DAA agents",
+          "daa_cognitive_pattern": "Analyze or change cognitive patterns for agents",
+          "daa_meta_learning": "Enable meta-learning capabilities across domains",
+          "daa_performance_metrics": "Get comprehensive DAA performance metrics"
         },
         "resources": {
           "swarm_config": "Access swarm configuration and topology settings",
@@ -35,7 +48,7 @@
       },
       "metadata": {
         "name": "ruv-swarm",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "author": "rUv Contributors",
         "license": "MIT OR Apache-2.0",
         "repository": "https://github.com/ruvnet/ruv-FANN",
@@ -44,7 +57,7 @@
         "keywords": [
           "neural-network",
           "wasm",
-          "webassembly", 
+          "webassembly",
           "machine-learning",
           "swarm",
           "ai",
@@ -64,8 +77,29 @@
         "transport": "websocket",
         "wasm_optimization": true,
         "simd_support": "auto",
-        "debug_mode": false
-      }
+        "debug_mode": false,
+        "daa_enabled": true,
+        "daa_learning_rate": 0.001,
+        "daa_memory_persistence": true,
+        "daa_cognitive_patterns": [
+          "convergent",
+          "divergent",
+          "lateral",
+          "systems",
+          "critical",
+          "adaptive"
+        ],
+        "daa_meta_learning": true,
+        "daa_knowledge_sharing": true
+      },
+      "alwaysAllow": [
+        "swarm_init",
+        "swarm_status",
+        "swarm_monitor",
+        "agent_spawn",
+        "agent_list",
+        "agent_metrics"
+      ]
     }
   },
   "globalSettings": {

@@ -39,6 +39,39 @@ impl RequestHandler {
         }
     }
     
+    /// Check if a tool name is valid
+    fn is_valid_tool(&self, tool_name: &str) -> bool {
+        matches!(tool_name, 
+            "ruv-swarm.spawn" | "ruv-swarm.orchestrate" | "ruv-swarm.query" |
+            "ruv-swarm.monitor" | "ruv-swarm.optimize" | "ruv-swarm.memory.store" |
+            "ruv-swarm.memory.get" | "ruv-swarm.task.create" | "ruv-swarm.workflow.execute" |
+            "ruv-swarm.agent.list" | "ruv-swarm.agent.metrics"
+        )
+    }
+    
+    /// Get list of available tools
+    fn get_available_tools(&self) -> Vec<&'static str> {
+        vec![
+            "ruv-swarm.spawn", "ruv-swarm.orchestrate", "ruv-swarm.query",
+            "ruv-swarm.monitor", "ruv-swarm.optimize", "ruv-swarm.memory.store",
+            "ruv-swarm.memory.get", "ruv-swarm.task.create", "ruv-swarm.workflow.execute",
+            "ruv-swarm.agent.list", "ruv-swarm.agent.metrics"
+        ]
+    }
+    
+    /// Create a detailed error response with suggestions
+    fn create_detailed_error(&self, id: Option<Value>, code: i32, error_type: &str, message: &str, suggestions: Vec<&str>) -> McpResponse {
+        let error_details = json!({
+            "error_type": error_type,
+            "message": message,
+            "suggestions": suggestions,
+            "timestamp": chrono::Utc::now(),
+            "session_id": self.session.id
+        });
+        
+        McpResponse::error(id, code, serde_json::to_string(&error_details).unwrap_or_else(|_| message.to_string()))
+    }
+    
     /// Handle MCP request
     pub async fn handle_request(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         match request.method.as_str() {
@@ -93,46 +126,109 @@ impl RequestHandler {
         Ok(McpResponse::success(request.id, result))
     }
     
-    /// Handle tools/call request
+    /// Handle tools/call request with enhanced error handling
     async fn handle_tool_call(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         let params = request.params.ok_or_else(|| {
-            anyhow::anyhow!("Missing params for tool call")
+            anyhow::anyhow!("VALIDATION_ERROR: Missing params for tool call. Please provide parameters object with 'name' and 'arguments' fields.")
         })?;
         
         let tool_name = params.get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing tool name"))?;
+            .ok_or_else(|| anyhow::anyhow!("VALIDATION_ERROR: Missing required 'name' field in tool call. Expected string value with tool name."))?;
         
         let default_params = json!({});
         let tool_params = params.get("arguments").unwrap_or(&default_params);
         
         debug!("Calling tool: {} with params: {:?}", tool_name, tool_params);
         
-        match tool_name {
-            "ruv-swarm.spawn" => self.handle_spawn(request.id, tool_params).await,
-            "ruv-swarm.orchestrate" => self.handle_orchestrate(request.id, tool_params).await,
-            "ruv-swarm.query" => self.handle_query(request.id, tool_params).await,
-            "ruv-swarm.monitor" => self.handle_monitor(request.id, tool_params).await,
-            "ruv-swarm.optimize" => self.handle_optimize(request.id, tool_params).await,
-            "ruv-swarm.memory.store" => self.handle_memory_store(request.id, tool_params).await,
-            "ruv-swarm.memory.get" => self.handle_memory_get(request.id, tool_params).await,
-            "ruv-swarm.task.create" => self.handle_task_create(request.id, tool_params).await,
-            "ruv-swarm.workflow.execute" => self.handle_workflow_execute(request.id, tool_params).await,
-            "ruv-swarm.agent.list" => self.handle_agent_list(request.id, tool_params).await,
-            "ruv-swarm.agent.metrics" => self.handle_agent_metrics(request.id, tool_params).await,
-            _ => Ok(McpResponse::error(
+        // Validate tool exists
+        if !self.is_valid_tool(tool_name) {
+            return Ok(self.create_detailed_error(
                 request.id,
                 -32602,
-                format!("Unknown tool: {}", tool_name),
-            )),
+                "TOOL_NOT_FOUND",
+                &format!("Unknown tool: {}", tool_name),
+                vec![
+                    "Check the tool name spelling",
+                    "Use tools/list to see available tools",
+                    &format!("Available tools: {}", self.get_available_tools().join(", "))
+                ]
+            ));
+        }
+        
+        // Handle tool-specific validation and execution
+        // Clone request.id to avoid move issues across match arms
+        let request_id = request.id.clone();
+        let result = match tool_name {
+            "ruv-swarm.spawn" => self.handle_spawn(request_id.clone(), tool_params).await,
+            "ruv-swarm.orchestrate" => self.handle_orchestrate(request_id.clone(), tool_params).await,
+            "ruv-swarm.query" => self.handle_query(request_id.clone(), tool_params).await,
+            "ruv-swarm.monitor" => self.handle_monitor(request_id.clone(), tool_params).await,
+            "ruv-swarm.optimize" => self.handle_optimize(request_id.clone(), tool_params).await,
+            "ruv-swarm.memory.store" => self.handle_memory_store(request_id.clone(), tool_params).await,
+            "ruv-swarm.memory.get" => self.handle_memory_get(request_id.clone(), tool_params).await,
+            "ruv-swarm.task.create" => self.handle_task_create(request_id.clone(), tool_params).await,
+            "ruv-swarm.workflow.execute" => self.handle_workflow_execute(request_id.clone(), tool_params).await,
+            "ruv-swarm.agent.list" => self.handle_agent_list(request_id.clone(), tool_params).await,
+            "ruv-swarm.agent.metrics" => self.handle_agent_metrics(request_id.clone(), tool_params).await,
+            _ => unreachable!("Tool validation should have caught this"),
+        };
+        
+        // Enhanced error handling for common issues
+        match result {
+            Err(e) => {
+                error!("Tool execution failed for {}: {}", tool_name, e);
+                
+                let error_msg = e.to_string();
+                let (error_type, suggestions) = if error_msg.contains("Missing required parameter") {
+                    ("VALIDATION_ERROR", vec![
+                        "Check all required parameters are provided",
+                        "Verify parameter names and types",
+                        "Consult tool documentation for parameter requirements"
+                    ])
+                } else if error_msg.contains("agent") && error_msg.contains("not found") {
+                    ("AGENT_ERROR", vec![
+                        "Verify the agent ID is correct",
+                        "Check if the agent was properly spawned",
+                        "Use agent.list to see available agents"
+                    ])
+                } else if error_msg.contains("swarm") && error_msg.contains("not") {
+                    ("SWARM_ERROR", vec![
+                        "Initialize a swarm first using swarm initialization",
+                        "Check swarm ID is correct",
+                        "Verify swarm is active and healthy"
+                    ])
+                } else if error_msg.contains("timeout") {
+                    ("TIMEOUT_ERROR", vec![
+                        "Increase timeout duration",
+                        "Reduce task complexity",
+                        "Check system resources"
+                    ])
+                } else {
+                    ("EXECUTION_ERROR", vec![
+                        "Check system logs for details",
+                        "Verify system resources are available",
+                        "Retry the operation"
+                    ])
+                };
+                
+                Ok(self.create_detailed_error(
+                    request_id,
+                    -32603,
+                    error_type,
+                    &error_msg,
+                    suggestions
+                ))
+            }
+            Ok(response) => Ok(response),
         }
     }
     
-    /// Handle spawn tool
+    /// Handle spawn tool with enhanced validation
     async fn handle_spawn(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
         let agent_type_str = params.get("agent_type")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing required parameter: agent_type"))?;
+            .ok_or_else(|| anyhow::anyhow!("VALIDATION_ERROR: Missing required parameter 'agent_type'. Expected one of: researcher, coder, analyst, tester, reviewer, documenter"))?;
         
         let agent_type = match agent_type_str {
             "researcher" => AgentType::Researcher,
@@ -141,10 +237,16 @@ impl RequestHandler {
             "tester" => AgentType::Tester,
             "reviewer" => AgentType::Reviewer,
             "documenter" => AgentType::Documenter,
-            _ => return Ok(McpResponse::error(
+            _ => return Ok(self.create_detailed_error(
                 id,
                 -32602,
-                format!("Invalid agent_type: {}", agent_type_str),
+                "VALIDATION_ERROR",
+                &format!("Invalid agent_type: '{}'. Must be one of: researcher, coder, analyst, tester, reviewer, documenter", agent_type_str),
+                vec![
+                    "Check the agent_type parameter spelling",
+                    "Valid types: researcher, coder, analyst, tester, reviewer, documenter",
+                    "Agent type determines capabilities and cognitive patterns"
+                ]
             )),
         };
         

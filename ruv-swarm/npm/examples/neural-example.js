@@ -1,6 +1,6 @@
 // neural-example.js - Example of using ruv-FANN neural networks via WASM
 
-const { 
+import { 
   createNeuralNetwork, 
   createTrainer, 
   createAgentNeuralManager,
@@ -9,7 +9,7 @@ const {
   TRAINING_ALGORITHMS,
   COGNITIVE_PATTERNS,
   initializeNeuralWasm
-} = require('../src/neural-network.js');
+} from '../src/neural-network.js';
 
 // Example 1: Basic XOR neural network
 async function xorExample() {

@@ -16,7 +16,6 @@ use wasm_bindgen::prelude::*;
 
 /// Enumeration of all supported forecasting model types
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub enum ModelType {
     // Basic Models
     MLP,

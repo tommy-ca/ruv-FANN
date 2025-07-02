@@ -94,15 +94,25 @@ impl SIMDProcessor {
         let mut result = Vec::with_capacity(a.len());
         let chunks = a.len() / 4;
         
+        // SAFETY: This unsafe block performs SIMD vector addition using WebAssembly intrinsics.
+        // Safety invariants:
+        // 1. chunks = a.len() / 4 ensures we only process complete 4-element groups
+        // 2. offset = i * 4 is always valid because i < chunks
+        // 3. v128_load reads exactly 16 bytes (4 f32s) which is within bounds
+        // 4. Rust f32 slices are properly aligned for SIMD operations
+        // 5. temp array provides aligned storage for v128_store
+        // 6. No aliasing occurs as we write to separate result vector
         unsafe {
             // Process 4 elements at a time using SIMD
             for i in 0..chunks {
                 let offset = i * 4;
+                // SAFETY: offset + 3 < a.len() because offset = i * 4 and i < chunks = len / 4
                 let va = v128_load(&a[offset] as *const f32 as *const v128);
                 let vb = v128_load(&b[offset] as *const f32 as *const v128);
                 let sum = f32x4_add(va, vb);
                 
                 let mut temp = [0f32; 4];
+                // SAFETY: temp array is properly aligned and sized for v128
                 v128_store(&mut temp[0] as *mut f32 as *mut v128, sum);
                 result.extend_from_slice(&temp);
             }
@@ -128,14 +138,22 @@ impl SIMDProcessor {
         let mut result = Vec::with_capacity(a.len());
         let chunks = a.len() / 4;
         
+        // SAFETY: This unsafe block performs SIMD vector multiplication.
+        // Safety invariants:
+        // 1. Memory access is bounded by chunks calculation
+        // 2. SIMD multiplication (f32x4_mul) maintains IEEE 754 semantics
+        // 3. Temporary buffer ensures proper alignment for v128 operations
+        // 4. No out-of-bounds access as offset + 3 < len for all iterations
         unsafe {
             for i in 0..chunks {
                 let offset = i * 4;
+                // SAFETY: Reading 4 consecutive f32 values within slice bounds
                 let va = v128_load(&a[offset] as *const f32 as *const v128);
                 let vb = v128_load(&b[offset] as *const f32 as *const v128);
                 let product = f32x4_mul(va, vb);
                 
                 let mut temp = [0f32; 4];
+                // SAFETY: Writing to stack-allocated aligned buffer
                 v128_store(&mut temp[0] as *mut f32 as *mut v128, product);
                 result.extend_from_slice(&temp);
             }
@@ -160,11 +178,19 @@ impl SIMDProcessor {
         let chunks = a.len() / 4;
         let mut sum = 0.0f32;
         
+        // SAFETY: This unsafe block computes dot product using SIMD with horizontal sum.
+        // Safety invariants:
+        // 1. Accumulator (acc) starts at zero and accumulates products
+        // 2. All memory accesses are within bounds (offset + 3 < len)
+        // 3. Horizontal sum is performed by storing SIMD register to array and summing
+        // 4. Floating-point operations follow IEEE 754 semantics
+        // 5. No intermediate overflow as we're using f32 operations
         unsafe {
             let mut acc = f32x4_splat(0.0);
             
             for i in 0..chunks {
                 let offset = i * 4;
+                // SAFETY: Valid reads of 4 f32 values each
                 let va = v128_load(&a[offset] as *const f32 as *const v128);
                 let vb = v128_load(&b[offset] as *const f32 as *const v128);
                 let product = f32x4_mul(va, vb);
@@ -173,8 +199,9 @@ impl SIMDProcessor {
             
             // Sum the accumulator lanes
             let mut temp = [0f32; 4];
+            // SAFETY: Store SIMD accumulator to aligned temporary array
             v128_store(&mut temp[0] as *mut f32 as *mut v128, acc);
-            sum = temp.iter().sum();
+            sum = temp.iter().sum();  // Safe: iterating over fixed-size array
             
             // Handle remaining elements
             for i in (chunks * 4)..a.len() {
@@ -197,15 +224,25 @@ impl SIMDProcessor {
         let mut result = Vec::with_capacity(input.len());
         let chunks = input.len() / 4;
         
+        // SAFETY: This unsafe block implements SIMD ReLU activation function.
+        // Safety invariants:
+        // 1. ReLU(x) = max(x, 0) is computed element-wise
+        // 2. f32x4_max handles NaN values according to IEEE 754
+        // 3. Zero vector is created once and reused for efficiency
+        // 4. All memory accesses are properly bounded
+        // 5. Result preserves input size exactly
         unsafe {
             let zero = f32x4_splat(0.0);
             
             for i in 0..chunks {
                 let offset = i * 4;
+                // SAFETY: Reading 4 f32 values within input bounds
                 let v = v128_load(&input[offset] as *const f32 as *const v128);
+                // SAFETY: max operation is always safe, returns larger of two values
                 let relu = f32x4_max(v, zero);
                 
                 let mut temp = [0f32; 4];
+                // SAFETY: Storing to properly aligned temporary buffer
                 v128_store(&mut temp[0] as *mut f32 as *mut v128, relu);
                 result.extend_from_slice(&temp);
             }

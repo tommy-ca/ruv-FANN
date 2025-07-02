@@ -203,7 +203,7 @@ fn test_subquery_patterns() {
 #[test]
 fn test_date_range_queries() {
     let start_timestamp = 1000000;
-    let end_timestamp = 2000000;
+    let _end_timestamp = 2000000;
     
     // Pattern for date range queries (would need additional methods in real implementation)
     let events_in_range = QueryBuilder::<EventModel>::new("events")

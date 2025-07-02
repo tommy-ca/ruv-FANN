@@ -10,6 +10,7 @@ use alloc::{
     vec::Vec,
     sync::Arc,
     vec,
+    format,
 };
 use core::fmt;
 
@@ -39,7 +40,6 @@ pub struct AgentForecastContext {
 
 /// Model specialization based on forecast domain
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct ModelSpecialization {
     pub forecast_domain: ForecastDomain,
     pub temporal_patterns: Vec<TemporalPattern>,
@@ -48,7 +48,6 @@ pub struct ModelSpecialization {
 
 /// Forecast domain types
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub enum ForecastDomain {
     ResourceUtilization,
     TaskCompletion,

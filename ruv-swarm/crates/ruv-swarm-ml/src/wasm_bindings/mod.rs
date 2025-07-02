@@ -6,7 +6,7 @@
 #![cfg(target_arch = "wasm32")]
 
 use wasm_bindgen::prelude::*;
-use alloc::{string::String, vec::Vec};
+use alloc::{string::{String, ToString}, vec::Vec, vec, format};
 
 use crate::{
     agent_forecasting::{AgentForecastingManager, ForecastRequirements, ForecastDomain},

@@ -157,9 +157,22 @@ pub struct SharedMemoryTransport {
 }
 
 // SAFETY: SharedMemoryTransport is safe to send between threads because:
-// 1. All fields except shmem are Send/Sync
-// 2. shmem is protected by Arc<Mutex<>> and only accessed through the mutex
-// 3. The shared memory itself is just a memory-mapped region that doesn't need to be moved between threads
+// 1. All fields except shmem are Send/Sync by default:
+//    - Arc<DashMap> is Send/Sync
+//    - mpsc channels are Send/Sync
+//    - AtomicBool is Send/Sync
+//    - RwLock is Send/Sync
+// 2. shmem field is protected by Arc<parking_lot::Mutex<>> which provides thread-safe access
+// 3. The shared memory (Shmem) itself is a memory-mapped file descriptor that can be
+//    safely accessed from multiple threads when properly synchronized
+// 4. All shared memory operations go through the Mutex, preventing data races
+// 5. The ring buffers use atomic operations for lock-free concurrent access
+//
+// SAFETY: SharedMemoryTransport is safe for shared access (Sync) because:
+// 1. All mutable state is protected by synchronization primitives (Mutex, RwLock, Atomic)
+// 2. The DashMap provides concurrent access to peer mappings
+// 3. Ring buffers use atomic operations for head/tail pointers
+// 4. No interior mutability is exposed without proper synchronization
 unsafe impl Send for SharedMemoryTransport {}
 unsafe impl Sync for SharedMemoryTransport {}
 
