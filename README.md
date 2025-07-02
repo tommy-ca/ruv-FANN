@@ -233,6 +233,29 @@ ruv-FANN excels in a wide range of real-world applications:
 - **Real-time Processing**: Low-latency inference, streaming data analysis
 - **Microservices**: Lightweight ML components, distributed systems
 
+## 🚀 Quick Start with Seamless Onboarding
+
+Get started with ruv-swarm in just 30 seconds:
+
+```bash
+# Complete setup and launch in one command
+npx ruv-swarm init --launch
+
+# Or step by step
+npx ruv-swarm init
+npx ruv-swarm launch
+```
+
+This will:
+- ✅ **Auto-detect** Claude Code (or install if missing)
+- ✅ **Configure MCP servers** for GitHub and ruv-swarm integration
+- ✅ **Launch Claude Code** with full multi-agent coordination
+- ✅ **Enable 84.8% SWE-Bench performance** immediately
+
+**[📖 Complete Onboarding Guide →](./docs/guides/seamless-onboarding.md)**
+
+---
+
 ## 📦 Installation
 
 Add ruv-FANN to your `Cargo.toml`:
