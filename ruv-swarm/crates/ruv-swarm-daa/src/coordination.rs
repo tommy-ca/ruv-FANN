@@ -24,9 +24,10 @@ pub struct AgentLocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoordinationEvent {
     pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub event_type: CoordinationEventType,
-    pub participants: Vec<String>,
-    pub outcome: serde_json::Value,
+    pub agent_id: String,
+    pub task_id: String,
+    pub event_type: String,
+    pub metadata: serde_json::Value,
 }
 
 /// Types of coordination events
@@ -46,5 +47,25 @@ impl CoordinationMemory {
             agent_locations: HashMap::new(),
             coordination_history: Vec::new(),
         }
+    }
+
+    /// Store a coordination event
+    pub async fn store_event(&mut self, event: CoordinationEvent) -> Result<(), DAAError> {
+        self.coordination_history.push(event);
+        Ok(())
+    }
+
+    /// Get the count of events
+    pub async fn get_event_count(&self) -> Result<usize, DAAError> {
+        Ok(self.coordination_history.len())
+    }
+
+    /// Get recent events
+    pub async fn get_recent_events(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<CoordinationEvent>, DAAError> {
+        let start = self.coordination_history.len().saturating_sub(limit);
+        Ok(self.coordination_history[start..].to_vec())
     }
 }

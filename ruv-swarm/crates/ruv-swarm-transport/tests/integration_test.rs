@@ -91,22 +91,22 @@ async fn test_broadcast() {
     let config = TransportConfig::default();
 
     // Create three agents
-    let mut agent1 = builder
+    let agent1 = builder
         .build("agent1".to_string(), config.clone())
         .await
         .unwrap();
-    let mut agent2 = builder
+    let agent2 = builder
         .build("agent2".to_string(), config.clone())
         .await
         .unwrap();
-    let mut agent3 = builder
+    let agent3 = builder
         .build("agent3".to_string(), config.clone())
         .await
         .unwrap();
 
     // Subscribe to broadcasts
-    let mut broadcast_rx2 = agent2.broadcast_tx.subscribe();
-    let mut broadcast_rx3 = agent3.broadcast_tx.subscribe();
+    let mut broadcast_rx2 = agent2.subscribe_broadcasts();
+    let mut broadcast_rx3 = agent3.subscribe_broadcasts();
 
     // Broadcast a message from agent1
     let broadcast_msg = Message::broadcast(
@@ -142,7 +142,7 @@ async fn test_broadcast() {
 #[tokio::test]
 async fn test_transport_stats() {
     let config = TransportConfig::default();
-    let (mut transport1, mut transport2) = InProcessTransport::create_pair(
+    let (transport1, mut transport2) = InProcessTransport::create_pair(
         "stats_test1".to_string(),
         "stats_test2".to_string(),
         config,

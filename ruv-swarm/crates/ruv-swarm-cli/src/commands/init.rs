@@ -7,8 +7,8 @@ use std::path::Path;
 use uuid::Uuid;
 
 use crate::config::Config;
-use crate::output::{OutputHandler, StatusLevel};
 use crate::onboarding::run_onboarding_flow;
+use crate::output::{OutputHandler, StatusLevel};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwarmInit {
@@ -56,7 +56,7 @@ pub async fn execute(
     output.section("Initializing RUV Swarm");
 
     // Validate topology
-    let valid_topologies = vec!["mesh", "hierarchical", "ring", "star", "custom"];
+    let valid_topologies = ["mesh", "hierarchical", "ring", "star", "custom"];
     if !valid_topologies.contains(&topology.as_str()) {
         output.error(&format!(
             "Invalid topology '{}'. Valid options: {}",
@@ -89,7 +89,7 @@ pub async fn execute(
     };
 
     // Load or create initial configuration
-    let mut swarm_init = if let Some(path) = config_file {
+    let swarm_init = if let Some(path) = config_file {
         output.info(&format!("Loading configuration from {}", path));
         load_config_file(path)?
     } else {
@@ -132,11 +132,9 @@ pub async fn execute(
     ]);
 
     // Confirm configuration
-    if !non_interactive {
-        if !output.confirm("Initialize swarm with this configuration?", true)? {
-            output.warning("Swarm initialization cancelled");
-            return Ok(());
-        }
+    if !non_interactive && !output.confirm("Initialize swarm with this configuration?", true)? {
+        output.warning("Swarm initialization cancelled");
+        return Ok(());
     }
 
     // Initialize the swarm
@@ -172,10 +170,10 @@ pub async fn execute(
     output.section("Next Steps");
     output.list(
         &[
-            format!("Spawn additional agents: ruv-swarm spawn <type>"),
-            format!("Start orchestration: ruv-swarm orchestrate <strategy> <task>"),
-            format!("Monitor swarm: ruv-swarm monitor"),
-            format!("Check status: ruv-swarm status"),
+            "Spawn additional agents: ruv-swarm spawn <type>".to_string(),
+            "Start orchestration: ruv-swarm orchestrate <strategy> <task>".to_string(),
+            "Monitor swarm: ruv-swarm monitor".to_string(),
+            "Check status: ruv-swarm status".to_string(),
         ],
         true,
     );
@@ -222,14 +220,14 @@ fn configure_persistence(backend: &str, non_interactive: bool) -> Result<Persist
     };
 
     // Add backend-specific options
-    if backend == "sqlite" && !non_interactive {
-        if Confirm::with_theme(&ColorfulTheme::default())
+    if backend == "sqlite"
+        && !non_interactive
+        && Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt("Enable WAL mode for better concurrency?")
             .default(true)
             .interact()?
-        {
-            options.insert("wal_mode".to_string(), "true".to_string());
-        }
+    {
+        options.insert("wal_mode".to_string(), "true".to_string());
     }
 
     Ok(PersistenceConfig {

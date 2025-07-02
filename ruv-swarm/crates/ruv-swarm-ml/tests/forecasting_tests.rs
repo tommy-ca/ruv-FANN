@@ -3,7 +3,7 @@
 use ruv_swarm_ml::{
     agent_forecasting::{AgentForecastingManager, ForecastDomain, ForecastRequirements},
     ensemble::{EnsembleConfig, EnsembleForecaster, EnsembleStrategy, OptimizationMetric},
-    models::{ModelFactory, ModelType},
+    models::{ModelCategory, ModelFactory, ModelType},
     time_series::{TimeSeriesData, TimeSeriesProcessor, TransformationType},
 };
 
@@ -61,21 +61,17 @@ fn test_model_factory() {
     assert!(!models.is_empty(), "No models available");
 
     // Verify we have models from each category
-    let has_basic = models
-        .iter()
-        .any(|m| m.category == crate::models::ModelCategory::Basic);
+    let has_basic = models.iter().any(|m| m.category == ModelCategory::Basic);
     let has_recurrent = models
         .iter()
-        .any(|m| m.category == crate::models::ModelCategory::Recurrent);
-    let has_advanced = models
-        .iter()
-        .any(|m| m.category == crate::models::ModelCategory::Advanced);
+        .any(|m| m.category == ModelCategory::Recurrent);
+    let has_advanced = models.iter().any(|m| m.category == ModelCategory::Advanced);
     let has_transformer = models
         .iter()
-        .any(|m| m.category == crate::models::ModelCategory::Transformer);
+        .any(|m| m.category == ModelCategory::Transformer);
     let has_specialized = models
         .iter()
-        .any(|m| m.category == crate::models::ModelCategory::Specialized);
+        .any(|m| m.category == ModelCategory::Specialized);
 
     assert!(has_basic, "No basic models found");
     assert!(has_recurrent, "No recurrent models found");

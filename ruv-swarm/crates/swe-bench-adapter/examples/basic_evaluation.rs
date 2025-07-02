@@ -177,7 +177,7 @@ async fn example_full_evaluation() -> Result<()> {
             max_tokens: 4000,
             include_test_hints: true,
             include_context_files: true,
-            template_style: swe_bench_adapter::PromptStyle::Standard,
+            template_style: swe_bench_adapter::PromptStyle::ClaudeCode,
         },
         eval_config: swe_bench_adapter::EvalConfig {
             timeout: std::time::Duration::from_secs(300),
@@ -197,7 +197,7 @@ async fn example_full_evaluation() -> Result<()> {
     let adapter = SWEBenchAdapter::new(config).await?;
 
     // Create a mock agent
-    use ruv_swarm_core::{agent::Agent, AgentId};
+    use ruv_swarm_core::agent::{Agent, AgentId};
 
     // Note: In a real scenario, you would use an actual agent implementation
     // that implements the Agent trait

@@ -473,7 +473,7 @@ async fn execute_background(
     output.list(
         &[
             format!("ruv-swarm monitor --filter task:{}", task.id),
-            format!("ruv-swarm status --detailed"),
+            "ruv-swarm status --detailed".to_string(),
         ],
         false,
     );

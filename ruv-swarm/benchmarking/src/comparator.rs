@@ -54,7 +54,7 @@ impl PerformanceComparator {
         let overall_improvement = if let (Some(speed), Some(quality), Some(resource)) =
             (speed_improvement, quality_improvement, resource_efficiency)
         {
-            Some((speed * 0.4 + quality * 0.4 + resource * 0.2))
+            Some(speed * 0.4 + quality * 0.4 + resource * 0.2)
         } else {
             None
         };

@@ -6,9 +6,20 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+/// Agent type enumeration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum AgentType {
+    Researcher,
+    Coder,
+    Analyst,
+    Optimizer,
+    Coordinator,
+}
+
 /// Standard DAA Agent implementation
 pub struct StandardDAAAgent {
     id: String,
+    agent_type: AgentType,
     cognitive_pattern: CognitivePattern,
     learning_engine: Arc<RwLock<AgentLearningEngine>>,
     neural_coordinator: Arc<RwLock<AgentNeuralCoordinator>>,
@@ -151,13 +162,46 @@ impl StandardDAAAgent {
         DAAAgentBuilder::new()
     }
 
+    /// Create a new DAA agent with specified id and type
+    pub fn new(id: String, agent_type: AgentType) -> Self {
+        let cognitive_pattern = match agent_type {
+            AgentType::Researcher => CognitivePattern::Divergent,
+            AgentType::Coder => CognitivePattern::Convergent,
+            AgentType::Analyst => CognitivePattern::Critical,
+            AgentType::Optimizer => CognitivePattern::Systems,
+            AgentType::Coordinator => CognitivePattern::Adaptive,
+        };
+
+        Self {
+            id: id.clone(),
+            agent_type,
+            cognitive_pattern,
+            learning_engine: Arc::new(RwLock::new(AgentLearningEngine::new())),
+            neural_coordinator: Arc::new(RwLock::new(AgentNeuralCoordinator::new())),
+            memory_store: Arc::new(RwLock::new(AgentMemory::new())),
+            metrics: Arc::new(RwLock::new(AgentMetrics {
+                agent_id: id,
+                tasks_completed: 0,
+                success_rate: 0.0,
+                average_response_time_ms: 0.0,
+                learning_efficiency: 0.0,
+                coordination_score: 0.0,
+                memory_usage_mb: 0.0,
+                last_updated: chrono::Utc::now(),
+            })),
+            configuration: AgentConfiguration::default(),
+            is_learning: Arc::new(RwLock::new(false)),
+        }
+    }
+
     /// Create a new DAA agent with default configuration
-    pub async fn new(cognitive_pattern: CognitivePattern) -> DAAResult<Self> {
+    pub async fn new_async(cognitive_pattern: CognitivePattern) -> DAAResult<Self> {
         let id = Uuid::new_v4().to_string();
         let configuration = AgentConfiguration::default();
 
         let agent = Self {
             id: id.clone(),
+            agent_type: AgentType::Researcher, // Default type for async constructor
             cognitive_pattern,
             learning_engine: Arc::new(RwLock::new(AgentLearningEngine::new())),
             neural_coordinator: Arc::new(RwLock::new(AgentNeuralCoordinator::new())),
@@ -208,6 +252,10 @@ impl DAAAgent for StandardDAAAgent {
         &self.id
     }
 
+    async fn get_type(&self) -> DAAResult<String> {
+        Ok(format!("{:?}", self.agent_type))
+    }
+
     fn cognitive_pattern(&self) -> &CognitivePattern {
         &self.cognitive_pattern
     }
@@ -239,6 +287,7 @@ impl DAAAgent for StandardDAAAgent {
         // Analyze feedback and determine if adaptation is needed
         if feedback.performance_score < self.configuration.adaptation_threshold {
             let old_pattern = self.cognitive_pattern.clone();
+            let old_pattern_for_log = old_pattern.clone();
 
             // Evolve cognitive pattern based on feedback
             self.cognitive_pattern = self.determine_optimal_pattern(feedback).await?;
@@ -260,7 +309,7 @@ impl DAAAgent for StandardDAAAgent {
             tracing::info!(
                 "Agent {} adapted strategy from {:?} to {:?}",
                 self.id,
-                old_pattern,
+                old_pattern_for_log,
                 self.cognitive_pattern
             );
         }
@@ -338,7 +387,7 @@ impl DAAAgent for StandardDAAAgent {
         Ok(result)
     }
 
-    async fn process_task_autonomously(&mut self, task: &Task) -> DAAResult<TaskResult> {
+    async fn process_task_autonomously(&self, task: &Task) -> DAAResult<TaskResult> {
         let start_time = std::time::Instant::now();
 
         // Process task based on cognitive pattern
@@ -597,7 +646,7 @@ impl DAAAgentBuilder {
     }
 
     pub async fn build(self) -> DAAResult<StandardDAAAgent> {
-        let mut agent = StandardDAAAgent::new(self.cognitive_pattern).await?;
+        let mut agent = StandardDAAAgent::new_async(self.cognitive_pattern).await?;
         agent.configuration = self.configuration;
         Ok(agent)
     }

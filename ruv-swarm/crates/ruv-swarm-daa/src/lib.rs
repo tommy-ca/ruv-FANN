@@ -55,8 +55,11 @@ pub use patterns::*;
 /// Core DAA integration error types
 #[derive(Debug, thiserror::Error)]
 pub enum DAAError {
-    #[error("Agent not found: {id}")]
-    AgentNotFound { id: String },
+    #[error("Agent not found: {0}")]
+    AgentNotFound(String),
+
+    #[error("No agents available")]
+    NoAgentsAvailable,
 
     #[error("Learning error: {message}")]
     LearningError { message: String },
@@ -86,8 +89,41 @@ pub trait DAAAgent: Send + Sync {
     /// Get the agent's unique identifier
     fn id(&self) -> &str;
 
+    /// Get the agent's unique identifier (async version for compatibility)
+    async fn get_id(&self) -> DAAResult<String> {
+        Ok(self.id().to_string())
+    }
+
+    /// Get the agent's type
+    async fn get_type(&self) -> DAAResult<String> {
+        Ok("generic".to_string())
+    }
+
     /// Get the agent's current cognitive pattern
     fn cognitive_pattern(&self) -> &CognitivePattern;
+
+    /// Execute a task
+    async fn execute_task(&self, task: Task) -> DAAResult<TaskResult> {
+        // Default implementation returns a basic result
+        Ok(TaskResult {
+            task_id: task.id.clone(),
+            success: true,
+            output: serde_json::json!({"status": "completed"}),
+            performance_metrics: HashMap::new(),
+            learned_patterns: vec![],
+            execution_time_ms: 100,
+        })
+    }
+
+    /// Perform health check
+    async fn health_check(&self) -> DAAResult<()> {
+        Ok(())
+    }
+
+    /// Shutdown the agent
+    async fn shutdown(&self) -> DAAResult<()> {
+        Ok(())
+    }
 
     /// Start autonomous learning process
     async fn start_autonomous_learning(&mut self) -> DAAResult<()>;
@@ -105,7 +141,7 @@ pub trait DAAAgent: Send + Sync {
     async fn coordinate_with_peers(&self, peers: &[String]) -> DAAResult<CoordinationResult>;
 
     /// Process task autonomously
-    async fn process_task_autonomously(&mut self, task: &Task) -> DAAResult<TaskResult>;
+    async fn process_task_autonomously(&self, task: &Task) -> DAAResult<TaskResult>;
 
     /// Share knowledge with other agents
     async fn share_knowledge(&self, target_agent: &str, knowledge: &Knowledge) -> DAAResult<()>;
@@ -337,9 +373,7 @@ impl DAACoordinator {
     pub async fn get_agent(&self, agent_id: &str) -> DAAResult<Option<&dyn DAAAgent>> {
         // Note: This is a simplified implementation due to borrowing limitations
         // In a real implementation, you'd use Arc<dyn DAAAgent> or similar
-        Err(DAAError::AgentNotFound {
-            id: agent_id.to_string(),
-        })
+        Err(DAAError::AgentNotFound(agent_id.to_string()))
     }
 
     /// Orchestrate task across multiple agents

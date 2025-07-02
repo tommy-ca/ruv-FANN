@@ -184,7 +184,9 @@ impl SWEBenchEvaluator {
         let overall_solve_rate = total_solve_count as f64 / scenarios.len() as f64;
 
         // Calculate performance summary before consuming scenario_results
-        let performance_summary = self.calculate_performance_summary(&scenario_results).await?;
+        let performance_summary = self
+            .calculate_performance_summary(&scenario_results)
+            .await?;
 
         Ok(ModelEvaluationReport {
             model_name: model_name.to_string(),
@@ -533,7 +535,7 @@ impl SWEBenchEvaluator {
         model_results: &HashMap<String, ModelEvaluationReport>,
     ) -> Result<SolveRateAnalysis> {
         let mut by_difficulty = HashMap::new();
-        let mut by_category = HashMap::new();
+        let by_category = HashMap::new();
 
         for report in model_results.values() {
             for (difficulty, stats) in &report.difficulty_breakdown {

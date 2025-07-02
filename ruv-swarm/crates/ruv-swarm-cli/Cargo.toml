@@ -61,6 +61,12 @@ chrono = { version = "0.4", features = ["serde"] }
 # UUID generation
 uuid = { version = "1.10", features = ["v4", "serde"] }
 
+# Logging dependency for onboarding module
+log = "0.4"
+
+# System calls for TTY detection
+libc = "0.2"
+
 [dev-dependencies]
 assert_cmd = "2.0"
 predicates = "3.1"

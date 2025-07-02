@@ -112,6 +112,21 @@ pub struct MetaLearningState {
     pub rapid_adaptation_models: HashMap<String, RapidAdaptationModel>,
     pub transfer_learning_mappings: HashMap<String, Vec<String>>,
     pub learning_to_learn_progress: f64,
+    pub total_patterns: usize,
+    pub performance_improvement: f64,
+}
+
+impl MetaLearningState {
+    pub fn new() -> Self {
+        Self {
+            meta_parameters: HashMap::new(),
+            rapid_adaptation_models: HashMap::new(),
+            transfer_learning_mappings: HashMap::new(),
+            learning_to_learn_progress: 0.0,
+            total_patterns: 0,
+            performance_improvement: 0.0,
+        }
+    }
 }
 
 /// Rapid adaptation model for quick domain transfer
@@ -145,6 +160,44 @@ impl LearningEngine {
         }
     }
 
+    /// Initialize meta-learning capabilities
+    pub async fn initialize_meta_learning(&mut self) -> Result<(), DAAError> {
+        // Initialize meta-learning state
+        self.meta_learning_state = MetaLearningState::new();
+        Ok(())
+    }
+
+    /// Adapt from coordination events
+    pub async fn adapt_from_events(
+        &mut self,
+        events: &[CoordinationEvent],
+    ) -> Result<(), DAAError> {
+        // Process events and extract learning patterns
+        for event in events {
+            // Extract patterns from event metadata
+            if let Some(patterns) = event.metadata.get("patterns") {
+                // Update meta-learning state based on patterns
+                self.meta_learning_state.total_patterns += 1;
+            }
+        }
+        Ok(())
+    }
+
+    /// Get count of learned patterns
+    pub async fn get_patterns_count(&self) -> Result<usize, DAAError> {
+        let mut total_patterns = 0;
+        for model in self.learning_models.values() {
+            total_patterns += model.learning_patterns.len();
+        }
+        Ok(total_patterns)
+    }
+
+    /// Get performance improvement percentage
+    pub async fn get_performance_improvement(&self) -> Result<f64, DAAError> {
+        // Calculate improvement based on meta-learning state
+        Ok(self.meta_learning_state.performance_improvement)
+    }
+
     /// Add learning experience for an agent
     pub async fn add_learning_experience(
         &mut self,
@@ -161,14 +214,25 @@ impl LearningEngine {
             );
         }
 
-        let model = self.learning_models.get_mut(&model_key).unwrap();
-
         // Extract learning patterns from experience
         let patterns = self.extract_learning_patterns(experience).await?;
+
+        // Update model with patterns and proficiency scores
+        let model = self.learning_models.get_mut(&model_key).unwrap();
         model.learning_patterns.extend(patterns);
 
-        // Update proficiency scores
-        self.update_proficiency_scores(model, experience).await?;
+        // Clone necessary data for proficiency update
+        let model_domain = model.domain.clone();
+        let current_proficiency = model.proficiency_scores.clone();
+
+        // Calculate new proficiency scores
+        let new_scores = self
+            .calculate_proficiency_update(&model_domain, &current_proficiency, experience)
+            .await?;
+
+        // Apply the update
+        let model = self.learning_models.get_mut(&model_key).unwrap();
+        model.proficiency_scores = new_scores;
 
         // Add to global knowledge base
         let mut global_kb = self.global_knowledge.write().await;
@@ -261,8 +325,11 @@ impl LearningEngine {
             .select_adaptation_strategy(domain, performance_metrics)
             .await?;
 
+        let strategy_name = best_strategy.name.clone();
+        let strategy_type = best_strategy.strategy_type.clone();
+
         // Apply the strategy
-        let adaptation_result = match best_strategy.strategy_type {
+        let adaptation_result = match strategy_type {
             AdaptationStrategyType::AdaptiveLearningRate => {
                 self.apply_learning_rate_adaptation(agent_id, domain, performance_metrics)
                     .await?
@@ -291,7 +358,7 @@ impl LearningEngine {
             model.adaptation_history.push(AdaptationRecord {
                 timestamp: chrono::Utc::now(),
                 trigger_event: "Performance-based adaptation".to_string(),
-                strategy_applied: best_strategy.name.clone(),
+                strategy_applied: strategy_name,
                 before_metrics: performance_metrics.clone(),
                 after_metrics: adaptation_result.updated_metrics.clone(),
                 success_score: adaptation_result.improvement_score,
@@ -425,6 +492,35 @@ impl LearningEngine {
     }
 
     /// Update proficiency scores based on experience
+    async fn calculate_proficiency_update(
+        &self,
+        domain: &str,
+        current_scores: &HashMap<String, f64>,
+        experience: &Experience,
+    ) -> Result<HashMap<String, f64>, DAAError> {
+        let mut new_scores = current_scores.clone();
+
+        // Update proficiency based on experience success rate
+        let task_type = experience.task.description.clone();
+        let success_score = if experience.result.success { 1.0 } else { 0.0 };
+        let score_delta = if success_score > 0.8 {
+            0.1
+        } else if success_score > 0.5 {
+            0.05
+        } else {
+            -0.05
+        };
+
+        *new_scores.entry(task_type).or_insert(0.5) += score_delta;
+
+        // Clamp scores between 0 and 1
+        for score in new_scores.values_mut() {
+            *score = score.clamp(0.0, 1.0);
+        }
+
+        Ok(new_scores)
+    }
+
     async fn update_proficiency_scores(
         &self,
         model: &mut DomainLearningModel,
@@ -713,16 +809,5 @@ impl GlobalKnowledgeBase {
         }
 
         Ok(())
-    }
-}
-
-impl MetaLearningState {
-    pub fn new() -> Self {
-        Self {
-            meta_parameters: HashMap::new(),
-            rapid_adaptation_models: HashMap::new(),
-            transfer_learning_mappings: HashMap::new(),
-            learning_to_learn_progress: 0.0,
-        }
     }
 }

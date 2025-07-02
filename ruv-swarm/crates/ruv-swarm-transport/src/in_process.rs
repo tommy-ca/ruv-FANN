@@ -165,6 +165,11 @@ impl InProcessTransport {
     pub fn registry(&self) -> Arc<InProcessRegistry> {
         Arc::clone(&self.registry)
     }
+
+    /// Subscribe to broadcast messages
+    pub fn subscribe_broadcasts(&self) -> broadcast::Receiver<Message> {
+        self.broadcast_tx.subscribe()
+    }
 }
 
 #[async_trait]

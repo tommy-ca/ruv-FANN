@@ -19,7 +19,7 @@ pub struct DAACoordinator {
     agents: Arc<RwLock<HashMap<String, Box<dyn DAAAgent + Send + Sync>>>>,
     coordination_memory: Arc<Mutex<CoordinationMemory>>,
     learning_engine: Arc<Mutex<LearningEngine>>,
-    neural_manager: Arc<Mutex<NeuralNetworkManager>>,
+    neural_manager: Arc<Mutex<NeuralManager>>,
     active: Arc<Mutex<bool>>,
     metrics: Arc<Mutex<CoordinationMetrics>>,
 }
@@ -58,7 +58,7 @@ impl DAACoordinator {
             agents: Arc::new(RwLock::new(HashMap::new())),
             coordination_memory: Arc::new(Mutex::new(CoordinationMemory::new())),
             learning_engine: Arc::new(Mutex::new(LearningEngine::new())),
-            neural_manager: Arc::new(Mutex::new(NeuralNetworkManager::new())),
+            neural_manager: Arc::new(Mutex::new(NeuralManager::new())),
             active: Arc::new(Mutex::new(false)),
             metrics: Arc::new(Mutex::new(CoordinationMetrics::default())),
         })
@@ -139,7 +139,7 @@ impl DAACoordinator {
     }
 
     /// Coordinate task execution across agents
-    pub async fn coordinate_task(&self, task: TaskRequest) -> Result<TaskResult, DAAError> {
+    pub async fn coordinate_task(&self, task: Task) -> Result<TaskResult, DAAError> {
         let start_time = Instant::now();
 
         // Find best agent for task
@@ -297,7 +297,7 @@ impl DAACoordinator {
     }
 
     /// Select optimal agent for task
-    async fn select_optimal_agent(&self, task: &TaskRequest) -> Result<String, DAAError> {
+    async fn select_optimal_agent(&self, task: &Task) -> Result<String, DAAError> {
         let agents = self.agents.read().await;
 
         if agents.is_empty() {

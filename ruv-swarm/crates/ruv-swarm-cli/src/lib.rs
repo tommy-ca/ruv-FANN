@@ -1,18 +1,16 @@
 // Library module for ruv-swarm-cli
 // Re-exports all public functionality for use by external crates
 
-pub mod config;
-pub mod output;
 pub mod commands;
+pub mod config;
 pub mod onboarding;
+pub mod output;
 
 // Re-export commonly used types
 pub use config::Config;
-pub use output::OutputHandler;
 pub use onboarding::{
-    ClaudeDetector, DefaultClaudeDetector, ClaudeInfo,
-    MCPConfigurator, DefaultMCPConfigurator, MCPConfig, MCPServerConfig,
-    InteractivePrompt, DefaultInteractivePrompt,
-    LaunchManager, DefaultLaunchManager,
-    run_onboarding_flow, OnboardingConfig,
+    run_onboarding_flow, ClaudeDetector, ClaudeInfo, DefaultClaudeDetector,
+    DefaultInteractivePrompt, DefaultLaunchManager, DefaultMCPConfigurator, InteractivePrompt,
+    LaunchManager, MCPConfig, MCPConfigurator, MCPServerConfig, OnboardingConfig,
 };
+pub use output::OutputHandler;

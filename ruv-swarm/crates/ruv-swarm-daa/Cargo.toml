@@ -20,6 +20,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 js-sys = { version = "0.3", optional = true }
 web-sys = { version = "0.3", optional = true }
 anyhow = "1.0"
+thiserror = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 tracing = "0.1"
 futures = "0.3"
@@ -41,7 +42,7 @@ env_logger = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 
 [features]
-default = ["neural-networks", "autonomous-learning"]
+default = ["autonomous-learning"]
 wasm = ["wasm-bindgen", "js-sys", "web-sys"]
 neural-networks = ["tch", "candle-core", "candle-nn"]
 autonomous-learning = []

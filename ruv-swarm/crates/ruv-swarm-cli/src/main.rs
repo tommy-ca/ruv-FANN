@@ -8,6 +8,7 @@ use tracing_subscriber::EnvFilter;
 
 mod commands;
 mod config;
+mod onboarding;
 mod output;
 
 use commands::{init, monitor, orchestrate, spawn, status};

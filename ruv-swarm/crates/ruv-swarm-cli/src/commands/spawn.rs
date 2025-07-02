@@ -65,7 +65,7 @@ pub async fn execute(
     output.section("Spawning New Agent");
 
     // Validate agent type
-    let valid_types = vec![
+    let valid_types = [
         "researcher",
         "coder",
         "analyst",
@@ -204,7 +204,7 @@ pub async fn execute(
                 "View agent status: ruv-swarm status --agent-type {}",
                 agent_type
             ),
-            format!("Assign task to agent: ruv-swarm orchestrate <strategy> <task>"),
+            "Assign task to agent: ruv-swarm orchestrate <strategy> <task>".to_string(),
             format!(
                 "Monitor agent activity: ruv-swarm monitor --filter agent:{}",
                 agent.id
