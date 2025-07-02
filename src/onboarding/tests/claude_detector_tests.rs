@@ -1,6 +1,7 @@
-use super::super::claude_detector::{ClaudeDetector, ClaudeInfo};
+use super::super::{ClaudeDetector, DetectionResult, InstallationPaths};
+use super::super::common::DefaultClaudeDetector;
 use std::path::PathBuf;
-use mockall::automock;
+use async_trait::async_trait;
 
 #[cfg(test)]
 mod tests {

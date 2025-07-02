@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::collections::HashMap;
 use std::path::Path;
 use uuid::Uuid;
@@ -146,6 +147,9 @@ pub async fn execute(
 
     // Save swarm configuration
     save_swarm_config(&swarm_init, config, output)?;
+
+    // Configure MCP servers for Claude Code
+    configure_mcp_servers(&swarm_init, output)?;
 
     output.success(&format!(
         "Swarm '{}' initialized successfully!",
@@ -369,6 +373,101 @@ fn save_swarm_config(swarm_init: &SwarmInit, config: &Config, output: &OutputHan
     std::fs::write(&current_file, serde_json::to_string_pretty(swarm_init)?)?;
     
     output.info(&format!("Configuration saved to {:?}", swarm_file));
+    
+    Ok(())
+}
+
+fn configure_mcp_servers(swarm_init: &SwarmInit, output: &OutputHandler) -> Result<()> {
+    output.section("Configuring MCP Servers for Claude Code");
+    
+    // Check if .mcp.json exists
+    let mcp_config_path = Path::new(".mcp.json");
+    
+    // Load existing config or create new one
+    let mut mcp_config = if mcp_config_path.exists() {
+        let content = std::fs::read_to_string(mcp_config_path)?;
+        serde_json::from_str(&content).unwrap_or_else(|_| {
+            serde_json::json!({
+                "mcpServers": {}
+            })
+        })
+    } else {
+        serde_json::json!({
+            "mcpServers": {}
+        })
+    };
+    
+    // Get the mcp_servers object
+    let servers = mcp_config["mcpServers"].as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("Invalid MCP configuration structure"))?;
+    
+    // Add GitHub MCP server if not already present
+    if !servers.contains_key("github") {
+        output.info("Adding GitHub MCP server configuration...");
+        
+        // Check for GitHub token
+        let github_token = std::env::var("GITHUB_TOKEN")
+            .or_else(|_| std::env::var("GH_TOKEN"))
+            .ok();
+        
+        if github_token.is_none() {
+            output.warning("No GitHub token found. Set GITHUB_TOKEN or GH_TOKEN environment variable.");
+            output.info("You can also authenticate using: gh auth login");
+        }
+        
+        servers.insert(
+            "github".to_string(),
+            serde_json::json!({
+                "command": "npx",
+                "args": ["@modelcontextprotocol/server-github"],
+                "env": if let Some(token) = github_token {
+                    serde_json::json!({
+                        "GITHUB_TOKEN": token
+                    })
+                } else {
+                    serde_json::json!({})
+                }
+            })
+        );
+        
+        output.success("GitHub MCP server configured");
+    } else {
+        output.info("GitHub MCP server already configured");
+    }
+    
+    // Add ruv-swarm MCP server if not already present
+    if !servers.contains_key("ruv-swarm") {
+        output.info("Adding ruv-swarm MCP server configuration...");
+        
+        servers.insert(
+            "ruv-swarm".to_string(),
+            serde_json::json!({
+                "command": "npx",
+                "args": ["ruv-swarm", "mcp", "start"],
+                "env": {
+                    "SWARM_ID": swarm_init.swarm_id.clone(),
+                    "SWARM_TOPOLOGY": swarm_init.topology.clone()
+                }
+            })
+        );
+        
+        output.success("ruv-swarm MCP server configured");
+    } else {
+        output.info("ruv-swarm MCP server already configured");
+    }
+    
+    // Save the updated configuration
+    let pretty_json = serde_json::to_string_pretty(&mcp_config)?;
+    std::fs::write(mcp_config_path, pretty_json)?;
+    
+    output.success("MCP configuration saved to .mcp.json");
+    output.info("Claude Code will use these MCP servers on next launch");
+    
+    // Show configured servers
+    output.section("Configured MCP Servers");
+    for (name, _) in servers.iter() {
+        output.list_item(&format!("✓ {}", name));
+    }
     
     Ok(())
 }

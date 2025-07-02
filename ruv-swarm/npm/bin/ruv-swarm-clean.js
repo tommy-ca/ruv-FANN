@@ -796,6 +796,28 @@ Examples:
     }
 }
 
+async function handleLaunch(args) {
+    try {
+        const { launchClaudeCode } = await import('../src/onboarding/index.js');
+        
+        // Parse launch options
+        const options = {
+            verbose: args.includes('--verbose') || args.includes('-v'),
+            args: args.filter(arg => !arg.startsWith('--') && !arg.startsWith('-'))
+        };
+        
+        const result = await launchClaudeCode(options);
+        
+        if (!result.success) {
+            console.error('❌ Launch failed:', result.error);
+            process.exit(1);
+        }
+    } catch (error) {
+        console.error('❌ Launch error:', error.message);
+        process.exit(1);
+    }
+}
+
 async function handleBenchmark(args) {
     const { benchmarkCLI } = require('../src/benchmark');
     const subcommand = args[0] || 'help';
@@ -936,6 +958,9 @@ async function main() {
             case 'claude-invoke':
             case 'claude':
                 await handleClaudeInvoke(args.slice(1));
+                break;
+            case 'launch':
+                await handleLaunch(args.slice(1));
                 break;
             case 'neural':
                 await handleNeural(args.slice(1));

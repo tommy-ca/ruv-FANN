@@ -21,3 +21,7 @@ node_modules
 
 # Ignore polyglot benchmark directory
 polyglot-benchmark/
+
+# Set an ignore folder for scratch work
+ignore/
+.devcontainer.json

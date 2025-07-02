@@ -109,10 +109,17 @@ impl MCPConfig {
         );
     }
     
-    pub fn add_ruv_swarm_mcp(&mut self, swarm_id: String, topology: String) {
+    pub fn add_ruv_swarm_mcp(&mut self, swarm_id: String, topology: String, github_token: Option<String>) {
         let mut env = HashMap::new();
         env.insert("SWARM_ID".to_string(), swarm_id);
         env.insert("SWARM_TOPOLOGY".to_string(), topology);
+        
+        // Include GitHub token for ruv-swarm's GitHub integration features
+        if let Some(token) = github_token {
+            env.insert("GITHUB_TOKEN".to_string(), token);
+        } else {
+            env.insert("GITHUB_TOKEN".to_string(), "${GITHUB_TOKEN}".to_string());
+        }
         
         self.mcp_servers.insert(
             "ruv-swarm".to_string(),
@@ -418,28 +425,32 @@ where
         self.prompt.info("Setting up MCP servers...").await;
         
         let mut config = MCPConfig::new();
+        let mut github_token = None;
         
-        // GitHub MCP
-        if self.config.auto_accept || self.prompt.confirm("Would you like to install the GitHub MCP server?", true).await? {
-            self.prompt.info("📝 Configuring GitHub MCP server...").await;
+        // GitHub Authentication (for ruv-swarm features, not for GitHub MCP)
+        if self.config.auto_accept || self.prompt.confirm("Would you like to authenticate to GitHub for enhanced ruv-swarm features?", true).await? {
+            self.prompt.info("🔑 Checking GitHub authentication...").await;
             
             if let Ok(Some(token)) = self.configurator.check_github_token().await {
-                config.add_github_mcp(Some(token));
-                self.prompt.success("✅ GitHub MCP server configured").await;
+                github_token = Some(token);
+                self.prompt.success("✅ Found GitHub token").await;
             } else {
                 match self.prompt.choice(
-                    "No GitHub token found",
-                    &["Enter token now", "Continue without auth", "Skip GitHub MCP"]
+                    "No GitHub token found. GitHub integration enhances ruv-swarm with issue tracking, PR management, and more.",
+                    &["Enter token now", "Skip authentication", "Learn more"]
                 ).await? {
                     0 => {
                         let token = self.prompt.password("GitHub token: ").await?;
-                        config.add_github_mcp(Some(token));
+                        github_token = Some(token);
+                        self.prompt.success("✅ GitHub authentication configured").await;
                     }
                     1 => {
-                        config.add_github_mcp(None);
-                        self.prompt.warning("⚠️ GitHub MCP configured with limited access").await;
+                        self.prompt.info("ℹ️  Skipping GitHub authentication. Some ruv-swarm features will be limited.").await;
                     }
-                    _ => {}
+                    _ => {
+                        self.prompt.info("ℹ️  Visit https://github.com/settings/tokens to create a token with 'repo' scope").await;
+                        self.prompt.info("ℹ️  Skipping authentication for now. You can set GITHUB_TOKEN later.").await;
+                    }
                 }
             }
         }
@@ -448,8 +459,15 @@ where
         if self.config.auto_accept || self.prompt.confirm("Would you like to install the ruv-swarm MCP server?", true).await? {
             self.prompt.info("📝 Configuring ruv-swarm MCP server...").await;
             let swarm_id = self.configurator.generate_swarm_id();
-            config.add_ruv_swarm_mcp(swarm_id, self.config.default_topology.clone());
+            config.add_ruv_swarm_mcp(swarm_id, self.config.default_topology.clone(), github_token);
             self.prompt.success("✅ ruv-swarm MCP server configured").await;
+        }
+        
+        // Optional: Prompt for GitHub MCP if user explicitly wants it
+        if !self.config.auto_accept && self.prompt.confirm("Would you like to also install the GitHub MCP server? (optional)", false).await? {
+            self.prompt.info("📝 Configuring GitHub MCP server...").await;
+            config.add_github_mcp(None);
+            self.prompt.info("ℹ️  GitHub MCP server added. Set GITHUB_TOKEN environment variable for authentication.").await;
         }
         
         if config.has_servers() {
@@ -479,22 +497,16 @@ where
     }
 }
 
-// Re-export commonly used types
-pub use self::{
-    ClaudeDetector, Installer, MCPConfigurator, InteractivePrompt, LaunchManager,
-    OnboardingError, Result, Platform, MCPConfig, OnboardingConfig,
-    OnboardingOrchestrator, DetectionResult, InstallOptions, LaunchOptions,
-};
-
 // Platform-specific implementations will be in separate modules
-#[cfg(target_os = "windows")]
-pub mod windows;
+// These will be implemented later
+// #[cfg(target_os = "windows")]
+// pub mod windows;
 
-#[cfg(target_os = "macos")]
-pub mod macos;
+// #[cfg(target_os = "macos")]
+// pub mod macos;
 
-#[cfg(target_os = "linux")]
-pub mod linux;
+// #[cfg(target_os = "linux")]
+// pub mod linux;
 
-// Common implementations
-pub mod common;
+// Common implementations will be added later
+// pub mod common;

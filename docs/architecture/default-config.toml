@@ -1,0 +1,150 @@
+# Default Configuration for ruv-swarm Onboarding
+# This file defines the default values used during the onboarding process
+
+[onboarding]
+# Automatically accept all prompts (equivalent to -y flag)
+auto_accept = false
+
+# Required Claude Code version (semver format)
+claude_code_version = ">=1.0.0"
+
+# Default swarm topology when creating new swarms
+# Options: "mesh", "hierarchical", "ring", "star"
+default_topology = "mesh"
+
+# Maximum number of agents to spawn in a swarm
+default_max_agents = 5
+
+# Network retry configuration
+retry_attempts = 3
+retry_delay_ms = 1000
+
+# Timeout for various operations (in seconds)
+detection_timeout = 5
+download_timeout = 120
+installation_timeout = 30
+launch_timeout = 10
+
+[paths]
+# Search paths for Claude Code binary (platform-specific defaults will be added)
+claude_search_paths = [
+  "/usr/local/bin",
+  "/usr/bin",
+  "/opt/homebrew/bin",
+  "~/.local/bin",
+  "~/bin"
+]
+
+# Installation preferences
+prefer_user_install = true
+system_install_path = "/usr/local/bin"
+user_install_path = "~/.local/bin"
+
+[mcp_servers]
+# Enable/disable MCP servers by default
+github_mcp_enabled = false  # GitHub MCP is optional, not auto-installed
+ruv_swarm_enabled = true
+github_auth_enabled = true  # GitHub authentication for ruv-swarm features
+
+# GitHub MCP configuration
+[mcp_servers.github]
+package = "@modelcontextprotocol/server-github"
+version = "latest"
+prompt_for_token = true
+token_env_vars = ["GITHUB_TOKEN", "GH_TOKEN"]
+
+# ruv-swarm MCP configuration
+[mcp_servers.ruv_swarm]
+package = "ruv-swarm"
+version = "latest"
+default_args = ["mcp", "start"]
+
+[platform.windows]
+# Windows-specific paths
+claude_search_paths = [
+  "%LOCALAPPDATA%\\Programs\\claude-code",
+  "%PROGRAMFILES%\\Claude Code",
+  "%USERPROFILE%\\AppData\\Local\\Programs\\claude-code"
+]
+system_install_path = "%PROGRAMFILES%\\Claude Code"
+user_install_path = "%LOCALAPPDATA%\\Programs\\claude-code"
+
+[platform.macos]
+# macOS-specific paths
+claude_search_paths = [
+  "/Applications/Claude Code.app/Contents/MacOS",
+  "/usr/local/bin",
+  "/opt/homebrew/bin",
+  "~/Applications/Claude Code.app/Contents/MacOS"
+]
+system_install_path = "/Applications"
+user_install_path = "~/Applications"
+
+[platform.linux]
+# Linux-specific paths
+claude_search_paths = [
+  "/usr/local/bin",
+  "/usr/bin",
+  "/opt/claude-code/bin",
+  "~/.local/bin",
+  "~/bin"
+]
+system_install_path = "/opt/claude-code"
+user_install_path = "~/.local/bin"
+
+[ui]
+# User interface preferences
+use_emoji = true
+show_progress_bar = true
+verbose_errors = false
+color_output = true
+
+# Progress indicators
+spinner_style = "dots"  # Options: "dots", "line", "arc", "simple"
+progress_bar_style = "blocks"  # Options: "blocks", "ascii", "unicode"
+
+[logging]
+# Logging configuration
+enabled = true
+level = "info"  # Options: "debug", "info", "warn", "error"
+file = "~/.ruv-swarm/onboarding.log"
+max_size_mb = 10
+max_files = 5
+
+[telemetry]
+# Anonymous usage statistics (helps improve the tool)
+enabled = false
+endpoint = "https://telemetry.ruv-swarm.io/v1/events"
+events = [
+  "onboarding_started",
+  "onboarding_completed",
+  "installation_success",
+  "installation_failure",
+  "mcp_configured"
+]
+
+[advanced]
+# Advanced configuration options
+parallel_downloads = true
+verify_checksums = true
+cleanup_on_failure = true
+backup_existing_config = true
+
+# Download sources (in priority order)
+[advanced.download_sources]
+claude_code = [
+  "https://releases.anthropic.com/claude-code/latest",
+  "https://github.com/anthropics/claude-code/releases/latest"
+]
+
+# Checksum verification
+[advanced.checksums]
+algorithm = "sha256"
+verify_signatures = false
+
+[development]
+# Development and debugging options
+mock_mode = false
+skip_version_check = false
+force_reinstall = false
+debug_commands = false

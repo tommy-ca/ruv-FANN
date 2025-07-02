@@ -1,4 +1,15 @@
 {
+  "name": "ruv-swarm-cli",
+  "version": "1.0.0",
+  "description": "ruv-swarm CLI with GitHub integration",
+  "bin": {
+    "github-epic": "./src/github-epic-implementation.js"
+  },
+  "scripts": {
+    "github-epic": "node ./src/github-epic-implementation.js",
+    "configure-mcp": "node ./configure-github-mcp.js",
+    "postinstall": "node ./configure-github-mcp.js"
+  },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
     "ruv-swarm": "file:ruv-swarm/npm",

@@ -49,6 +49,9 @@ pub mod training;
 #[cfg(feature = "io")]
 pub mod io;
 
+// Onboarding module for seamless initialization
+pub mod onboarding;
+
 // Test module
 #[cfg(test)]
 mod tests;

@@ -27,6 +27,7 @@ Use these commands in Claude Code to coordinate with other swarms:
 - `/github/update` - Post progress updates
 - `/github/complete` - Mark task as complete
 - `/github/release` - Release a claimed task
+- `/github/epic` - Create and manage GitHub epics
 
 ### Collaboration
 - `/github/swarms` - List active swarms

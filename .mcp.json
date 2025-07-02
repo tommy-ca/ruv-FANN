@@ -1,3 +1,25 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "ruv-swarm": {
+      "command": "npx",
+      "args": [
+        "ruv-swarm",
+        "mcp",
+        "start"
+      ],
+      "env": {
+        "SWARM_ID": "swarm-1751465149285",
+        "SWARM_TOPOLOGY": "mesh"
+      }
+    }
+  }
 }

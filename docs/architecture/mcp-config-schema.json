@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/ruvnet/ruv-swarm/schemas/mcp-config.schema.json",
+  "title": "MCP Configuration Schema",
+  "description": "Schema for .claude/mcp.json configuration file",
+  "type": "object",
+  "required": ["mcpServers"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference",
+      "default": "https://raw.githubusercontent.com/anthropics/claude-mcp/main/schemas/mcp.schema.json"
+    },
+    "mcpServers": {
+      "type": "object",
+      "description": "MCP server configurations",
+      "additionalProperties": {
+        "$ref": "#/definitions/mcpServer"
+      },
+      "examples": [
+        {
+          "github": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+              "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+            }
+          },
+          "ruv-swarm": {
+            "command": "npx",
+            "args": ["ruv-swarm", "mcp", "start"],
+            "env": {
+              "SWARM_ID": "550e8400-e29b-41d4-a716-446655440000",
+              "SWARM_TOPOLOGY": "mesh"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "mcpServer": {
+      "type": "object",
+      "description": "Individual MCP server configuration",
+      "required": ["command", "args"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to execute the MCP server",
+          "examples": ["npx", "node", "python", "deno"]
+        },
+        "args": {
+          "type": "array",
+          "description": "Arguments to pass to the command",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables for the MCP server",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [
+            {
+              "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+              "GITHUB_API_URL": "https://api.github.com"
+            }
+          ]
+        },
+        "workingDirectory": {
+          "type": "string",
+          "description": "Working directory for the MCP server process"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout in milliseconds for server startup",
+          "minimum": 0,
+          "default": 30000
+        }
+      }
+    }
+  }
+}
