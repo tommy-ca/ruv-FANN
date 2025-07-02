@@ -1,0 +1,22 @@
+{
+  "name": "ruv-swarm-slides",
+  "version": "1.0.0",
+  "description": "ruv-swarm: Understanding Swarm Intelligence presentation",
+  "type": "module",
+  "scripts": {
+    "build": "slidev build --base /slide_deck/ --out ../slide_deck",
+    "dev": "slidev --open",
+    "export": "slidev export --output ../slide_deck/presentation.pdf",
+    "preview": "vite preview --port 3030"
+  },
+  "dependencies": {
+    "@slidev/cli": "^0.48.0",
+    "@slidev/theme-seriph": "^0.23.0"
+  },
+  "devDependencies": {
+    "playwright-chromium": "^1.40.0"
+  },
+  "keywords": ["ruv-swarm", "presentation", "slidev", "swarm-intelligence"],
+  "author": "jed",
+  "license": "MIT"
+}
