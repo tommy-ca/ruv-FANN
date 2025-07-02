@@ -11,7 +11,7 @@ members = [
     "crates/swe-bench-adapter",      # SWE-Bench adapter for evaluation
     "crates/ruv-swarm-cli",
     "ml-training",
-    "benchmarking",                   # Comprehensive benchmarking framework
+    "benchmarking", "crates/ruv-swarm-process",                   # Comprehensive benchmarking framework
     # "crates/ruv-swarm-wasm-unified", # Temporarily disabled due to path resolution issues
 ]
 

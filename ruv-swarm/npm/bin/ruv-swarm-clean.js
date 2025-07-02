@@ -378,6 +378,9 @@ async function handleMcp(args) {
         case 'stop':
             await stopMcpServer();
             break;
+        case 'restart':
+            await restartMcpServer();
+            break;
         case 'tools':
             await listMcpTools();
             break;
@@ -392,11 +395,27 @@ async function handleMcp(args) {
 
 async function startMcpServer(args) {
     const protocol = args.find(arg => arg.startsWith('--protocol='))?.split('=')[1] || 'stdio';
-    const port = args.find(arg => arg.startsWith('--port='))?.split('=')[1] || '3000';
+    const port = args.find(arg => arg.startsWith('--port='))?.split('=')[1] || '9898';
     const host = args.find(arg => arg.startsWith('--host='))?.split('=')[1] || 'localhost';
+    const detached = args.includes('--detached');
     
     try {
-        if (protocol === 'stdio') {
+        if (detached) {
+            // Start in detached mode
+            const { default: MCPDetached } = await import('../src/mcp-detached.js');
+            const mcpDetached = new MCPDetached({ healthCheckPort: parseInt(port) });
+            
+            console.log('🚀 Starting MCP server in detached mode...');
+            const result = await mcpDetached.start({ detached: true });
+            
+            console.log(`✅ MCP server started successfully`);
+            console.log(`   PID: ${result.pid}`);
+            console.log(`   Health check port: ${port}`);
+            console.log(`   Status: ruv-swarm mcp status`);
+            console.log(`   Stop: ruv-swarm mcp stop`);
+            
+            process.exit(0);
+        } else if (protocol === 'stdio') {
             // In stdio mode, only JSON-RPC messages should go to stdout
             console.error('🚀 ruv-swarm MCP server starting in stdio mode...');
             
@@ -466,14 +485,68 @@ async function startMcpServer(args) {
 }
 
 async function getMcpStatus() {
-    console.log('🔍 MCP Server Status:');
-    console.log('   Protocol: stdio (for Claude Code integration)');
-    console.log('   Status: Ready to start');
-    console.log('   Usage: npx ruv-swarm mcp start');
+    try {
+        const { default: MCPDetached } = await import('../src/mcp-detached.js');
+        const mcpDetached = new MCPDetached();
+        const status = await mcpDetached.status();
+        
+        console.log('🔍 MCP Server Status:');
+        if (status.running) {
+            console.log(`   Status: ✅ Running`);
+            console.log(`   PID: ${status.pid}`);
+            console.log(`   Mode: ${status.mode}`);
+            console.log(`   Started: ${status.started}`);
+            console.log(`   Uptime: ${Math.floor(status.uptime / 1000)}s`);
+            if (status.health) {
+                console.log(`   Health: ${status.health.status}`);
+            }
+        } else {
+            console.log('   Status: ❌ Not running');
+            console.log('   Start with: ruv-swarm mcp start --detached');
+        }
+    } catch (error) {
+        console.log('🔍 MCP Server Status:');
+        console.log('   Protocol: stdio (for Claude Code integration)');
+        console.log('   Status: Ready to start');
+        console.log('   Usage: npx ruv-swarm mcp start');
+    }
 }
 
 async function stopMcpServer() {
-    console.log('✅ MCP server stopped (stdio mode exits automatically)');
+    try {
+        const { default: MCPDetached } = await import('../src/mcp-detached.js');
+        const mcpDetached = new MCPDetached();
+        
+        console.log('🛑 Stopping MCP server...');
+        const result = await mcpDetached.stop();
+        
+        if (result.stopped) {
+            console.log(`✅ MCP server stopped successfully`);
+            if (result.forced) {
+                console.log('   (Force killed after timeout)');
+            }
+        } else {
+            console.log('❌ MCP server is not running');
+        }
+    } catch (error) {
+        console.log('❌ Error stopping MCP server:', error.message);
+    }
+}
+
+async function restartMcpServer() {
+    try {
+        const { default: MCPDetached } = await import('../src/mcp-detached.js');
+        const mcpDetached = new MCPDetached();
+        
+        console.log('🔄 Restarting MCP server...');
+        const result = await mcpDetached.restart();
+        
+        console.log(`✅ MCP server restarted successfully`);
+        console.log(`   Old PID: ${result.oldPid || 'N/A'}`);
+        console.log(`   New PID: ${result.newPid}`);
+    } catch (error) {
+        console.log('❌ Error restarting MCP server:', error.message);
+    }
 }
 
 async function listMcpTools() {
@@ -493,15 +566,24 @@ function showMcpHelp() {
 Usage: ruv-swarm mcp <subcommand> [options]
 
 Subcommands:
-  start [--protocol=stdio]    Start MCP server (stdio for Claude Code)
+  start [options]             Start MCP server
   status                      Show MCP server status
   stop                        Stop MCP server
+  restart                     Restart MCP server
   tools                       List available MCP tools
   help                        Show this help message
 
+Options for 'start':
+  --protocol=stdio            Use stdio protocol (default, for Claude Code)
+  --detached                  Run server in background (daemon mode)
+  --port=<port>              Health check port for detached mode (default: 9898)
+
 Examples:
   ruv-swarm mcp start                    # Start stdio MCP server
-  ruv-swarm mcp tools                    # List available tools
+  ruv-swarm mcp start --detached         # Start as background process
+  ruv-swarm mcp status                   # Check if server is running
+  ruv-swarm mcp stop                     # Stop background server
+  ruv-swarm mcp restart                  # Restart background server
   
 For Claude Code integration:
   claude mcp add ruv-swarm npx ruv-swarm mcp start

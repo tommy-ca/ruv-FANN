@@ -32,20 +32,6 @@
     ]
   },
   "hooks": {},
-  "mcpServers": {
-    "ruv-swarm": {
-      "command": "npx",
-      "args": [
-        "ruv-swarm",
-        "mcp",
-        "start"
-      ],
-      "env": {
-        "RUV_SWARM_HOOKS_ENABLED": "false",
-        "RUV_SWARM_TELEMETRY_ENABLED": "true",
-        "RUV_SWARM_REMOTE_READY": "true"
-      }
-    }
-  },
+  "mcpServers": {},
   "includeCoAuthoredBy": true
 }

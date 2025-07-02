@@ -1,0 +1,3 @@
+#!/bin/bash
+# Wrapper for create-epic.sh
+exec "$(dirname "$0")/create-epic.sh" "$@"

@@ -1,0 +1,3 @@
+#!/bin/bash
+# Wrapper for swarm-helper.sh
+exec "$(dirname "$0")/swarm-helper.sh" "$@"

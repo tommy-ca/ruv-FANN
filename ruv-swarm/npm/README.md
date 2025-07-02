@@ -426,15 +426,35 @@ ruv-swarm provides native integration with Claude Code through the Model Context
 ### MCP Server Setup
 
 ```bash
-# Start integrated MCP server
-npx ruv-swarm mcp start --port 3000
+# Start integrated MCP server (stdio mode for Claude Code)
+npx ruv-swarm mcp start
+
+# Start MCP server in detached/background mode
+npx ruv-swarm mcp start --detached
 
 # Check server status
 npx ruv-swarm mcp status
 
+# Stop MCP server (detached mode only)
+npx ruv-swarm mcp stop
+
+# Restart MCP server
+npx ruv-swarm mcp restart
+
 # List available tools
 npx ruv-swarm mcp tools
 ```
+
+#### Detached Mode Features
+
+When running with `--detached`, the MCP server provides:
+
+- **Background Process**: Runs as a daemon, freeing up your terminal
+- **Process Management**: Automatic PID tracking and graceful shutdown
+- **Health Monitoring**: HTTP health check endpoint on port 9898 (configurable)
+- **Singleton Pattern**: Prevents multiple instances from running simultaneously
+- **Automatic Cleanup**: Handles stale PID files and unexpected termination
+- **Persistent State**: Maintains server state across restarts
 
 ### Available MCP Tools
 
@@ -1210,8 +1230,10 @@ const course = await eduSwarm.orchestrate({
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `mcp start [--port]` | Start MCP server | `npx ruv-swarm mcp start --port 3000` |
+| `mcp start [options]` | Start MCP server | `npx ruv-swarm mcp start --detached` |
 | `mcp status` | Check MCP server | `npx ruv-swarm mcp status` |
+| `mcp stop` | Stop MCP server | `npx ruv-swarm mcp stop` |
+| `mcp restart` | Restart MCP server | `npx ruv-swarm mcp restart` |
 | `mcp tools` | List MCP tools | `npx ruv-swarm mcp tools` |
 
 ---

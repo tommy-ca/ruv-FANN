@@ -18,6 +18,7 @@ node_modules
 *.swo
 *.swn
 .venv/
+/ignore
 
 # Ignore polyglot benchmark directory
 polyglot-benchmark/
