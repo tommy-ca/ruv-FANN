@@ -92,16 +92,22 @@ impl SWEBenchEvaluator {
 
         let total_duration = start_time.elapsed();
 
+        // Generate analyses before consuming model_results
+        let difficulty_breakdown = self.analyze_difficulty_performance(&model_results).await?;
+        let overall_metrics = self.calculate_overall_metrics(&model_results).await?;
+        let solve_rate_analysis = self.analyze_solve_rates(&model_results).await?;
+        let recommendations = self.generate_recommendations(&model_results).await?;
+
         Ok(ComprehensiveEvaluationReport {
             timestamp: Utc::now(),
             total_duration,
             model_results,
-            difficulty_breakdown: self.analyze_difficulty_performance(&model_results).await?,
+            difficulty_breakdown,
             model_comparison: comparison,
             baseline_comparison,
-            overall_metrics: self.calculate_overall_metrics(&model_results).await?,
-            solve_rate_analysis: self.analyze_solve_rates(&model_results).await?,
-            recommendations: self.generate_recommendations(&model_results).await?,
+            overall_metrics,
+            solve_rate_analysis,
+            recommendations,
         })
     }
 
@@ -177,6 +183,9 @@ impl SWEBenchEvaluator {
 
         let overall_solve_rate = total_solve_count as f64 / scenarios.len() as f64;
 
+        // Calculate performance summary before consuming scenario_results
+        let performance_summary = self.calculate_performance_summary(&scenario_results).await?;
+
         Ok(ModelEvaluationReport {
             model_name: model_name.to_string(),
             model_config: model_config.clone(),
@@ -185,9 +194,7 @@ impl SWEBenchEvaluator {
             overall_solve_rate,
             difficulty_breakdown: difficulty_stats,
             scenario_results,
-            performance_summary: self
-                .calculate_performance_summary(&scenario_results)
-                .await?,
+            performance_summary,
         })
     }
 
@@ -823,7 +830,7 @@ pub struct ScenarioEvaluationResult {
     pub solve_status: SolveStatus,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SolveStatus {
     Solved,
     Partial,
@@ -831,7 +838,7 @@ pub enum SolveStatus {
     Timeout,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImprovementMetrics {
     pub execution_time_improvement: Option<f64>,
     pub token_efficiency_improvement: Option<f64>,

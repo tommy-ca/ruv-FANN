@@ -17,3 +17,6 @@ node_modules
 *.swp
 *.swo
 *.swn.venv/
+
+ignore/
+.devcontainer.json
