@@ -1,4 +1,3 @@
-
 let imports = {};
 let wasm;
 import { TextDecoder, TextEncoder } from 'util';
@@ -569,7 +568,7 @@ class PerformanceTimer {
         wasm.performancetimer_log(this.__wbg_ptr);
     }
 }
-export const PerformanceTimer = PerformanceTimer;
+export { PerformanceTimer };
 
 const RuntimeFeaturesFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -635,7 +634,6 @@ class RuntimeFeatures {
         }
     }
 }
-export const RuntimeFeatures = RuntimeFeatures;
 
 const SimdBenchmarkFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -710,7 +708,7 @@ class SimdBenchmark {
         }
     }
 }
-export const SimdBenchmark = SimdBenchmark;
+export { SimdBenchmark };
 
 const SimdMatrixOpsFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -789,7 +787,7 @@ class SimdMatrixOps {
         }
     }
 }
-export const SimdMatrixOps = SimdMatrixOps;
+export { SimdMatrixOps };
 
 const SimdVectorOpsFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -898,7 +896,7 @@ class SimdVectorOps {
         }
     }
 }
-export const SimdVectorOps = SimdVectorOps;
+export { SimdVectorOps };
 
 const WasmAgentFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -1015,7 +1013,7 @@ class WasmAgent {
         return ret !== 0;
     }
 }
-export const WasmAgent = WasmAgent;
+export { WasmAgent };
 
 const WasmForecastingModelFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -1092,7 +1090,7 @@ class WasmForecastingModel {
         }
     }
 }
-export const WasmForecastingModel = WasmForecastingModel;
+export { WasmForecastingModel };
 
 const WasmNeuralNetworkFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -1182,7 +1180,7 @@ class WasmNeuralNetwork {
         }
     }
 }
-export const WasmNeuralNetwork = WasmNeuralNetwork;
+export { WasmNeuralNetwork };
 
 const WasmSwarmOrchestratorFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -1307,7 +1305,7 @@ class WasmSwarmOrchestrator {
         }
     }
 }
-export const WasmSwarmOrchestrator = WasmSwarmOrchestrator;
+export { WasmSwarmOrchestrator };
 
 const WasmTaskResultFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
@@ -1427,7 +1425,7 @@ class WasmTaskResult {
         }
     }
 }
-export const WasmTaskResult = WasmTaskResult;
+export { WasmTaskResult };
 
 export const __wbg_buffer_609cc3eee51ed158 = function(arg0) {
     const ret = getObject(arg0).buffer;
@@ -1620,13 +1618,21 @@ export const __wbindgen_throw = function(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));
 };
 
-const path = require('path').join(__dirname, 'ruv_swarm_wasm_bg.wasm');
-const bytes = require('fs').readFileSync(path);
+// Export functions and utilities needed by wasm-bindings-loader.mjs
+export { getStringFromWasm0, getObject, addHeapObject };
 
-const wasmModule = new WebAssembly.Module(bytes);
-const wasmInstance = new WebAssembly.Instance(wasmModule, imports);
-wasm = wasmInstance.exports;
-export const __wasm = wasm;
+// Don't try to instantiate the module here
+// The wasm-bindings-loader.mjs will handle this with proper imports
+export const wasmBinaryFile = './ruv_swarm_wasm_bg.wasm';
 
-wasm.__wbindgen_start();
+// Export a function to initialize the wasm instance when imports are provided
+export function initWasm(wasmImports, wasmInstance) {
+    wasm = wasmInstance.exports;
+    return wasm;
+}
 
+// Export a default function for ES module compatibility
+export default function initializeWasm(instance) {
+    wasm = instance.exports;
+    return wasm;
+}

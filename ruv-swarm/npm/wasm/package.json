@@ -12,5 +12,6 @@
     "ruv_swarm_wasm.d.ts"
   ],
   "main": "ruv_swarm_wasm.js",
-  "types": "ruv_swarm_wasm.d.ts"
+  "types": "ruv_swarm_wasm.d.ts",
+  "type": "module"
 }
