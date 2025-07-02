@@ -1,9 +1,9 @@
 //! Message protocol definitions for swarm communication
 
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Protocol version for compatibility checking
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -19,7 +19,7 @@ impl ProtocolVersion {
         minor: 0,
         patch: 0,
     };
-    
+
     /// Check if this version is compatible with another
     pub fn is_compatible(&self, other: &Self) -> bool {
         // Major version must match, minor/patch can differ
@@ -46,7 +46,7 @@ pub enum MessageType {
         /// Request parameters
         params: serde_json::Value,
     },
-    
+
     /// Response to a request
     Response {
         /// Correlation ID matching the request
@@ -54,7 +54,7 @@ pub enum MessageType {
         /// Response result (Ok) or error (Err)
         result: Result<serde_json::Value, ErrorResponse>,
     },
-    
+
     /// Event notification (no response expected)
     Event {
         /// Event name
@@ -62,7 +62,7 @@ pub enum MessageType {
         /// Event data
         data: serde_json::Value,
     },
-    
+
     /// Broadcast message to all peers
     Broadcast {
         /// Topic for filtering
@@ -70,13 +70,13 @@ pub enum MessageType {
         /// Broadcast data
         data: serde_json::Value,
     },
-    
+
     /// Heartbeat for connection monitoring
     Heartbeat {
         /// Sequence number
         seq: u64,
     },
-    
+
     /// Control message for protocol negotiation
     Control {
         /// Control operation
@@ -108,7 +108,7 @@ pub enum ControlOperation {
         /// Client metadata
         metadata: HashMap<String, String>,
     },
-    
+
     /// Handshake acknowledgment
     HelloAck {
         /// Negotiated protocol version
@@ -118,13 +118,13 @@ pub enum ControlOperation {
         /// Server metadata
         metadata: HashMap<String, String>,
     },
-    
+
     /// Graceful disconnect
     Goodbye {
         /// Reason for disconnect
         reason: String,
     },
-    
+
     /// Request compression mode change
     SetCompression {
         /// Enable/disable compression
@@ -132,7 +132,7 @@ pub enum ControlOperation {
         /// Compression algorithm (e.g., "gzip", "zstd")
         algorithm: Option<String>,
     },
-    
+
     /// Flow control
     FlowControl {
         /// Pause/resume message flow
@@ -180,59 +180,69 @@ impl Message {
             ttl: None,
         }
     }
-    
+
     /// Create a request message
     pub fn request(source: String, method: String, params: serde_json::Value) -> Self {
         let correlation_id = Uuid::new_v4();
-        Self::new(source, MessageType::Request {
-            correlation_id,
-            method,
-            params,
-        })
+        Self::new(
+            source,
+            MessageType::Request {
+                correlation_id,
+                method,
+                params,
+            },
+        )
     }
-    
+
     /// Create a response message
-    pub fn response(source: String, correlation_id: Uuid, result: Result<serde_json::Value, ErrorResponse>) -> Self {
-        Self::new(source, MessageType::Response {
-            correlation_id,
-            result,
-        })
+    pub fn response(
+        source: String,
+        correlation_id: Uuid,
+        result: Result<serde_json::Value, ErrorResponse>,
+    ) -> Self {
+        Self::new(
+            source,
+            MessageType::Response {
+                correlation_id,
+                result,
+            },
+        )
     }
-    
+
     /// Create an event message
     pub fn event(source: String, name: String, data: serde_json::Value) -> Self {
         Self::new(source, MessageType::Event { name, data })
     }
-    
+
     /// Create a broadcast message
     pub fn broadcast(source: String, topic: String, data: serde_json::Value) -> Self {
         Self::new(source, MessageType::Broadcast { topic, data })
     }
-    
+
     /// Set destination
     pub fn to(mut self, destination: String) -> Self {
         self.destination = Some(destination);
         self
     }
-    
+
     /// Add header
     pub fn with_header(mut self, key: String, value: String) -> Self {
         self.headers.insert(key, value);
         self
     }
-    
+
     /// Set priority
     pub fn with_priority(mut self, priority: u8) -> Self {
         self.priority = priority;
         self
     }
-    
+
     /// Set TTL
     pub fn with_ttl(mut self, ttl: u8) -> Self {
         self.ttl = Some(ttl);
         self
     }
-    
+
     /// Check if message has expired
     pub fn is_expired(&self) -> bool {
         if let Some(ttl) = self.ttl {
@@ -241,7 +251,7 @@ impl Message {
             false
         }
     }
-    
+
     /// Decrement TTL and return if message should be dropped
     pub fn decrement_ttl(&mut self) -> bool {
         if let Some(ttl) = &mut self.ttl {
@@ -261,7 +271,7 @@ impl Message {
 pub trait MessageCodec: Send + Sync {
     /// Encode a message to bytes
     fn encode(&self, msg: &Message) -> Result<Vec<u8>, crate::TransportError>;
-    
+
     /// Decode a message from bytes
     fn decode(&self, data: &[u8]) -> Result<Message, crate::TransportError>;
 }
@@ -271,10 +281,9 @@ pub struct BinaryCodec;
 
 impl MessageCodec for BinaryCodec {
     fn encode(&self, msg: &Message) -> Result<Vec<u8>, crate::TransportError> {
-        rmp_serde::to_vec(msg)
-            .map_err(|e| crate::TransportError::SerializationError(e.to_string()))
+        rmp_serde::to_vec(msg).map_err(|e| crate::TransportError::SerializationError(e.to_string()))
     }
-    
+
     fn decode(&self, data: &[u8]) -> Result<Message, crate::TransportError> {
         rmp_serde::from_slice(data)
             .map_err(|e| crate::TransportError::SerializationError(e.to_string()))
@@ -289,7 +298,7 @@ impl MessageCodec for JsonCodec {
         serde_json::to_vec(msg)
             .map_err(|e| crate::TransportError::SerializationError(e.to_string()))
     }
-    
+
     fn decode(&self, data: &[u8]) -> Result<Message, crate::TransportError> {
         serde_json::from_slice(data)
             .map_err(|e| crate::TransportError::SerializationError(e.to_string()))
@@ -299,34 +308,50 @@ impl MessageCodec for JsonCodec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_protocol_version_compatibility() {
-        let v1 = ProtocolVersion { major: 1, minor: 0, patch: 0 };
-        let v2 = ProtocolVersion { major: 1, minor: 1, patch: 0 };
-        let v3 = ProtocolVersion { major: 2, minor: 0, patch: 0 };
-        
+        let v1 = ProtocolVersion {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        };
+        let v2 = ProtocolVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        };
+        let v3 = ProtocolVersion {
+            major: 2,
+            minor: 0,
+            patch: 0,
+        };
+
         assert!(v1.is_compatible(&v2));
         assert!(!v1.is_compatible(&v3));
     }
-    
+
     #[test]
     fn test_message_creation() {
         let msg = Message::request(
             "agent1".to_string(),
             "compute".to_string(),
-            serde_json::json!({"input": 42})
+            serde_json::json!({"input": 42}),
         );
-        
+
         assert_eq!(msg.source, "agent1");
         assert!(matches!(msg.payload, MessageType::Request { .. }));
     }
-    
+
     #[test]
     fn test_message_ttl() {
-        let mut msg = Message::event("agent1".to_string(), "test".to_string(), serde_json::Value::Null)
-            .with_ttl(2);
-        
+        let mut msg = Message::event(
+            "agent1".to_string(),
+            "test".to_string(),
+            serde_json::Value::Null,
+        )
+        .with_ttl(2);
+
         assert!(!msg.is_expired());
         assert!(!msg.decrement_ttl());
         assert!(!msg.is_expired());
@@ -334,15 +359,19 @@ mod tests {
         assert!(msg.is_expired());
         assert!(msg.decrement_ttl());
     }
-    
+
     #[test]
     fn test_binary_codec() {
         let codec = BinaryCodec;
-        let msg = Message::event("test".to_string(), "event".to_string(), serde_json::json!({"data": "test"}));
-        
+        let msg = Message::event(
+            "test".to_string(),
+            "event".to_string(),
+            serde_json::json!({"data": "test"}),
+        );
+
         let encoded = codec.encode(&msg).unwrap();
         let decoded = codec.decode(&encoded).unwrap();
-        
+
         assert_eq!(msg.id, decoded.id);
         assert_eq!(msg.source, decoded.source);
     }

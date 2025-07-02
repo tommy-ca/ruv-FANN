@@ -26,7 +26,13 @@ struct Cli {
     config: Option<String>,
 
     /// Profile to use (dev, prod, test)
-    #[arg(short, long, global = true, env = "RUV_SWARM_PROFILE", default_value = "dev")]
+    #[arg(
+        short,
+        long,
+        global = true,
+        env = "RUV_SWARM_PROFILE",
+        default_value = "dev"
+    )]
     profile: Profile,
 
     /// Output format
@@ -64,7 +70,7 @@ enum Commands {
         /// Skip interactive setup
         #[arg(long)]
         non_interactive: bool,
-        
+
         /// Skip onboarding flow for backwards compatibility
         #[arg(long)]
         skip_onboarding: bool,
@@ -232,14 +238,7 @@ async fn main() -> Result<()> {
             watch,
         } => {
             orchestrate::execute(
-                &config,
-                &output,
-                strategy,
-                task,
-                max_agents,
-                timeout,
-                priority,
-                watch,
+                &config, &output, strategy, task, max_agents, timeout, priority, watch,
             )
             .await
         }
@@ -249,20 +248,25 @@ async fn main() -> Result<()> {
             agent_type,
             active_only,
             metrics,
-        } => {
-            status::execute(&config, &output, detailed, agent_type, active_only, metrics).await
-        }
+        } => status::execute(&config, &output, detailed, agent_type, active_only, metrics).await,
 
         Commands::Monitor {
             interval,
             filter,
             max_events: _,
             export: _,
-        } => monitor::execute(&config, &monitor::MonitorArgs {
-            filter,
-            watch: false,
-            interval,
-        }, &output).await,
+        } => {
+            monitor::execute(
+                &config,
+                &monitor::MonitorArgs {
+                    filter,
+                    watch: false,
+                    interval,
+                },
+                &output,
+            )
+            .await
+        }
 
         Commands::Completion { shell } => {
             generate_completion(shell);

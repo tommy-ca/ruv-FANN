@@ -1,11 +1,11 @@
 //! Example of real-time monitoring of Claude stream events
 
 use claude_parser::ClaudeStreamEvent;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::sync::mpsc;
+use dashmap::DashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use dashmap::DashMap;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone)]
 struct RealTimeStats {
@@ -24,31 +24,34 @@ impl RealTimeStats {
             start_time: Instant::now(),
         }
     }
-    
+
     fn update_tool_call(&self, tool_name: String) {
         *self.tool_calls.entry(tool_name).or_insert(0) += 1;
     }
-    
+
     fn update_thinking(&self, tokens: usize) {
         *self.thinking_tokens.entry("total".to_string()).or_insert(0) += tokens as u64;
-        *self.thinking_tokens.entry("sequences".to_string()).or_insert(0) += 1;
+        *self
+            .thinking_tokens
+            .entry("sequences".to_string())
+            .or_insert(0) += 1;
     }
-    
+
     fn update_error(&self, error_type: String) {
         *self.errors.entry(error_type).or_insert(0) += 1;
     }
-    
+
     fn display(&self) {
         let elapsed = self.start_time.elapsed();
-        
+
         println!("\n=== Real-Time Stats ({}s) ===", elapsed.as_secs());
-        
+
         // Tool usage
         println!("\nTool Usage:");
         for entry in self.tool_calls.iter() {
             println!("  {}: {} calls", entry.key(), entry.value());
         }
-        
+
         // Thinking stats
         if let Some(total) = self.thinking_tokens.get("total") {
             if let Some(sequences) = self.thinking_tokens.get("sequences") {
@@ -59,7 +62,7 @@ impl RealTimeStats {
                 println!("  Average tokens/sequence: {:.1}", avg);
             }
         }
-        
+
         // Error stats
         if !self.errors.is_empty() {
             println!("\nErrors:");
@@ -67,7 +70,7 @@ impl RealTimeStats {
                 println!("  {}: {} occurrences", entry.key(), entry.value());
             }
         }
-        
+
         println!("\n{}", "-".repeat(40));
     }
 }
@@ -76,14 +79,14 @@ impl RealTimeStats {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Simulated Claude stream for demonstration
     let sample_stream = generate_sample_stream();
-    
+
     // Create channels for real-time processing
     let (event_tx, mut event_rx) = mpsc::channel::<ClaudeStreamEvent>(100);
-    
+
     // Create real-time stats tracker
     let stats = RealTimeStats::new();
     let stats_clone = stats.clone();
-    
+
     // Spawn stats display task
     let display_handle = tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
@@ -92,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             stats_clone.display();
         }
     });
-    
+
     // Spawn event processor
     let stats_for_processor = stats.clone();
     let processor_handle = tokio::spawn(async move {
@@ -100,18 +103,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             process_event_realtime(&event, &stats_for_processor);
         }
     });
-    
+
     // Parse stream with real-time event emission
     println!("Starting real-time monitoring of Claude stream...\n");
-    
+
     let reader = BufReader::new(sample_stream.as_bytes());
     let mut lines = reader.lines();
-    
+
     while let Some(line) = lines.next_line().await? {
         if line.trim().is_empty() {
             continue;
         }
-        
+
         // Parse event
         if let Ok(event) = serde_json::from_str::<ClaudeStreamEvent>(&line) {
             // Display immediate feedback for certain events
@@ -127,23 +130,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 _ => {}
             }
-            
+
             // Send to processor
             event_tx.send(event).await?;
         }
-        
+
         // Simulate real-time delay
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
     }
-    
+
     // Cleanup
     drop(event_tx);
     let _ = processor_handle.await;
     display_handle.abort();
-    
+
     println!("\n=== Final Statistics ===");
     stats.display();
-    
+
     Ok(())
 }
 

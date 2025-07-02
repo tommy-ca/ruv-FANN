@@ -61,22 +61,19 @@ pub mod topology;
 
 // Re-export commonly used types
 pub use agent::{
-    Agent, AgentMessage, AgentMetadata, AgentMetrics, BoxedAgent,
-    CognitivePattern, ErasedAgent, HealthStatus, MessageType, ResourceRequirements,
+    Agent, AgentMessage, AgentMetadata, AgentMetrics, BoxedAgent, CognitivePattern, ErasedAgent,
+    HealthStatus, MessageType, ResourceRequirements,
 };
 
 pub use error::{Result, SwarmError};
 
 #[cfg(feature = "std")]
-pub use swarm::{
-    Swarm, SwarmConfig, SwarmMetrics,
-};
+pub use swarm::{Swarm, SwarmConfig, SwarmMetrics};
 
 pub use topology::{Topology, TopologyType};
 
 pub use task::{
-    DistributionStrategy, TaskPriority as Priority, Task, TaskId,
-    TaskResult, TaskStatus,
+    DistributionStrategy, Task, TaskId, TaskPriority as Priority, TaskResult, TaskStatus,
 };
 
 /// Prelude module for convenient imports
@@ -85,7 +82,7 @@ pub mod prelude {
     pub use crate::error::Result;
     #[cfg(feature = "std")]
     pub use crate::swarm::{Swarm, SwarmConfig};
-    pub use crate::task::{TaskPriority as Priority, Task, TaskId};
+    pub use crate::task::{Task, TaskId, TaskPriority as Priority};
 }
 
 /// Version information
@@ -99,12 +96,12 @@ impl Metadata {
     pub fn name() -> &'static str {
         env!("CARGO_PKG_NAME")
     }
-    
+
     /// Get the library version
     pub fn version() -> &'static str {
         VERSION
     }
-    
+
     /// Get the library description
     pub fn description() -> &'static str {
         env!("CARGO_PKG_DESCRIPTION")

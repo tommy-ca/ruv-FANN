@@ -1,10 +1,10 @@
 //! Integration tests for the ML training pipeline
 
 use ruv_swarm_ml_training::{
-    StreamEvent, EventType, PerformanceMetrics, PromptData,
-    StreamDataLoader, LSTMModel, TCNModel, NBEATSModel, StackType,
-    HyperparameterOptimizer, SearchSpace, ParameterRange, OptimizationMethod,
-    ModelEvaluator, TrainingPipeline, TrainingConfig, NeuroDivergentModel,
+    EventType, HyperparameterOptimizer, LSTMModel, ModelEvaluator, NBEATSModel,
+    NeuroDivergentModel, OptimizationMethod, ParameterRange, PerformanceMetrics, PromptData,
+    SearchSpace, StackType, StreamDataLoader, StreamEvent, TCNModel, TrainingConfig,
+    TrainingPipeline,
 };
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -15,35 +15,37 @@ fn create_test_events() -> Vec<StreamEvent> {
         .unwrap()
         .as_secs();
 
-    (0..200).map(|i| {
-        StreamEvent {
-            timestamp: base_time + (i * 300), // 5 minute intervals
-            agent_id: format!("test_agent_{}", i % 3),
-            event_type: match i % 4 {
-                0 => EventType::TaskStarted,
-                1 => EventType::TaskCompleted,
-                2 => EventType::PromptGenerated,
-                _ => EventType::ResponseReceived,
-            },
-            performance_metrics: PerformanceMetrics {
-                latency_ms: 30.0 + 20.0 * ((i as f64 * 0.1).sin()),
-                tokens_per_second: 120.0 - 30.0 * ((i as f64 * 0.2).cos()),
-                memory_usage_mb: 200.0 + 50.0 * ((i as f64 * 0.05).sin()),
-                cpu_usage_percent: 35.0 + 15.0 * ((i as f64 * 0.15).cos()),
-                success_rate: 0.90 + 0.08 * ((i as f64 * 0.3).sin()),
-            },
-            prompt_data: if i % 3 == 0 {
-                Some(PromptData {
-                    prompt_text: format!("Test prompt {}", i),
-                    prompt_tokens: 40 + (i % 20),
-                    response_tokens: 80 + (i % 40),
-                    quality_score: 0.75 + 0.2 * ((i as f64 * 0.25).sin()),
-                })
-            } else {
-                None
-            },
-        }
-    }).collect()
+    (0..200)
+        .map(|i| {
+            StreamEvent {
+                timestamp: base_time + (i * 300), // 5 minute intervals
+                agent_id: format!("test_agent_{}", i % 3),
+                event_type: match i % 4 {
+                    0 => EventType::TaskStarted,
+                    1 => EventType::TaskCompleted,
+                    2 => EventType::PromptGenerated,
+                    _ => EventType::ResponseReceived,
+                },
+                performance_metrics: PerformanceMetrics {
+                    latency_ms: 30.0 + 20.0 * ((i as f64 * 0.1).sin()),
+                    tokens_per_second: 120.0 - 30.0 * ((i as f64 * 0.2).cos()),
+                    memory_usage_mb: 200.0 + 50.0 * ((i as f64 * 0.05).sin()),
+                    cpu_usage_percent: 35.0 + 15.0 * ((i as f64 * 0.15).cos()),
+                    success_rate: 0.90 + 0.08 * ((i as f64 * 0.3).sin()),
+                },
+                prompt_data: if i % 3 == 0 {
+                    Some(PromptData {
+                        prompt_text: format!("Test prompt {}", i),
+                        prompt_tokens: 40 + (i % 20),
+                        response_tokens: 80 + (i % 40),
+                        quality_score: 0.75 + 0.2 * ((i as f64 * 0.25).sin()),
+                    })
+                } else {
+                    None
+                },
+            }
+        })
+        .collect()
 }
 
 #[tokio::test]
@@ -227,7 +229,7 @@ fn test_model_names() {
 
     let tcn = TCNModel::new(vec![64, 64], 3);
     assert_eq!(tcn.name(), "TCN");
-    
+
     let nbeats = NBEATSModel::new(vec![StackType::Trend], 4);
     assert_eq!(nbeats.name(), "N-BEATS");
 }

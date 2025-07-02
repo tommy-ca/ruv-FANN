@@ -3,7 +3,10 @@
 use crate::agent::AgentId;
 
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, string::String, vec, vec::Vec, collections::BTreeMap as HashMap, collections::BTreeSet as HashSet};
+use alloc::{
+    boxed::Box, collections::BTreeMap as HashMap, collections::BTreeSet as HashSet, string::String,
+    vec, vec::Vec,
+};
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
 
@@ -53,11 +56,11 @@ impl Topology {
             hierarchy: None,
         }
     }
-    
+
     /// Create a mesh topology where all agents are connected
     pub fn mesh(agents: &[AgentId]) -> Self {
         let mut topology = Topology::new(TopologyType::Mesh);
-        
+
         for agent in agents {
             let mut connections = HashSet::new();
             for other in agents {
@@ -67,71 +70,75 @@ impl Topology {
             }
             topology.connections.insert(agent.clone(), connections);
         }
-        
+
         topology
     }
-    
+
     /// Create a star topology with a central coordinator
     pub fn star(center: AgentId, agents: &[AgentId]) -> Self {
         let mut topology = Topology::new(TopologyType::Star);
-        
+
         // Center connects to all agents
         let center_connections: HashSet<AgentId> = agents.iter().cloned().collect();
-        topology.connections.insert(center.clone(), center_connections);
-        
+        topology
+            .connections
+            .insert(center.clone(), center_connections);
+
         // All agents connect only to center
         for agent in agents {
             let mut connections = HashSet::new();
             connections.insert(center.clone());
             topology.connections.insert(agent.clone(), connections);
         }
-        
+
         topology
     }
-    
+
     /// Create a pipeline topology
     pub fn pipeline(agents: &[AgentId]) -> Self {
         let mut topology = Topology::new(TopologyType::Pipeline);
-        
+
         for (i, agent) in agents.iter().enumerate() {
             let mut connections = HashSet::new();
-            
+
             // Connect to previous agent
             if i > 0 {
                 connections.insert(agents[i - 1].clone());
             }
-            
+
             // Connect to next agent
             if i < agents.len() - 1 {
                 connections.insert(agents[i + 1].clone());
             }
-            
+
             topology.connections.insert(agent.clone(), connections);
         }
-        
+
         topology
     }
-    
+
     /// Add a connection between two agents
     pub fn add_connection(&mut self, from: AgentId, to: AgentId) {
-        self.connections.entry(from.clone())
+        self.connections
+            .entry(from.clone())
             .or_insert_with(HashSet::new)
             .insert(to.clone());
-        
+
         // For undirected graphs, add reverse connection
         if self.topology_type != TopologyType::Pipeline {
-            self.connections.entry(to)
+            self.connections
+                .entry(to)
                 .or_insert_with(HashSet::new)
                 .insert(from);
         }
     }
-    
+
     /// Remove a connection between two agents
     pub fn remove_connection(&mut self, from: &AgentId, to: &AgentId) {
         if let Some(connections) = self.connections.get_mut(from) {
             connections.remove(to);
         }
-        
+
         // For undirected graphs, remove reverse connection
         if self.topology_type != TopologyType::Pipeline {
             if let Some(connections) = self.connections.get_mut(to) {
@@ -139,55 +146,59 @@ impl Topology {
             }
         }
     }
-    
+
     /// Get all agents connected to a specific agent
     pub fn get_neighbors(&self, agent: &AgentId) -> Option<&HashSet<AgentId>> {
         self.connections.get(agent)
     }
-    
+
     /// Check if two agents are connected
     pub fn are_connected(&self, from: &AgentId, to: &AgentId) -> bool {
-        self.connections.get(from)
+        self.connections
+            .get(from)
             .map(|connections| connections.contains(to))
             .unwrap_or(false)
     }
-    
+
     /// Add an agent to a group
     pub fn add_to_group(&mut self, group_name: impl Into<String>, agent: AgentId) {
-        self.groups.entry(group_name.into())
+        self.groups
+            .entry(group_name.into())
             .or_insert_with(Vec::new)
             .push(agent);
     }
-    
+
     /// Get all agents in a group
     pub fn get_group(&self, group_name: &str) -> Option<&Vec<AgentId>> {
         self.groups.get(group_name)
     }
-    
+
     /// Get the total number of connections in the topology
     pub fn connection_count(&self) -> usize {
-        self.connections.values()
+        self.connections
+            .values()
             .map(|conns| conns.len())
-            .sum::<usize>() / 2  // Divide by 2 for undirected graphs
+            .sum::<usize>()
+            / 2 // Divide by 2 for undirected graphs
     }
-    
+
     /// Check if the topology is fully connected
     pub fn is_fully_connected(&self) -> bool {
         let agent_count = self.connections.len();
         if agent_count == 0 {
             return true;
         }
-        
+
         // Use BFS to check connectivity
         let start = self.connections.keys().next().unwrap();
         let mut visited = HashSet::new();
         let mut queue = vec![start.clone()];
-        
+
         while let Some(current) = queue.pop() {
             if !visited.insert(current.clone()) {
                 continue;
             }
-            
+
             if let Some(neighbors) = self.connections.get(&current) {
                 for neighbor in neighbors {
                     if !visited.contains(neighbor) {
@@ -196,7 +207,7 @@ impl Topology {
                 }
             }
         }
-        
+
         visited.len() == agent_count
     }
 }
@@ -221,39 +232,39 @@ impl HierarchyNode {
             level,
         }
     }
-    
+
     /// Add a child node
     pub fn add_child(&mut self, child: HierarchyNode) {
         self.children.push(child);
     }
-    
+
     /// Find a node by agent ID
     pub fn find(&self, agent_id: &AgentId) -> Option<&HierarchyNode> {
         if &self.agent_id == agent_id {
             return Some(self);
         }
-        
+
         for child in &self.children {
             if let Some(found) = child.find(agent_id) {
                 return Some(found);
             }
         }
-        
+
         None
     }
-    
+
     /// Get all agents at a specific level
     pub fn agents_at_level(&self, target_level: usize) -> Vec<&AgentId> {
         let mut agents = Vec::new();
-        
+
         if self.level == target_level {
             agents.push(&self.agent_id);
         }
-        
+
         for child in &self.children {
             agents.extend(child.agents_at_level(target_level));
         }
-        
+
         agents
     }
 }

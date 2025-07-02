@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ruv_swarm_core::SwarmConfig;
-use ruv_swarm_mcp::{McpServer, McpConfig, orchestrator::SwarmOrchestrator};
+use ruv_swarm_mcp::{orchestrator::SwarmOrchestrator, McpConfig, McpServer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -16,13 +16,13 @@ async fn main() -> anyhow::Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    
+
     // Create swarm config
     let swarm_config = SwarmConfig::default();
-    
+
     // Create orchestrator
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config));
-    
+
     // Create MCP config
     let mcp_config = McpConfig {
         bind_addr: "127.0.0.1:3000".parse()?,
@@ -30,15 +30,15 @@ async fn main() -> anyhow::Result<()> {
         request_timeout_secs: 300,
         debug: true,
     };
-    
+
     // Create and start MCP server
     let server = McpServer::new(orchestrator, mcp_config);
-    
+
     tracing::info!("Starting RUV-Swarm MCP server on http://127.0.0.1:3000");
     tracing::info!("WebSocket endpoint: ws://127.0.0.1:3000/mcp");
     tracing::info!("Available tools: http://127.0.0.1:3000/tools");
-    
+
     server.start().await?;
-    
+
     Ok(())
 }

@@ -1,8 +1,7 @@
 //! Basic example of using the ML training pipeline
 
 use ruv_swarm_ml_training::{
-    StreamEvent, EventType, PerformanceMetrics, PromptData,
-    TrainingPipeline, TrainingConfig,
+    EventType, PerformanceMetrics, PromptData, StreamEvent, TrainingConfig, TrainingPipeline,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -17,14 +16,14 @@ fn generate_mock_events() -> Vec<StreamEvent> {
     for i in 0..1000 {
         let timestamp = base_time + (i * 60); // 1 minute intervals
         let hour = (timestamp / 3600) % 24;
-        
+
         // Simulate performance variations based on time of day
         let latency_base = 50.0 + 30.0 * (hour as f64 / 12.0).sin();
         let tokens_base = 100.0 - 20.0 * (hour as f64 / 12.0).cos();
-        
+
         // Add some noise
         let noise = ((i * 17) % 100) as f64 / 100.0 - 0.5;
-        
+
         events.push(StreamEvent {
             timestamp,
             agent_id: format!("agent_{}", i % 5),
@@ -92,8 +91,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nDataset Info:");
     println!("  Total Samples: {}", result.dataset_metadata.total_samples);
     println!("  Feature Count: {}", result.dataset_metadata.feature_count);
-    println!("  Sequence Length: {}", result.dataset_metadata.sequence_length);
-    println!("  Number of Agents: {}", result.dataset_metadata.agents.len());
+    println!(
+        "  Sequence Length: {}",
+        result.dataset_metadata.sequence_length
+    );
+    println!(
+        "  Number of Agents: {}",
+        result.dataset_metadata.agents.len()
+    );
 
     println!("\nModel Performance Scores:");
     for model_score in &result.model_scores {

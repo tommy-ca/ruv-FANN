@@ -102,9 +102,7 @@ pub async fn execute(
 
     // Generate agent ID and name
     let agent_id = Uuid::new_v4().to_string();
-    let agent_name = name.unwrap_or_else(|| {
-        format!("{}-{}", agent_type, &agent_id[..8])
-    });
+    let agent_name = name.unwrap_or_else(|| format!("{}-{}", agent_type, &agent_id[..8]));
 
     // Merge default capabilities with provided ones
     let mut all_capabilities = get_default_capabilities(&agent_type);
@@ -115,7 +113,9 @@ pub async fn execute(
     // Validate parent agent if hierarchical topology
     if swarm_config.topology == "hierarchical" && parent.is_none() && agent_type != "orchestrator" {
         output.error("Hierarchical topology requires a parent agent ID (except for orchestrators)");
-        return Err(anyhow::anyhow!("Parent agent required for hierarchical topology"));
+        return Err(anyhow::anyhow!(
+            "Parent agent required for hierarchical topology"
+        ));
     }
 
     if let Some(parent_id) = &parent {
@@ -147,30 +147,39 @@ pub async fn execute(
         ("Name".to_string(), agent.name.clone()),
         ("Type".to_string(), agent.agent_type.clone()),
         ("Capabilities".to_string(), agent.capabilities.join(", ")),
-        ("Parent".to_string(), agent.parent_id.clone().unwrap_or_else(|| "None".to_string())),
-        ("Memory".to_string(), agent.memory.clone().unwrap_or_else(|| "None".to_string())),
+        (
+            "Parent".to_string(),
+            agent
+                .parent_id
+                .clone()
+                .unwrap_or_else(|| "None".to_string()),
+        ),
+        (
+            "Memory".to_string(),
+            agent.memory.clone().unwrap_or_else(|| "None".to_string()),
+        ),
     ]);
 
     // Spawn the agent
     let spinner = output.spinner("Initializing agent...");
-    
+
     // Initialize agent runtime
     initialize_agent_runtime(&agent, config).await?;
-    
+
     // Register with swarm
     register_agent_with_swarm(&agent, &swarm_config).await?;
-    
+
     // Set up agent connections
     setup_agent_connections(&agent, &swarm_config).await?;
-    
+
     // Load initial memory if provided
     if let Some(memory_content) = &agent.memory {
         load_agent_memory(&agent, memory_content).await?;
     }
-    
+
     // Start agent heartbeat
     start_agent_heartbeat(&agent, config).await?;
-    
+
     if let Some(pb) = spinner {
         pb.finish_with_message("Agent spawned successfully");
     }
@@ -189,11 +198,20 @@ pub async fn execute(
 
     // Show next steps
     output.section("Next Steps");
-    output.list(&[
-        format!("View agent status: ruv-swarm status --agent-type {}", agent_type),
-        format!("Assign task to agent: ruv-swarm orchestrate <strategy> <task>"),
-        format!("Monitor agent activity: ruv-swarm monitor --filter agent:{}", agent.id),
-    ], true);
+    output.list(
+        &[
+            format!(
+                "View agent status: ruv-swarm status --agent-type {}",
+                agent_type
+            ),
+            format!("Assign task to agent: ruv-swarm orchestrate <strategy> <task>"),
+            format!(
+                "Monitor agent activity: ruv-swarm monitor --filter agent:{}",
+                agent.id
+            ),
+        ],
+        true,
+    );
 
     Ok(())
 }
@@ -269,14 +287,14 @@ async fn load_current_swarm(output: &OutputHandler) -> Result<crate::commands::i
     let config_dir = directories::ProjectDirs::from("com", "ruv-fann", "ruv-swarm")
         .map(|dirs| dirs.data_local_dir().to_path_buf())
         .unwrap_or_else(|| std::path::Path::new(".").to_path_buf());
-    
+
     let current_file = config_dir.join("current-swarm.json");
-    
+
     if !current_file.exists() {
         output.error("No active swarm found. Run 'ruv-swarm init' first.");
         return Err(anyhow::anyhow!("No active swarm"));
     }
-    
+
     let content = std::fs::read_to_string(current_file)?;
     serde_json::from_str(&content).context("Failed to parse swarm configuration")
 }
@@ -285,7 +303,7 @@ async fn get_agent_count(swarm_config: &crate::commands::init::SwarmInit) -> Res
     // In a real implementation, this would query the persistence backend
     // For now, we'll simulate by reading from a file
     let agents_file = get_agents_file(swarm_config)?;
-    
+
     if agents_file.exists() {
         let content = std::fs::read_to_string(&agents_file)?;
         let agents: Vec<Agent> = serde_json::from_str(&content).unwrap_or_default();
@@ -295,9 +313,12 @@ async fn get_agent_count(swarm_config: &crate::commands::init::SwarmInit) -> Res
     }
 }
 
-async fn agent_exists(agent_id: &str, swarm_config: &crate::commands::init::SwarmInit) -> Result<bool> {
+async fn agent_exists(
+    agent_id: &str,
+    swarm_config: &crate::commands::init::SwarmInit,
+) -> Result<bool> {
     let agents_file = get_agents_file(swarm_config)?;
-    
+
     if agents_file.exists() {
         let content = std::fs::read_to_string(&agents_file)?;
         let agents: Vec<Agent> = serde_json::from_str(&content).unwrap_or_default();
@@ -311,7 +332,7 @@ fn get_agents_file(swarm_config: &crate::commands::init::SwarmInit) -> Result<st
     let config_dir = directories::ProjectDirs::from("com", "ruv-fann", "ruv-swarm")
         .map(|dirs| dirs.data_local_dir().to_path_buf())
         .unwrap_or_else(|| std::path::Path::new(".").to_path_buf());
-    
+
     Ok(config_dir.join(format!("agents-{}.json", swarm_config.swarm_id)))
 }
 
@@ -327,19 +348,19 @@ async fn register_agent_with_swarm(
 ) -> Result<()> {
     // Add agent to persistence
     let agents_file = get_agents_file(swarm_config)?;
-    
+
     let mut agents: Vec<Agent> = if agents_file.exists() {
         let content = std::fs::read_to_string(&agents_file)?;
         serde_json::from_str(&content).unwrap_or_default()
     } else {
         Vec::new()
     };
-    
+
     agents.push(agent.clone());
-    
+
     let content = serde_json::to_string_pretty(&agents)?;
     std::fs::write(&agents_file, content)?;
-    
+
     Ok(())
 }
 
@@ -367,7 +388,7 @@ async fn setup_agent_connections(
         }
         _ => {}
     }
-    
+
     Ok(())
 }
 

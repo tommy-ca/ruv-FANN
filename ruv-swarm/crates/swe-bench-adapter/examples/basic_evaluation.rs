@@ -1,11 +1,11 @@
 //! Basic example of using the SWE-Bench adapter
 
 use anyhow::Result;
-use swe_bench_adapter::{
-    ClaudePromptGenerator, DifficultyLevel, InstanceLoader, PatchEvaluator,
-    SWEBenchAdapter, SWEBenchConfig, SWEBenchInstance, StreamParser,
-};
 use std::path::PathBuf;
+use swe_bench_adapter::{
+    ClaudePromptGenerator, DifficultyLevel, InstanceLoader, PatchEvaluator, SWEBenchAdapter,
+    SWEBenchConfig, SWEBenchInstance, StreamParser,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -13,29 +13,29 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter("swe_bench_adapter=debug")
         .init();
-    
+
     println!("SWE-Bench Adapter Example\n");
-    
+
     // Example 1: Load and categorize instances
     example_instance_loading().await?;
-    
+
     // Example 2: Generate prompts
     example_prompt_generation()?;
-    
+
     // Example 3: Parse execution streams
     example_stream_parsing()?;
-    
+
     // Example 4: Full evaluation pipeline
     example_full_evaluation().await?;
-    
+
     Ok(())
 }
 
 async fn example_instance_loading() -> Result<()> {
     println!("=== Example 1: Loading SWE-Bench Instances ===\n");
-    
+
     let mut loader = InstanceLoader::new("./swe-bench-instances")?;
-    
+
     // Load a specific instance
     match loader.load_instance("test-001").await {
         Ok(instance) => {
@@ -50,7 +50,7 @@ async fn example_instance_loading() -> Result<()> {
             // The loader will create a mock instance for demonstration
         }
     }
-    
+
     // Load instances with filtering
     let filter = swe_bench_adapter::loader::InstanceFilter {
         difficulty: Some(DifficultyLevel::Medium),
@@ -59,24 +59,24 @@ async fn example_instance_loading() -> Result<()> {
         max_files: Some(5),
         keywords: vec!["fix".to_string()],
     };
-    
+
     let instances = loader.load_instances(Some(filter)).await?;
     println!("\nFiltered instances: {} found", instances.len());
-    
+
     println!();
     Ok(())
 }
 
 fn example_prompt_generation() -> Result<()> {
     println!("=== Example 2: Prompt Generation ===\n");
-    
+
     // Create a test instance
     let instance = create_test_instance();
-    
+
     // Initialize prompt generator
     let config = swe_bench_adapter::PromptConfig::default();
     let generator = ClaudePromptGenerator::new(config);
-    
+
     // Generate prompts for different difficulty levels
     for difficulty in [
         DifficultyLevel::Easy,
@@ -86,20 +86,23 @@ fn example_prompt_generation() -> Result<()> {
     ] {
         let mut test_instance = instance.clone();
         test_instance.difficulty = difficulty;
-        
+
         let prompt = generator.generate_prompt(&test_instance)?;
         println!("Prompt for {} difficulty:", difficulty);
         println!("- Template: {:?}", prompt.template_used);
         println!("- Token count: {}", prompt.token_count);
-        println!("- First 100 chars: {}...\n", &prompt.content[..100.min(prompt.content.len())]);
+        println!(
+            "- First 100 chars: {}...\n",
+            &prompt.content[..100.min(prompt.content.len())]
+        );
     }
-    
+
     Ok(())
 }
 
 fn example_stream_parsing() -> Result<()> {
     println!("=== Example 3: Stream Parsing ===\n");
-    
+
     let claude_output = r#"
 Starting task execution for fixing memory leak...
 
@@ -124,11 +127,11 @@ Test results: 3 passed, 1 failed
 Tokens: 2567
 Task completed with 4 tool calls.
 "#;
-    
+
     // Parse the output
     let mut parser = StreamParser::new();
     let metrics = parser.parse_stream(claude_output)?;
-    
+
     println!("Stream parsing results:");
     println!("- Total tokens: {}", metrics.total_tokens);
     println!("- Tool calls: {}", metrics.tool_calls);
@@ -139,27 +142,33 @@ Task completed with 4 tool calls.
     println!("  - Deletes: {}", metrics.file_operations.deletes);
     println!("- Errors: {:?}", metrics.errors);
     println!("- Warnings: {:?}", metrics.warnings);
-    
+
     // Use metrics collector for aggregation
     use swe_bench_adapter::stream_parser::MetricsCollector;
-    
+
     let mut collector = MetricsCollector::new();
     collector.parse_stream(claude_output)?;
-    
+
     let summary = collector.get_summary();
     println!("\nMetrics summary:");
-    println!("- Average tokens per call: {:.2}", summary.avg_tokens_per_call);
-    println!("- File operation ratio: {:.2}", summary.file_operation_ratio);
+    println!(
+        "- Average tokens per call: {:.2}",
+        summary.avg_tokens_per_call
+    );
+    println!(
+        "- File operation ratio: {:.2}",
+        summary.file_operation_ratio
+    );
     println!("- Error rate: {:.2}", summary.error_rate);
     println!("- Most common operation: {}", summary.most_common_operation);
-    
+
     println!();
     Ok(())
 }
 
 async fn example_full_evaluation() -> Result<()> {
     println!("=== Example 4: Full Evaluation Pipeline ===\n");
-    
+
     // Configure the adapter
     let config = SWEBenchConfig {
         instances_path: PathBuf::from("./swe-bench-instances"),
@@ -183,36 +192,36 @@ async fn example_full_evaluation() -> Result<()> {
             profile_enabled: false,
         },
     };
-    
+
     // Create adapter
     let adapter = SWEBenchAdapter::new(config).await?;
-    
+
     // Create a mock agent
     use ruv_swarm_core::{agent::Agent, AgentId};
-    
+
     // Note: In a real scenario, you would use an actual agent implementation
     // that implements the Agent trait
-    
+
     // Note: In a real scenario, you would evaluate an actual instance
     println!("Full evaluation pipeline configured successfully!");
     println!("In production, you would call:");
     println!("  adapter.evaluate_instance(\"instance-id\", &agent).await?");
     println!("\nOr for batch evaluation:");
     println!("  adapter.evaluate_batch(instance_ids, agents, true).await?");
-    
+
     // Get statistics (empty in this example)
     let stats = adapter.get_statistics().await?;
     println!("\nEvaluation statistics:");
     println!("- Total evaluations: {}", stats.total_evaluations);
     println!("- Success rate: {:.2}%", stats.success_rate * 100.0);
-    
+
     Ok(())
 }
 
 fn create_test_instance() -> SWEBenchInstance {
-    use swe_bench_adapter::loader::InstanceMetrics;
     use std::collections::HashMap;
-    
+    use swe_bench_adapter::loader::InstanceMetrics;
+
     SWEBenchInstance {
         instance_id: "example-001".to_string(),
         repo: "python/cpython".to_string(),
@@ -229,7 +238,8 @@ Steps to reproduce:
 
 Expected: Memory should be properly freed
 Actual: Memory usage increases with each cycle
-"#.to_string(),
+"#
+        .to_string(),
         hints: vec![
             "Check the weakref callback handling".to_string(),
             "Look at the reference counting logic".to_string(),
@@ -244,7 +254,8 @@ Actual: Memory usage increases with each cycle
 +        _PyDict_CheckConsistency(mp);
      }
      return 0;
- }"#.to_string(),
+ }"#
+        .to_string(),
         test_directives: vec![
             "python -m pytest test_dict.py::test_weakref_leak".to_string(),
             "python -m pytest test_dict.py::test_gc_behavior".to_string(),

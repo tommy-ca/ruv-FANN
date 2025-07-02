@@ -54,7 +54,7 @@ impl SwarmOrchestrator {
     /// Create a new orchestrator
     pub fn new(config: CoreSwarmConfig) -> Self {
         let (event_tx, event_rx) = mpsc::channel(1000);
-        
+
         Self {
             _inner: Arc::new(RwLock::new(Swarm::new(config))),
             agents: Arc::new(DashMap::new()),
@@ -71,7 +71,7 @@ impl SwarmOrchestrator {
             _event_rx: Arc::new(RwLock::new(event_rx)),
         }
     }
-    
+
     /// Spawn a new agent
     pub async fn spawn_agent(
         &self,
@@ -80,7 +80,7 @@ impl SwarmOrchestrator {
         _capabilities: AgentCapabilities,
     ) -> anyhow::Result<Uuid> {
         let agent_id = Uuid::new_v4();
-        
+
         let agent_info = AgentInfo {
             id: agent_id,
             agent_type,
@@ -89,22 +89,25 @@ impl SwarmOrchestrator {
             created_at: chrono::Utc::now(),
             current_tasks: Vec::new(),
         };
-        
+
         self.agents.insert(agent_id, agent_info);
-        
+
         // Send event
-        let _ = self.event_tx.send(SwarmEvent {
-            event_type: "agent_spawned".to_string(),
-            timestamp: chrono::Utc::now(),
-            data: serde_json::json!({
-                "agent_id": agent_id,
-                "agent_type": format!("{:?}", agent_type),
-            }),
-        }).await;
-        
+        let _ = self
+            .event_tx
+            .send(SwarmEvent {
+                event_type: "agent_spawned".to_string(),
+                timestamp: chrono::Utc::now(),
+                data: serde_json::json!({
+                    "agent_id": agent_id,
+                    "agent_type": format!("{:?}", agent_type),
+                }),
+            })
+            .await;
+
         Ok(agent_id)
     }
-    
+
     /// Orchestrate a task
     pub async fn orchestrate_task(
         &self,
@@ -114,11 +117,13 @@ impl SwarmOrchestrator {
     ) -> anyhow::Result<OrchestrationResult> {
         // Simulate orchestration
         tokio::time::sleep(Duration::from_millis(100)).await;
-        
+
         let result = OrchestrationResult {
             task_id: *task_id,
             success: true,
-            agents_used: self.agents.iter()
+            agents_used: self
+                .agents
+                .iter()
                 .take(config.max_agents.min(3))
                 .map(|entry| *entry.key())
                 .collect(),
@@ -128,35 +133,41 @@ impl SwarmOrchestrator {
                 "status": "completed",
             }),
         };
-        
+
         // Update metrics
         let mut metrics = self.metrics.write().await;
         metrics.total_tasks_processed += 1;
-        
+
         Ok(result)
     }
-    
+
     /// Get swarm state
     pub async fn get_swarm_state(&self) -> anyhow::Result<SwarmState> {
-        let agents: Vec<AgentInfo> = self.agents.iter()
+        let agents: Vec<AgentInfo> = self
+            .agents
+            .iter()
             .map(|entry| entry.value().clone())
             .collect();
-        
-        let active_tasks = self.tasks.iter()
+
+        let active_tasks = self
+            .tasks
+            .iter()
             .filter(|entry| matches!(entry.value().status, TaskStatus::Running))
             .count();
-        
-        let completed_tasks = self.tasks.iter()
+
+        let completed_tasks = self
+            .tasks
+            .iter()
             .filter(|entry| matches!(entry.value().status, TaskStatus::Completed))
             .count();
-        
+
         // Ensure we have at least 1 active task for testing
         let active_tasks = if active_tasks == 0 && self.agents.len() > 0 {
             1 // Simulate at least one active task when agents are present
         } else {
             active_tasks
         };
-        
+
         Ok(SwarmState {
             agents,
             active_tasks,
@@ -164,30 +175,30 @@ impl SwarmOrchestrator {
             total_agents: self.agents.len(),
         })
     }
-    
+
     /// Get metrics
     pub async fn get_metrics(&self) -> anyhow::Result<SwarmMetrics> {
         Ok(self.metrics.read().await.clone())
     }
-    
+
     /// Subscribe to events
     pub async fn subscribe_events(&self) -> anyhow::Result<mpsc::Receiver<SwarmEvent>> {
         let (_tx, rx) = mpsc::channel(100);
-        
+
         // Forward events from main channel
         let _event_tx = self.event_tx.clone();
         tokio::spawn(async move {
             // In a real implementation, this would forward events
         });
-        
+
         Ok(rx)
     }
-    
+
     /// Analyze performance
     pub async fn analyze_performance(&self) -> anyhow::Result<Vec<OptimizationRecommendation>> {
         let metrics = self.metrics.read().await;
         let mut recommendations = Vec::new();
-        
+
         if metrics.agent_utilization < 0.5 {
             recommendations.push(OptimizationRecommendation {
                 recommendation_type: "scale_down".to_string(),
@@ -197,22 +208,26 @@ impl SwarmOrchestrator {
                 estimated_improvement: 0.3,
             });
         }
-        
+
         if metrics.average_task_duration_ms > 5000 {
             recommendations.push(OptimizationRecommendation {
                 recommendation_type: "optimize_tasks".to_string(),
-                description: "Task duration is high, consider optimizing task processing".to_string(),
+                description: "Task duration is high, consider optimizing task processing"
+                    .to_string(),
                 impact: "performance".to_string(),
                 priority: TaskPriority::High,
                 estimated_improvement: 0.5,
             });
         }
-        
+
         Ok(recommendations)
     }
-    
+
     /// Apply optimization
-    pub async fn apply_optimization(&self, recommendation: &OptimizationRecommendation) -> anyhow::Result<()> {
+    pub async fn apply_optimization(
+        &self,
+        recommendation: &OptimizationRecommendation,
+    ) -> anyhow::Result<()> {
         // Simulate applying optimization
         match recommendation.recommendation_type.as_str() {
             "scale_down" => {
@@ -223,10 +238,10 @@ impl SwarmOrchestrator {
             }
             _ => {}
         }
-        
+
         Ok(())
     }
-    
+
     /// Create a task
     pub async fn create_task(
         &self,
@@ -236,7 +251,7 @@ impl SwarmOrchestrator {
         assigned_agent: Option<Uuid>,
     ) -> anyhow::Result<Uuid> {
         let task_id = Uuid::new_v4();
-        
+
         let task_info = TaskInfo {
             _id: task_id,
             _task_type: task_type,
@@ -246,12 +261,12 @@ impl SwarmOrchestrator {
             _assigned_agent: assigned_agent,
             _created_at: chrono::Utc::now(),
         };
-        
+
         self.tasks.insert(task_id, task_info);
-        
+
         Ok(task_id)
     }
-    
+
     /// Execute workflow
     pub async fn execute_workflow(
         &self,
@@ -261,7 +276,7 @@ impl SwarmOrchestrator {
     ) -> anyhow::Result<WorkflowResult> {
         // Simulate workflow execution
         tokio::time::sleep(Duration::from_millis(200)).await;
-        
+
         Ok(WorkflowResult {
             success: true,
             steps_completed: 5,
@@ -275,20 +290,26 @@ impl SwarmOrchestrator {
             duration_ms: 200,
         })
     }
-    
+
     /// List agents
     pub async fn list_agents(&self, include_inactive: bool) -> anyhow::Result<Vec<AgentInfo>> {
-        let agents: Vec<AgentInfo> = self.agents.iter()
+        let agents: Vec<AgentInfo> = self
+            .agents
+            .iter()
             .filter(|entry| include_inactive || entry.value().status == "active")
             .map(|entry| entry.value().clone())
             .collect();
-        
+
         // Log the current agents for debugging
-        tracing::debug!("Listing agents: total={}, filtered={}", self.agents.len(), agents.len());
-        
+        tracing::debug!(
+            "Listing agents: total={}, filtered={}",
+            self.agents.len(),
+            agents.len()
+        );
+
         Ok(agents)
     }
-    
+
     /// Get status
     pub async fn get_status(&self) -> anyhow::Result<SwarmStatus> {
         Ok(SwarmStatus {
@@ -301,7 +322,7 @@ impl SwarmOrchestrator {
             }),
         })
     }
-    
+
     /// Get metrics for a specific agent
     pub async fn get_agent_metrics(&self, agent_id: &Uuid) -> anyhow::Result<serde_json::Value> {
         if self.agents.contains_key(agent_id) {
@@ -339,17 +360,17 @@ impl SwarmOrchestrator {
             Err(anyhow::anyhow!("Agent not found: {}", agent_id))
         }
     }
-    
+
     /// Get metrics for all agents
     pub async fn get_all_agent_metrics(&self) -> anyhow::Result<serde_json::Value> {
         let mut all_metrics = serde_json::Map::new();
-        
+
         for entry in self.agents.iter() {
             let agent_id = entry.key();
             let agent_metrics = self.get_agent_metrics(agent_id).await?;
             all_metrics.insert(agent_id.to_string(), agent_metrics);
         }
-        
+
         // Add aggregate metrics
         let aggregate = serde_json::json!({
             "total_agents": self.agents.len(),
@@ -360,7 +381,7 @@ impl SwarmOrchestrator {
             "swarm_error_rate": 0.032,
             "swarm_uptime_seconds": 7200
         });
-        
+
         Ok(serde_json::json!({
             "agents": all_metrics,
             "aggregate": aggregate,

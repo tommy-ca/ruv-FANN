@@ -25,7 +25,7 @@ impl MigrationManager {
             migrations: Self::load_migrations(),
         }
     }
-    
+
     /// Load all migrations
     fn load_migrations() -> Vec<Migration> {
         vec![
@@ -88,127 +88,144 @@ impl MigrationManager {
                     CREATE INDEX IF NOT EXISTS idx_group_members_group ON agent_group_members(group_id);
                     CREATE INDEX IF NOT EXISTS idx_group_members_agent ON agent_group_members(agent_id);
                 "#,
-                down: Some(r#"
+                down: Some(
+                    r#"
                     DROP TABLE IF EXISTS agent_group_members;
                     DROP TABLE IF EXISTS agent_groups;
-                "#),
+                "#,
+                ),
             },
         ]
     }
-    
+
     /// Run pending migrations
     pub fn migrate(&self, conn: &Connection) -> Result<(), StorageError> {
         // Ensure migrations table exists
         self.ensure_migrations_table(conn)?;
-        
+
         // Get current version
         let current_version = self.get_current_version(conn)?;
         info!("Current schema version: {}", current_version);
-        
+
         // Run pending migrations
-        let pending_migrations: Vec<_> = self.migrations
+        let pending_migrations: Vec<_> = self
+            .migrations
             .iter()
             .filter(|m| m.version > current_version)
             .collect();
-        
+
         if pending_migrations.is_empty() {
             info!("No pending migrations");
             return Ok(());
         }
-        
+
         info!("Found {} pending migrations", pending_migrations.len());
-        
+
         for migration in pending_migrations {
             self.run_migration(conn, migration)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Rollback to specific version
     pub fn rollback_to(&self, conn: &Connection, target_version: u32) -> Result<(), StorageError> {
         let current_version = self.get_current_version(conn)?;
-        
+
         if target_version >= current_version {
-            return Err(StorageError::Migration(
-                format!("Cannot rollback to version {} from current version {}", 
-                        target_version, current_version)
-            ));
+            return Err(StorageError::Migration(format!(
+                "Cannot rollback to version {} from current version {}",
+                target_version, current_version
+            )));
         }
-        
+
         // Get migrations to rollback in reverse order
-        let rollback_migrations: Vec<_> = self.migrations
+        let rollback_migrations: Vec<_> = self
+            .migrations
             .iter()
             .filter(|m| m.version > target_version && m.version <= current_version)
             .rev()
             .collect();
-        
+
         for migration in rollback_migrations {
             if let Some(down_sql) = migration.down {
-                info!("Rolling back migration {}: {}", migration.version, migration.name);
-                
-                conn.execute_batch(down_sql)
-                    .map_err(|e| StorageError::Migration(
-                        format!("Failed to rollback migration {}: {}", migration.version, e)
-                    ))?;
-                
+                info!(
+                    "Rolling back migration {}: {}",
+                    migration.version, migration.name
+                );
+
+                conn.execute_batch(down_sql).map_err(|e| {
+                    StorageError::Migration(format!(
+                        "Failed to rollback migration {}: {}",
+                        migration.version, e
+                    ))
+                })?;
+
                 // Remove migration record
                 conn.execute(
                     "DELETE FROM schema_migrations WHERE version = ?1",
                     rusqlite::params![migration.version],
                 )
                 .map_err(|e| StorageError::Database(e.to_string()))?;
-                
+
                 debug!("Rolled back migration {}", migration.version);
             } else {
                 warn!("Migration {} has no rollback script", migration.version);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Ensure migrations table exists
     fn ensure_migrations_table(&self, conn: &Connection) -> Result<(), StorageError> {
-        conn.execute_batch(r#"
+        conn.execute_batch(
+            r#"
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY NOT NULL,
                 name TEXT NOT NULL,
                 applied_at INTEGER NOT NULL
             );
-        "#)
-        .map_err(|e| StorageError::Migration(format!("Failed to create migrations table: {}", e)))?;
-        
+        "#,
+        )
+        .map_err(|e| {
+            StorageError::Migration(format!("Failed to create migrations table: {}", e))
+        })?;
+
         Ok(())
     }
-    
+
     /// Get current schema version
     fn get_current_version(&self, conn: &Connection) -> Result<u32, StorageError> {
         let version: Option<u32> = conn
-            .query_row(
-                "SELECT MAX(version) FROM schema_migrations",
-                [],
-                |row| row.get(0),
-            )
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
             .map_err(|e| StorageError::Database(e.to_string()))?;
-        
+
         Ok(version.unwrap_or(0))
     }
-    
+
     /// Run a single migration
     fn run_migration(&self, conn: &Connection, migration: &Migration) -> Result<(), StorageError> {
-        info!("Running migration {}: {}", migration.version, migration.name);
-        
+        info!(
+            "Running migration {}: {}",
+            migration.version, migration.name
+        );
+
         // Start transaction
-        let tx = conn.unchecked_transaction()
+        let tx = conn
+            .unchecked_transaction()
             .map_err(|e| StorageError::Transaction(e.to_string()))?;
-        
+
         // Run migration
-        tx.execute_batch(migration.up)
-            .map_err(|e| StorageError::Migration(
-                format!("Failed to run migration {}: {}", migration.version, e)
-            ))?;
-        
+        tx.execute_batch(migration.up).map_err(|e| {
+            StorageError::Migration(format!(
+                "Failed to run migration {}: {}",
+                migration.version, e
+            ))
+        })?;
+
         // Record migration
         tx.execute(
             "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?1, ?2, ?3)",
@@ -219,23 +236,24 @@ impl MigrationManager {
             ],
         )
         .map_err(|e| StorageError::Database(e.to_string()))?;
-        
+
         // Commit transaction
         tx.commit()
             .map_err(|e| StorageError::Transaction(e.to_string()))?;
-        
+
         debug!("Completed migration {}", migration.version);
         Ok(())
     }
-    
+
     /// Get migration status
     pub fn get_status(&self, conn: &Connection) -> Result<MigrationStatus, StorageError> {
         let current_version = self.get_current_version(conn)?;
-        
+
         // Get applied migrations
-        let mut stmt = conn.prepare("SELECT version, name, applied_at FROM schema_migrations ORDER BY version")
+        let mut stmt = conn
+            .prepare("SELECT version, name, applied_at FROM schema_migrations ORDER BY version")
             .map_err(|e| StorageError::Database(e.to_string()))?;
-        
+
         let applied_migrations: HashMap<u32, AppliedMigration> = stmt
             .query_map([], |row| {
                 Ok(AppliedMigration {
@@ -248,9 +266,10 @@ impl MigrationManager {
             .filter_map(|r| r.ok())
             .map(|m| (m.version, m))
             .collect();
-        
+
         // Get pending migrations
-        let pending: Vec<_> = self.migrations
+        let pending: Vec<_> = self
+            .migrations
             .iter()
             .filter(|m| !applied_migrations.contains_key(&m.version))
             .map(|m| PendingMigration {
@@ -258,7 +277,7 @@ impl MigrationManager {
                 name: m.name.to_string(),
             })
             .collect();
-        
+
         Ok(MigrationStatus {
             current_version,
             applied: applied_migrations.into_values().collect(),
@@ -300,21 +319,21 @@ pub struct PendingMigration {
 mod tests {
     use super::*;
     use tempfile::NamedTempFile;
-    
+
     #[test]
     fn test_migrations() {
         let temp_file = NamedTempFile::new().unwrap();
         let conn = Connection::open(temp_file.path()).unwrap();
-        
+
         let manager = MigrationManager::new();
-        
+
         // Run migrations
         manager.migrate(&conn).unwrap();
-        
+
         // Check version
         let version = manager.get_current_version(&conn).unwrap();
         assert!(version > 0);
-        
+
         // Get status
         let status = manager.get_status(&conn).unwrap();
         assert_eq!(status.current_version, version);

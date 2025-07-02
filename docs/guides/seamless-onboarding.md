@@ -4,19 +4,20 @@
 
 The seamless onboarding system makes it incredibly easy to get started with ruv-swarm and Claude Code. In just a few commands, you'll have a fully configured development environment with intelligent multi-agent coordination.
 
-## ✨ What is Seamless Onboarding?
+### ⚡ 30-Second Quick Start
 
-Seamless onboarding is ruv-swarm's intelligent setup system that:
+For the fastest setup experience:
 
-- **Automatically detects** Claude Code on your system
-- **Installs Claude Code** if not found (with your permission)
-- **Configures MCP servers** for GitHub and ruv-swarm integration
-- **Launches Claude Code** with optimal settings
-- **Provides recovery guidance** if anything goes wrong
+```bash
+# Install and setup in one command
+npx ruv-swarm init --launch
+```
 
-The entire process typically takes less than 40 seconds, even on a fresh system!
-
-## 🎯 Quick Start (30 seconds)
+This will:
+- ✅ **Detect Claude Code** - Find existing installation or install automatically
+- ✅ **Configure ruv-swarm MCP** - Set up seamless Claude Code integration
+- ✅ **Initialize Swarm** - Create your first intelligent agent swarm
+- ✅ **Launch Ready** - Start Claude Code with full ruv-swarm integration
 
 ### Option 1: Complete Setup
 ```bash
@@ -38,74 +39,45 @@ That's it! Claude Code will open with ruv-swarm fully configured and ready to us
 
 ## 📋 Step-by-Step Walkthrough
 
-### 1. Initialize Your Project
+### Scenario 1: First-Time Setup
+
+**You're new to both ruv-swarm and Claude Code**
 
 ```bash
 npx ruv-swarm init
 ```
 
-This command will:
-- ✅ Check for Claude Code installation
-- ✅ Offer to install if missing
-- ✅ Set up MCP server configuration
-- ✅ Create `.claude/mcp.json` configuration file
-
-**Example Output:**
+Expected flow:
 ```
-🐝 ruv-swarm Onboarding
+🚀 Welcome to ruv-swarm!
 
-Checking Claude Code installation...
-✅ Found Claude Code v1.2.0 at /usr/local/bin/claude-code
-
-Setting up MCP servers...
-? Configure GitHub integration? (Y/n) Y
-? Enter GitHub token (or press Enter to skip): ghp_xxxxxxxxxxxx
-✅ GitHub token configured
-
-? Configure ruv-swarm MCP server? (Y/n) Y
-✅ ruv-swarm MCP configured with ID: swarm-abc123-xyz789
-
-Configuration saved to .claude/mcp.json
-? Launch Claude Code now? (Y/n) Y
-```
-
-### 2. Launch Claude Code (if not done automatically)
-
-```bash
-npx ruv-swarm launch
-```
-
-Claude Code will open with:
-- ✅ GitHub MCP server connected
-- ✅ ruv-swarm MCP server active
-- ✅ All tools available for multi-agent coordination
-
-## 🛠️ Common Scenarios
-
-### Scenario 1: Fresh Installation
-
-**You don't have Claude Code installed**
-
-```bash
-npx ruv-swarm init
-```
-
-Output:
-```
-🐝 ruv-swarm Onboarding
-
-Checking Claude Code installation...
+🔍 Checking for Claude Code...
 ❌ Claude Code not found
 
 ? Install Claude Code? (Y/n) Y
 ⏳ Downloading Claude Code...
 ✅ Claude Code installed successfully
 
-Setting up MCP servers...
-[... continues with configuration ...]
+🔧 Setting up MCP servers...
+📝 Configuring ruv-swarm MCP server...
+✅ ruv-swarm MCP server configured
+
+? Also install GitHub MCP server for enhanced features? (y/N) n
+ℹ️  GitHub MCP can be added later with: ruv-swarm mcp add github
+
+📋 Configuration Summary:
+- Claude Code: Installed ✅
+- ruv-swarm MCP: Configured ✅
+- GitHub MCP: Not installed ⚪
+
+? Initialize swarm with these settings? (Y/n) Y
+✨ Swarm initialized successfully!
+
+? Launch Claude Code now? (Y/n) Y
+🚀 Launching Claude Code with ruv-swarm integration...
 ```
 
-### Scenario 2: Existing Installation
+### Scenario 2: Existing Claude Code Installation
 
 **You have Claude Code but no MCP configuration**
 
@@ -115,13 +87,23 @@ npx ruv-swarm init
 
 Output:
 ```
-🐝 ruv-swarm Onboarding
+🚀 Welcome to ruv-swarm!
 
-Checking Claude Code installation...
+🔍 Checking Claude Code installation...
 ✅ Found Claude Code v1.2.0
 
-Setting up MCP servers...
-[... skips installation, goes to configuration ...]
+🔧 Setting up MCP servers...
+📝 Configuring ruv-swarm MCP server...
+✅ ruv-swarm MCP server configured
+
+? Also install GitHub MCP server? (y/N) n
+ℹ️  Skipping GitHub MCP server
+
+📋 Configuration Summary:
+- Claude Code: Already installed ✅
+- ruv-swarm MCP: Configured ✅
+
+✨ Setup complete!
 ```
 
 ### Scenario 3: Upgrade/Reconfigure
@@ -129,112 +111,51 @@ Setting up MCP servers...
 **You want to update your configuration**
 
 ```bash
-npx ruv-swarm init --force
+npx ruv-swarm init --reconfigure
 ```
 
 This will:
-- ✅ Check for Claude Code updates
-- ✅ Regenerate MCP configuration
-- ✅ Preserve existing settings where possible
+- Update MCP server configurations
+- Verify Claude Code compatibility
+- Refresh swarm settings
+- Maintain existing preferences
 
-### Scenario 4: Team Setup
+## 🔧 What Gets Configured
 
-**Setting up multiple developers**
+### 1. Claude Code Detection & Installation
+- **Detection**: Searches common installation paths across platforms
+- **Version Check**: Ensures compatibility with ruv-swarm
+- **Installation**: Downloads and installs if needed
+- **Verification**: Tests installation and permissions
 
-```bash
-# Each developer runs on their machine
-npx ruv-swarm init -y  # Auto-accept defaults
+### 2. MCP Server Configuration
 
-# Or use a shared configuration
-npx ruv-swarm init --config team-config.json
-```
-
-## 🔧 Configuration Options
-
-### Command Line Flags
-
-```bash
-npx ruv-swarm init [options]
-
-Options:
-  -y, --yes          Auto-accept all prompts with defaults
-  -f, --force        Force reconfiguration even if already set up
-  -v, --verbose      Show detailed output
-  --launch           Launch Claude Code after setup
-  --config <file>    Use custom configuration file
-  --no-github        Skip GitHub MCP setup
-  --no-swarm         Skip ruv-swarm MCP setup
-  --help             Show this help message
-```
-
-### Environment Variables
-
-Set these before running to customize behavior:
-
-```bash
-# Skip all prompts
-export RUV_SWARM_AUTO_ACCEPT=true
-
-# Provide GitHub token automatically
-export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-
-# Custom installation path for Claude Code
-export CLAUDE_CODE_PATH=/custom/path
-
-# Preferred swarm topology
-export SWARM_TOPOLOGY=hierarchical
-```
-
-### Custom Configuration
-
-Create a `ruv-swarm-config.json` file:
+Creates `.claude/mcp.json` with ruv-swarm integration:
 
 ```json
 {
-  "onboarding": {
-    "autoAccept": false,
-    "verbose": true,
-    "defaultTopology": "mesh",
-    "maxAgents": 8
-  },
-  "claudeCode": {
-    "version": ">=1.0.0",
-    "installPath": "auto"
-  },
-  "mcpServers": {
-    "github": {
-      "enabled": true,
-      "autoToken": true
-    },
-    "ruvSwarm": {
-      "enabled": true,
-      "topology": "mesh"
-    }
-  }
-}
-```
-
-Use it with:
-```bash
-npx ruv-swarm init --config ruv-swarm-config.json
-```
-
-## 🔍 What Gets Created
-
-The onboarding process creates the following files and configurations:
-
-### 1. `.claude/mcp.json` - MCP Server Configuration
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/anthropics/claude-mcp/main/schemas/mcp.schema.json",
   "mcpServers": {
     "ruv-swarm": {
       "command": "npx",
       "args": ["ruv-swarm", "mcp", "start"],
       "env": {
-        "SWARM_ID": "swarm-abc123-xyz789",
-        "SWARM_TOPOLOGY": "mesh",
+        "SWARM_ID": "${SWARM_ID}",
+        "SWARM_TOPOLOGY": "mesh"
+      }
+    }
+  }
+}
+```
+
+**Optional GitHub MCP** (only if explicitly requested):
+```json
+{
+  "mcpServers": {
+    "ruv-swarm": { "..." },
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "env": {
         "GITHUB_TOKEN": "${GITHUB_TOKEN}"
       }
     }
@@ -242,188 +163,154 @@ The onboarding process creates the following files and configurations:
 }
 ```
 
-Note: The GitHub MCP server is optional and can be added manually if needed.
+### 3. Swarm Initialization
+- Creates default swarm configuration
+- Sets up persistence backend
+- Configures optimal topology for your use case
+- Initializes agent management system
 
-### 2. Environment Variables
+## ⚙️ Configuration Options
 
-If you provided a GitHub token, it's stored securely in your environment.
-
-### 3. Session Configuration
-
-ruv-swarm tracks your sessions and provides:
-- Persistent memory across Claude Code sessions
-- Performance metrics and optimization
-- Automatic error recovery
-
-## 🚨 Troubleshooting
-
-### Common Issues and Solutions
-
-#### Issue: "Claude Code not found"
-**Problem**: Claude Code isn't installed or not in PATH
-
-**Solutions**:
-1. **Auto-install**: Let ruv-swarm install it for you
-   ```bash
-   npx ruv-swarm init
-   # Choose Y when prompted to install
-   ```
-
-2. **Manual install**: Download from [Claude Code website](https://claude.ai/code)
-
-3. **Custom path**: Specify where Claude Code is installed
-   ```bash
-   export CLAUDE_CODE_PATH=/path/to/claude-code
-   npx ruv-swarm init
-   ```
-
-#### Issue: "Permission denied during installation"
-**Problem**: Insufficient permissions to install in system directories
-
-**Solutions**:
-1. **Try user directory**: Run installation as current user
-   ```bash
-   npx ruv-swarm init --user-install
-   ```
-
-2. **Use sudo** (Linux/macOS):
-   ```bash
-   sudo npx ruv-swarm init
-   ```
-
-3. **Run as Administrator** (Windows): Right-click terminal and select "Run as Administrator"
-
-#### Issue: "GitHub token invalid"
-**Problem**: Token doesn't have required permissions or is expired
-
-**Solutions**:
-1. **Skip GitHub setup**: You can use ruv-swarm without GitHub integration
-   ```bash
-   npx ruv-swarm init --no-github
-   ```
-
-2. **Create new token**: Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
-   - Required scopes: `repo`, `read:org`, `read:user`
-
-3. **Update token later**:
-   ```bash
-   npx ruv-swarm configure --github-token ghp_newtoken
-   ```
-
-#### Issue: "Claude Code launch fails"
-**Problem**: Claude Code won't start with MCP configuration
-
-**Solutions**:
-1. **Check configuration**:
-   ```bash
-   npx ruv-swarm validate-config
-   ```
-
-2. **Launch with debug**:
-   ```bash
-   npx ruv-swarm launch --debug
-   ```
-
-3. **Reset configuration**:
-   ```bash
-   npx ruv-swarm init --force
-   ```
-
-#### Issue: "MCP servers not connecting"
-**Problem**: Claude Code can't connect to MCP servers
-
-**Solutions**:
-1. **Check server status**:
-   ```bash
-   npx ruv-swarm status
-   ```
-
-2. **Restart MCP servers**:
-   ```bash
-   npx ruv-swarm mcp restart
-   ```
-
-3. **Check logs**:
-   ```bash
-   npx ruv-swarm logs --mcp
-   ```
-
-### Getting Help
-
-If you're still having issues:
-
-1. **Run diagnostics**:
-   ```bash
-   npx ruv-swarm doctor
-   ```
-
-2. **Enable verbose logging**:
-   ```bash
-   npx ruv-swarm init --verbose
-   ```
-
-3. **Check the community**:
-   - [GitHub Issues](https://github.com/ruvnet/ruv-swarm/issues)
-   - [Discord Community](https://discord.gg/ruv-swarm)
-   - [Documentation](https://ruv-swarm.dev/docs)
-
-## 🎓 Next Steps
-
-Once you have ruv-swarm set up:
-
-### 1. Explore Multi-Agent Coordination
+### Environment Variables
 ```bash
-# In Claude Code, use the swarm tools
-mcp__ruv-swarm__swarm_init {"topology": "mesh", "maxAgents": 5}
-mcp__ruv-swarm__agent_spawn {"type": "researcher"}
-mcp__ruv-swarm__task_orchestrate {"task": "analyze this codebase"}
+# Customize the onboarding process
+export CLAUDE_INSTALL_DIR="/opt/claude"           # Custom install location
+export SWARM_TOPOLOGY="hierarchical"              # Default topology
+export SWARM_PERSISTENCE="sqlite"                 # Persistence backend
+export MCP_CONFIG_DIR="$HOME/.claude"            # MCP config location
 ```
 
-### 2. Learn Key Concepts
-- **[Swarm Coordination](./swarm-coordination.md)** - How agents work together
-- **[Memory System](./memory-system.md)** - Persistent context across sessions
-- **[Performance Optimization](./performance-optimization.md)** - Getting the best results
+### Command-Line Flags
+```bash
+# Skip specific steps
+ruv-swarm init --skip-claude-install    # Don't install Claude Code
+ruv-swarm init --skip-mcp-setup         # Don't configure MCP servers
+ruv-swarm init --skip-swarm-init        # Don't initialize swarm
 
-### 3. Advanced Usage
-- **[Custom Agents](./custom-agents.md)** - Create specialized agent types
-- **[Workflow Automation](./workflow-automation.md)** - Automate development tasks
-- **[CI/CD Integration](./ci-cd-integration.md)** - Use in pipelines
+# Customize installation
+ruv-swarm init --claude-version 1.2.0   # Specific Claude Code version
+ruv-swarm init --topology mesh          # Set topology
+ruv-swarm init --persistence memory     # Set persistence backend
 
-## 🏆 Best Practices
+# Non-interactive modes
+ruv-swarm init -y                       # Accept all defaults
+ruv-swarm init --silent                 # No output except errors
+```
 
-### For Individual Developers
-- Use default settings for most projects
-- Enable GitHub integration for repository access
-- Let swarms handle complex tasks while you focus on architecture
+## 🎯 Advanced Scenarios
 
-### For Teams
-- Use shared configuration files for consistency
-- Set up environment variables in CI/CD
-- Enable session memory for knowledge sharing
+### Corporate Environment
+```bash
+# Install to user directory (no admin required)
+ruv-swarm init --user-install
 
-### For Organizations
-- Create custom MCP servers for internal tools
-- Use hierarchical topologies for large projects
-- Monitor performance metrics for optimization
+# Use corporate proxy
+ruv-swarm init --proxy http://proxy.corp.com:8080
 
-## 📊 Performance Benefits
+# Custom configuration
+ruv-swarm init --config corporate-config.toml
+```
 
-With seamless onboarding, you get immediate access to:
+### Development Team Setup
+```bash
+# Shared team configuration
+ruv-swarm init --config team-swarm.toml --shared
 
-- **84.8% SWE-Bench solve rate** - Industry-leading problem-solving
-- **32.3% token reduction** - More efficient Claude usage
-- **2.8-4.4x speed improvement** - Faster development cycles
-- **Persistent memory** - Context that survives across sessions
+# Enable all MCP servers
+ruv-swarm init --enable-all-mcp
 
-## 🔮 What's Next?
+# Development optimizations
+ruv-swarm init --dev-mode
+```
 
-The onboarding system continuously improves:
+### CI/CD Pipeline
+```bash
+# Completely automated setup
+ruv-swarm init -y --silent --skip-launch
 
-- **Smart defaults** that learn from your preferences
-- **Team templates** for consistent setup across organizations
-- **IDE integration** for seamless development
-- **Cloud sync** for settings across machines
+# Minimal installation
+ruv-swarm init --minimal --headless
+```
 
----
+## 🔍 Verification & Troubleshooting
 
-**Ready to get started?** Run `npx ruv-swarm init` and experience the future of AI-assisted development!
+### Verify Installation
+```bash
+# Check ruv-swarm status
+ruv-swarm status
+
+# Verify Claude Code integration
+ruv-swarm mcp status
+
+# Test MCP connection
+ruv-swarm mcp test
+```
+
+### Common Issues
+
+**Claude Code not found after installation**
+```bash
+# Add to PATH manually
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Permission denied during installation**
+```bash
+# Install to user directory
+ruv-swarm init --user-install
+
+# Or fix permissions
+sudo chown -R $USER:$USER ~/.npm
+```
+
+**MCP configuration not working**
+```bash
+# Regenerate MCP config
+ruv-swarm mcp setup --force
+
+# Validate configuration
+ruv-swarm mcp validate
+```
+
+## 🚀 Next Steps
+
+After successful onboarding:
+
+1. **[First Swarm Guide](first-swarm.md)** - Create your first agent swarm
+2. **[MCP Integration](mcp-integration.md)** - Advanced MCP features
+3. **[API Reference](../api/core.md)** - Explore the full API
+4. **[Examples](../examples/)** - Real-world usage examples
+
+## 📞 Additional MCP Servers
+
+### Adding GitHub MCP Later
+```bash
+# Add GitHub MCP server
+ruv-swarm mcp add github
+
+# Configure with token
+ruv-swarm mcp configure github --token $GITHUB_TOKEN
+```
+
+### Other Available MCP Servers
+```bash
+# Filesystem operations
+ruv-swarm mcp add filesystem
+
+# Database access
+ruv-swarm mcp add database --type postgresql
+
+# Custom MCP server
+ruv-swarm mcp add custom --command "node server.js" --port 3001
+```
+
+## 🎉 You're Ready!
+
+With seamless onboarding complete, you now have:
+- ✅ Claude Code installed and configured
+- ✅ ruv-swarm MCP server running
+- ✅ Intelligent agent swarm initialized
+- ✅ Full integration between all components
+
+Start building amazing things with your new multi-agent development environment! 🚀

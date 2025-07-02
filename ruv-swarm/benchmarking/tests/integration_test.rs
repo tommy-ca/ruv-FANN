@@ -1,8 +1,8 @@
 //! Integration tests for the benchmarking framework
 
 use ruv_swarm_benchmarking::{
-    BenchmarkingFramework, BenchmarkConfig, BenchmarkScenario,
-    Difficulty, ExecutionMode, stream_parser::ClaudeStreamEvent,
+    stream_parser::ClaudeStreamEvent, BenchmarkConfig, BenchmarkScenario, BenchmarkingFramework,
+    Difficulty, ExecutionMode,
 };
 use std::path::PathBuf;
 use tempfile::tempdir;
@@ -18,7 +18,7 @@ async fn test_framework_initialization() {
         execution_timeout: std::time::Duration::from_secs(5),
         trial_count: 1,
     };
-    
+
     let framework = BenchmarkingFramework::new(config).await;
     assert!(framework.is_ok());
 }
@@ -32,10 +32,10 @@ fn test_stream_event_parsing() {
         "name": "Read",
         "input": {"file": "test.rs"}
     }"#;
-    
+
     let event: Result<ClaudeStreamEvent, _> = serde_json::from_str(tool_use_json);
     assert!(event.is_ok());
-    
+
     match event.unwrap() {
         ClaudeStreamEvent::ToolUse { name, .. } => {
             assert_eq!(name, "Read");
@@ -56,7 +56,7 @@ fn test_scenario_creation() {
         expected_files_modified: vec!["test.rs".to_string()],
         validation_tests: vec!["test_function".to_string()],
     };
-    
+
     assert_eq!(scenario.name, "test_scenario");
     assert_eq!(scenario.difficulty, Difficulty::Easy);
 }

@@ -22,12 +22,12 @@ impl StreamParser {
             buffer: String::new(),
         }
     }
-    
+
     /// Parse a stream of output and extract metrics
     pub fn parse_stream(&mut self, output: &str) -> Result<StreamMetrics> {
         self.buffer.clear();
         self.buffer.push_str(output);
-        
+
         let mut metrics = StreamMetrics {
             total_tokens: 0,
             tool_calls: 0,
@@ -40,31 +40,31 @@ impl StreamParser {
             errors: Vec::new(),
             warnings: Vec::new(),
         };
-        
+
         // Parse line by line
         for line in self.buffer.lines() {
             self.parse_line(line, &mut metrics)?;
         }
-        
+
         // Extract token count
         metrics.total_tokens = self.extract_token_count(&self.buffer);
-        
+
         debug!(
             "Parsed stream metrics: {} tokens, {} tool calls, {} file operations",
             metrics.total_tokens,
             metrics.tool_calls,
             metrics.file_operations.total()
         );
-        
+
         Ok(metrics)
     }
-    
+
     /// Parse a single line and update metrics
     fn parse_line(&self, line: &str, metrics: &mut StreamMetrics) -> Result<()> {
         // Check for tool calls
         if self.patterns.tool_call.is_match(line) {
             metrics.tool_calls += 1;
-            
+
             // Identify specific tool types
             if line.contains("Read") || line.contains("read_file") {
                 metrics.file_operations.reads += 1;
@@ -76,24 +76,24 @@ impl StreamParser {
                 metrics.file_operations.deletes += 1;
             }
         }
-        
+
         // Check for errors
         if self.patterns.error.is_match(line) {
             if let Some(error_msg) = self.extract_error_message(line) {
                 metrics.errors.push(error_msg);
             }
         }
-        
+
         // Check for warnings
         if self.patterns.warning.is_match(line) {
             if let Some(warning_msg) = self.extract_warning_message(line) {
                 metrics.warnings.push(warning_msg);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract token count from output
     fn extract_token_count(&self, output: &str) -> usize {
         // Look for token count patterns
@@ -104,11 +104,11 @@ impl StreamParser {
                 }
             }
         }
-        
+
         // Fallback: estimate based on output length
         output.len() / 4
     }
-    
+
     /// Extract error message from line
     fn extract_error_message(&self, line: &str) -> Option<String> {
         if let Some(captures) = self.patterns.error_message.captures(line) {
@@ -117,7 +117,7 @@ impl StreamParser {
             Some(line.to_string())
         }
     }
-    
+
     /// Extract warning message from line
     fn extract_warning_message(&self, line: &str) -> Option<String> {
         if let Some(captures) = self.patterns.warning_message.captures(line) {
@@ -144,60 +144,60 @@ impl MetricsCollector {
             event_sender: None,
         }
     }
-    
+
     /// Create collector with event channel
     pub fn with_events(sender: mpsc::Sender<MetricEvent>) -> Self {
         let mut collector = Self::new();
         collector.event_sender = Some(sender);
         collector
     }
-    
+
     /// Parse stream and update aggregated metrics
     pub fn parse_stream(&mut self, output: &str) -> Result<StreamMetrics> {
         let metrics = self.parser.parse_stream(output)?;
-        
+
         // Update aggregated metrics
         self.aggregated_metrics.total_tokens += metrics.total_tokens;
         self.aggregated_metrics.total_tool_calls += metrics.tool_calls;
         self.aggregated_metrics.total_file_operations += metrics.file_operations.total();
         self.aggregated_metrics.total_errors += metrics.errors.len();
         self.aggregated_metrics.total_warnings += metrics.warnings.len();
-        
+
         // Update file operation breakdown
         self.aggregated_metrics.file_operations.reads += metrics.file_operations.reads;
         self.aggregated_metrics.file_operations.writes += metrics.file_operations.writes;
         self.aggregated_metrics.file_operations.creates += metrics.file_operations.creates;
         self.aggregated_metrics.file_operations.deletes += metrics.file_operations.deletes;
-        
+
         // Send event if channel is available
         if let Some(sender) = &self.event_sender {
             let event = MetricEvent {
                 timestamp: chrono::Utc::now(),
                 metrics: metrics.clone(),
             };
-            
+
             if let Err(e) = sender.try_send(event) {
                 warn!("Failed to send metric event: {}", e);
             }
         }
-        
+
         Ok(metrics)
     }
-    
+
     /// Get aggregated metrics
     pub fn get_aggregated(&self) -> &AggregatedMetrics {
         &self.aggregated_metrics
     }
-    
+
     /// Reset aggregated metrics
     pub fn reset(&mut self) {
         self.aggregated_metrics = AggregatedMetrics::default();
     }
-    
+
     /// Get metrics summary
     pub fn get_summary(&self) -> MetricsSummary {
         let metrics = &self.aggregated_metrics;
-        
+
         MetricsSummary {
             total_tokens: metrics.total_tokens,
             total_tool_calls: metrics.total_tool_calls,
@@ -219,7 +219,7 @@ impl MetricsCollector {
             most_common_operation: self.get_most_common_operation(),
         }
     }
-    
+
     /// Get the most common file operation
     fn get_most_common_operation(&self) -> String {
         let ops = &self.aggregated_metrics.file_operations;
@@ -229,15 +229,15 @@ impl MetricsCollector {
             ("creates", ops.creates),
             ("deletes", ops.deletes),
         ];
-        
+
         operations.sort_by_key(|&(_, count)| std::cmp::Reverse(count));
-        
+
         if let Some((op, count)) = operations.first() {
             if *count > 0 {
                 return op.to_string();
             }
         }
-        
+
         "none".to_string()
     }
 }
@@ -314,7 +314,7 @@ impl StreamAnalyzer {
             collectors: HashMap::new(),
         }
     }
-    
+
     /// Add a stream to analyze
     pub fn add_stream(&mut self, stream_id: String) -> mpsc::Receiver<MetricEvent> {
         let (tx, rx) = mpsc::channel(100);
@@ -322,7 +322,7 @@ impl StreamAnalyzer {
         self.collectors.insert(stream_id, collector);
         rx
     }
-    
+
     /// Process output for a specific stream
     pub fn process(&mut self, stream_id: &str, output: &str) -> Result<Option<StreamMetrics>> {
         if let Some(collector) = self.collectors.get_mut(stream_id) {
@@ -332,20 +332,20 @@ impl StreamAnalyzer {
             Ok(None)
         }
     }
-    
+
     /// Get summary for all streams
     pub fn get_global_summary(&self) -> GlobalSummary {
         let mut total_tokens = 0;
         let mut total_calls = 0;
         let mut total_errors = 0;
-        
+
         for collector in self.collectors.values() {
             let metrics = collector.get_aggregated();
             total_tokens += metrics.total_tokens;
             total_calls += metrics.total_tool_calls;
             total_errors += metrics.total_errors;
         }
-        
+
         GlobalSummary {
             active_streams: self.collectors.len(),
             total_tokens,
@@ -373,11 +373,11 @@ pub struct GlobalSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_stream_parser() {
         let mut parser = StreamParser::new();
-        
+
         let output = r#"
 <function_calls>
 Read file: test.py
@@ -387,10 +387,10 @@ Error: Failed to compile
 Warning: Deprecated function
 Tokens: 1234
 "#;
-        
+
         let result = parser.parse_stream(output);
         assert!(result.is_ok());
-        
+
         let metrics = result.unwrap();
         assert_eq!(metrics.total_tokens, 1234);
         // The parser counts both "<function_calls>" and lines with "Read"/"Write"
@@ -401,21 +401,21 @@ Tokens: 1234
         assert_eq!(metrics.errors.len(), 1);
         assert_eq!(metrics.warnings.len(), 1);
     }
-    
+
     #[test]
     fn test_metrics_collector() {
         let mut collector = MetricsCollector::new();
-        
+
         let output1 = "Tool call: Read file\nTokens: 100";
         let output2 = "Tool call: Write file\nError: Test error\nTokens: 200";
-        
+
         let _ = collector.parse_stream(output1);
         let _ = collector.parse_stream(output2);
-        
+
         let aggregated = collector.get_aggregated();
         assert_eq!(aggregated.total_tokens, 300);
         assert_eq!(aggregated.total_errors, 1);
-        
+
         let summary = collector.get_summary();
         assert!(summary.avg_tokens_per_call > 0.0);
     }
