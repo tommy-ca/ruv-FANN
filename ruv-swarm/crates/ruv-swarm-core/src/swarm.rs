@@ -259,9 +259,9 @@ impl Swarm {
     /// Returns an error if any agent fails to start
     pub fn start_all_agents(&mut self) -> Result<()> {
         for (id, agent) in &mut self.agents {
-            agent.start().map_err(|e| {
-                SwarmError::Custom(format!("Failed to start agent {id}: {e:?}"))
-            })?;
+            agent
+                .start()
+                .map_err(|e| SwarmError::Custom(format!("Failed to start agent {id}: {e:?}")))?;
         }
         Ok(())
     }
@@ -273,9 +273,9 @@ impl Swarm {
     /// Returns an error if any agent fails to shutdown
     pub fn shutdown_all_agents(&mut self) -> Result<()> {
         for (id, agent) in &mut self.agents {
-            agent.shutdown().map_err(|e| {
-                SwarmError::Custom(format!("Failed to shutdown agent {id}: {e:?}"))
-            })?;
+            agent
+                .shutdown()
+                .map_err(|e| SwarmError::Custom(format!("Failed to shutdown agent {id}: {e:?}")))?;
         }
         Ok(())
     }

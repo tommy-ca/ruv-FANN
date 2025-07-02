@@ -121,10 +121,7 @@ impl Topology {
 
         // For undirected graphs, add reverse connection
         if self.topology_type != TopologyType::Pipeline {
-            self.connections
-                .entry(to)
-                .or_default()
-                .insert(from);
+            self.connections.entry(to).or_default().insert(from);
         }
     }
 
@@ -169,11 +166,7 @@ impl Topology {
 
     /// Get the total number of connections in the topology
     pub fn connection_count(&self) -> usize {
-        self.connections
-            .values()
-            .map(HashSet::len)
-            .sum::<usize>()
-            / 2 // Divide by 2 for undirected graphs
+        self.connections.values().map(HashSet::len).sum::<usize>() / 2 // Divide by 2 for undirected graphs
     }
 
     /// Check if the topology is fully connected

@@ -1,5 +1,5 @@
 //! Seamless onboarding module for ruv-swarm
-//! 
+//!
 //! This module provides a guided onboarding experience that automatically sets up
 //! Claude Code with preconfigured MCP servers, eliminating manual configuration steps.
 
@@ -14,28 +14,28 @@ use thiserror::Error;
 pub enum OnboardingError {
     #[error("Claude Code not found in system")]
     ClaudeCodeNotFound,
-    
+
     #[error("Claude Code version {0} is incompatible (requires {1})")]
     IncompatibleVersion(String, String),
-    
+
     #[error("Installation failed: {0}")]
     InstallationFailed(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigurationError(String),
-    
+
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
-    
+
     #[error("Network error: {0}")]
     NetworkError(String),
-    
+
     #[error("Launch failed: {0}")]
     LaunchError(String),
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
 }
@@ -90,7 +90,7 @@ impl MCPConfig {
             mcp_servers: HashMap::new(),
         }
     }
-    
+
     pub fn add_github_mcp(&mut self, token: Option<String>) {
         let mut env = HashMap::new();
         if let Some(token) = token {
@@ -98,39 +98,51 @@ impl MCPConfig {
         } else {
             env.insert("GITHUB_TOKEN".to_string(), "${GITHUB_TOKEN}".to_string());
         }
-        
+
         self.mcp_servers.insert(
             "github".to_string(),
             MCPServerConfig {
                 command: "npx".to_string(),
-                args: vec!["-y".to_string(), "@modelcontextprotocol/server-github".to_string()],
+                args: vec![
+                    "-y".to_string(),
+                    "@modelcontextprotocol/server-github".to_string(),
+                ],
                 env,
             },
         );
     }
-    
-    pub fn add_ruv_swarm_mcp(&mut self, swarm_id: String, topology: String, github_token: Option<String>) {
+
+    pub fn add_ruv_swarm_mcp(
+        &mut self,
+        swarm_id: String,
+        topology: String,
+        github_token: Option<String>,
+    ) {
         let mut env = HashMap::new();
         env.insert("SWARM_ID".to_string(), swarm_id);
         env.insert("SWARM_TOPOLOGY".to_string(), topology);
-        
+
         // Include GitHub token for ruv-swarm's GitHub integration features
         if let Some(token) = github_token {
             env.insert("GITHUB_TOKEN".to_string(), token);
         } else {
             env.insert("GITHUB_TOKEN".to_string(), "${GITHUB_TOKEN}".to_string());
         }
-        
+
         self.mcp_servers.insert(
             "ruv-swarm".to_string(),
             MCPServerConfig {
                 command: "npx".to_string(),
-                args: vec!["ruv-swarm".to_string(), "mcp".to_string(), "start".to_string()],
+                args: vec![
+                    "ruv-swarm".to_string(),
+                    "mcp".to_string(),
+                    "start".to_string(),
+                ],
                 env,
             },
         );
     }
-    
+
     pub fn has_servers(&self) -> bool {
         !self.mcp_servers.is_empty()
     }
@@ -157,10 +169,10 @@ pub struct LaunchOptions {
 pub trait ClaudeDetector: Send + Sync {
     /// Check if Claude Code is installed and return detection result
     async fn detect(&self) -> Result<DetectionResult>;
-    
+
     /// Get platform-specific installation paths
     fn get_installation_paths(&self) -> InstallationPaths;
-    
+
     /// Validate Claude Code version compatibility
     async fn validate_version(&self, version: &str) -> Result<bool>;
 }
@@ -170,13 +182,13 @@ pub trait ClaudeDetector: Send + Sync {
 pub trait Installer: Send + Sync {
     /// Download and install Claude Code
     async fn install(&self, options: InstallOptions) -> Result<PathBuf>;
-    
+
     /// Check if installation requires elevated permissions
     async fn requires_elevation(&self, target_dir: &Path) -> Result<bool>;
-    
+
     /// Verify installation was successful
     async fn verify_installation(&self, install_path: &Path) -> Result<bool>;
-    
+
     /// Rollback failed installation
     async fn rollback(&self, install_path: &Path) -> Result<()>;
 }
@@ -186,16 +198,16 @@ pub trait Installer: Send + Sync {
 pub trait MCPConfigurator: Send + Sync {
     /// Create MCP configuration file
     async fn create_config(&self, config: &MCPConfig, path: &Path) -> Result<()>;
-    
+
     /// Load existing MCP configuration
     async fn load_config(&self, path: &Path) -> Result<MCPConfig>;
-    
+
     /// Validate MCP configuration
     async fn validate_config(&self, config: &MCPConfig) -> Result<bool>;
-    
+
     /// Check for GitHub token availability
     async fn check_github_token(&self) -> Result<Option<String>>;
-    
+
     /// Generate swarm ID
     fn generate_swarm_id(&self) -> String;
 }
@@ -205,28 +217,28 @@ pub trait MCPConfigurator: Send + Sync {
 pub trait InteractivePrompt: Send + Sync {
     /// Show Y/N confirmation prompt
     async fn confirm(&self, message: &str, default: bool) -> Result<bool>;
-    
+
     /// Show multiple choice prompt
     async fn choice(&self, message: &str, options: &[&str]) -> Result<usize>;
-    
+
     /// Show text input prompt
     async fn input(&self, message: &str, default: Option<&str>) -> Result<String>;
-    
+
     /// Show password input prompt (hidden)
     async fn password(&self, message: &str) -> Result<String>;
-    
+
     /// Display info message
     async fn info(&self, message: &str);
-    
+
     /// Display warning message
     async fn warning(&self, message: &str);
-    
+
     /// Display error message
     async fn error(&self, message: &str);
-    
+
     /// Display success message
     async fn success(&self, message: &str);
-    
+
     /// Show progress bar
     async fn progress(&self, message: &str, current: u64, total: u64);
 }
@@ -236,13 +248,13 @@ pub trait InteractivePrompt: Send + Sync {
 pub trait LaunchManager: Send + Sync {
     /// Launch Claude Code with MCP configuration
     async fn launch(&self, options: LaunchOptions) -> Result<()>;
-    
+
     /// Check if Claude Code is already running
     async fn is_running(&self) -> Result<bool>;
-    
+
     /// Wait for Claude Code to be ready
     async fn wait_for_ready(&self, timeout_secs: u64) -> Result<()>;
-    
+
     /// Guide user through authentication
     async fn guide_auth(&self) -> Result<()>;
 }
@@ -261,13 +273,13 @@ pub struct Checkpoint {
 pub trait Rollback: Send + Sync {
     /// Create a checkpoint
     async fn checkpoint(&mut self, description: &str) -> Result<String>;
-    
+
     /// Rollback to a checkpoint
     async fn rollback(&mut self, checkpoint_id: &str) -> Result<()>;
-    
+
     /// Commit changes (clear checkpoints)
     async fn commit(&mut self) -> Result<()>;
-    
+
     /// List available checkpoints
     async fn list_checkpoints(&self) -> Result<Vec<Checkpoint>>;
 }
@@ -361,76 +373,106 @@ where
             config,
         }
     }
-    
+
     /// Run the complete onboarding flow
     pub async fn run(&self) -> Result<()> {
         self.prompt.info("🚀 Welcome to ruv-swarm!").await;
-        
+
         // Step 1: Detect Claude Code
         let detection = self.detector.detect().await?;
-        
+
         if !detection.found {
             self.prompt.error("Claude Code not found").await;
-            
-            if self.config.auto_accept || self.prompt.confirm("Would you like to install Claude Code?", true).await? {
+
+            if self.config.auto_accept
+                || self
+                    .prompt
+                    .confirm("Would you like to install Claude Code?", true)
+                    .await?
+            {
                 self.install_claude_code().await?;
             } else {
                 return Err(OnboardingError::ClaudeCodeNotFound);
             }
         } else if !detection.is_compatible {
-            self.prompt.warning(&format!(
-                "Claude Code version {} is incompatible (requires {})",
-                detection.version.as_deref().unwrap_or("unknown"),
-                self.config.claude_code_version
-            )).await;
+            self.prompt
+                .warning(&format!(
+                    "Claude Code version {} is incompatible (requires {})",
+                    detection.version.as_deref().unwrap_or("unknown"),
+                    self.config.claude_code_version
+                ))
+                .await;
         }
-        
+
         // Step 2: Configure MCP servers
         self.configure_mcp_servers().await?;
-        
+
         // Step 3: Offer to launch
-        if self.config.auto_accept || self.prompt.confirm("Ready to launch Claude Code?", true).await? {
+        if self.config.auto_accept
+            || self
+                .prompt
+                .confirm("Ready to launch Claude Code?", true)
+                .await?
+        {
             self.launch_claude_code().await?;
         }
-        
+
         self.prompt.success("✨ Initialization complete!").await;
         Ok(())
     }
-    
+
     async fn install_claude_code(&self) -> Result<()> {
         let paths = self.detector.get_installation_paths();
-        let default_path = paths.user_paths.first()
+        let default_path = paths
+            .user_paths
+            .first()
             .or(paths.system_paths.first())
-            .ok_or_else(|| OnboardingError::InstallationFailed("No installation paths available".to_string()))?;
-        
+            .ok_or_else(|| {
+                OnboardingError::InstallationFailed("No installation paths available".to_string())
+            })?;
+
         let options = InstallOptions {
             target_dir: default_path.clone(),
             system_install: false,
             force_reinstall: false,
             version: None,
         };
-        
+
         self.prompt.info("📦 Downloading Claude Code...").await;
         let install_path = self.installer.install(options).await?;
-        
+
         if self.installer.verify_installation(&install_path).await? {
-            self.prompt.success("✅ Claude Code installed successfully!").await;
+            self.prompt
+                .success("✅ Claude Code installed successfully!")
+                .await;
             Ok(())
         } else {
-            Err(OnboardingError::InstallationFailed("Verification failed".to_string()))
+            Err(OnboardingError::InstallationFailed(
+                "Verification failed".to_string(),
+            ))
         }
     }
-    
+
     async fn configure_mcp_servers(&self) -> Result<()> {
         self.prompt.info("Setting up MCP servers...").await;
-        
+
         let mut config = MCPConfig::new();
         let mut github_token = None;
-        
+
         // GitHub Authentication (for ruv-swarm features, not for GitHub MCP)
-        if self.config.auto_accept || self.prompt.confirm("Would you like to authenticate to GitHub for enhanced ruv-swarm features?", true).await? {
-            self.prompt.info("🔑 Checking GitHub authentication...").await;
-            
+        if self.config.auto_accept
+            || self
+                .prompt
+                .confirm(
+                    "Would you like to authenticate to GitHub for enhanced ruv-swarm features?",
+                    true,
+                )
+                .await?
+        {
+            self.prompt
+                .info("🔑 Checking GitHub authentication...")
+                .await;
+
             if let Ok(Some(token)) = self.configurator.check_github_token().await {
                 github_token = Some(token);
                 self.prompt.success("✅ Found GitHub token").await;
@@ -454,45 +496,70 @@ where
                 }
             }
         }
-        
+
         // ruv-swarm MCP
-        if self.config.auto_accept || self.prompt.confirm("Would you like to install the ruv-swarm MCP server?", true).await? {
-            self.prompt.info("📝 Configuring ruv-swarm MCP server...").await;
+        if self.config.auto_accept
+            || self
+                .prompt
+                .confirm("Would you like to install the ruv-swarm MCP server?", true)
+                .await?
+        {
+            self.prompt
+                .info("📝 Configuring ruv-swarm MCP server...")
+                .await;
             let swarm_id = self.configurator.generate_swarm_id();
             config.add_ruv_swarm_mcp(swarm_id, self.config.default_topology.clone(), github_token);
-            self.prompt.success("✅ ruv-swarm MCP server configured").await;
+            self.prompt
+                .success("✅ ruv-swarm MCP server configured")
+                .await;
         }
-        
+
         // Optional: Prompt for GitHub MCP if user explicitly wants it
-        if !self.config.auto_accept && self.prompt.confirm("Would you like to also install the GitHub MCP server? (optional)", false).await? {
-            self.prompt.info("📝 Configuring GitHub MCP server...").await;
+        if !self.config.auto_accept
+            && self
+                .prompt
+                .confirm(
+                    "Would you like to also install the GitHub MCP server? (optional)",
+                    false,
+                )
+                .await?
+        {
+            self.prompt
+                .info("📝 Configuring GitHub MCP server...")
+                .await;
             config.add_github_mcp(None);
             self.prompt.info("ℹ️  GitHub MCP server added. Set GITHUB_TOKEN environment variable for authentication.").await;
         }
-        
+
         if config.has_servers() {
             let config_path = PathBuf::from(".claude/mcp.json");
-            self.configurator.create_config(&config, &config_path).await?;
+            self.configurator
+                .create_config(&config, &config_path)
+                .await?;
         }
-        
+
         Ok(())
     }
-    
+
     async fn launch_claude_code(&self) -> Result<()> {
-        self.prompt.info("🚀 Launching Claude Code with MCP servers...").await;
-        
+        self.prompt
+            .info("🚀 Launching Claude Code with MCP servers...")
+            .await;
+
         let options = LaunchOptions {
             mcp_config_path: PathBuf::from(".claude/mcp.json"),
             skip_permissions: true,
             wait_for_auth: true,
         };
-        
+
         self.launcher.launch(options).await?;
-        
+
         if self.launcher.wait_for_ready(30).await.is_ok() {
-            self.prompt.info("📋 Please log in to your Anthropic account when prompted").await;
+            self.prompt
+                .info("📋 Please log in to your Anthropic account when prompted")
+                .await;
         }
-        
+
         Ok(())
     }
 }
