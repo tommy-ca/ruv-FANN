@@ -16,6 +16,27 @@ use tokio::time::timeout;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
+/// Duration serialization helpers
+mod duration_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(duration.as_millis() as u64)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let millis = u64::deserialize(deserializer)?;
+        Ok(Duration::from_millis(millis))
+    }
+}
+
 pub mod claude_executor;
 pub mod comparator;
 pub mod metrics;
@@ -308,6 +329,7 @@ pub struct ScenarioResult {
     pub run_id: String,
     pub scenario_name: String,
     pub mode: ExecutionMode,
+    #[serde(with = "duration_serde")]
     pub duration: Duration,
     pub metrics: PerformanceMetrics,
     pub status: ExecutionStatus,

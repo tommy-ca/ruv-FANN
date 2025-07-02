@@ -45,10 +45,6 @@ class WasmBindingsLoader {
       // Load the WASM binary
       const wasmBinary = await fs.readFile(wasmBinaryPath);
       
-      // Import the ES module version of the WASM bindings
-      const wasmBindingsUrl = new URL(`file://${wasmJsPath}`);
-      const wasmBindings = await import(wasmBindingsUrl.href);
-      
       // Create imports object matching the expected structure
       const imports = this.createImports();
       
@@ -61,17 +57,15 @@ class WasmBindingsLoader {
       // Store memory
       this.memory = this.wasm.memory;
       
-      // Copy all exports from the ES module to this object
-      for (const key in wasmBindings) {
-        if (key !== 'default') {
-          if (typeof wasmBindings[key] === 'function') {
-            this[key] = wasmBindings[key];
-          } else {
-            Object.defineProperty(this, key, {
-              get: () => wasmBindings[key],
-              configurable: true
-            });
-          }
+      // Copy all exports to this object
+      for (const key in this.wasm) {
+        if (typeof this.wasm[key] === 'function') {
+          this[key] = this.wasm[key].bind(this.wasm);
+        } else {
+          Object.defineProperty(this, key, {
+            get: () => this.wasm[key],
+            configurable: true
+          });
         }
       }
       
@@ -167,6 +161,14 @@ class WasmBindingsLoader {
       console.error(getObject(arg0));
     };
     
+    imports.wbg.__wbg_error_7534b8e9a36f1ab4 = function(arg0, arg1) {
+      var v0 = getStringFromWasm0(arg0, arg1).slice();
+      if (this.wasm && this.wasm.__wbindgen_export_1) {
+        this.wasm.__wbindgen_export_1(arg0, arg1 * 1, 1);
+      }
+      console.error(v0);
+    }.bind(this);
+    
     imports.wbg.__wbg_from_2a5d3e218e67aa85 = function(arg0) {
       return addHeapObject(Array.from(getObject(arg0)));
     };
@@ -192,11 +194,14 @@ class WasmBindingsLoader {
     };
     
     imports.wbg.__wbg_instanceof_Window_def73ea0955fc569 = function(arg0) {
-      let result = false;
+      let result;
       try {
-        result = typeof Window !== 'undefined' && getObject(arg0) instanceof Window;
-      } catch {}
-      return result;
+        result = getObject(arg0) instanceof Window;
+      } catch (_) {
+        result = false;
+      }
+      const ret = result;
+      return ret;
     };
     
     imports.wbg.__wbg_length_e2d2a49132c1b256 = function(arg0) {
@@ -218,6 +223,10 @@ class WasmBindingsLoader {
         console.error("Error creating function:", e);
         return addHeapObject(() => {});
       }
+    };
+    
+    imports.wbg.__wbg_new_8a6f238a6ece86ea = function() {
+      return addHeapObject(new Object());
     };
     
     imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
@@ -262,15 +271,32 @@ class WasmBindingsLoader {
       console.warn(getObject(arg0));
     };
     
+    imports.wbg.__wbg_stack_0ed75d68575b0f3c = function(arg0, arg1) {
+      const ret = getObject(arg1).stack;
+      const ptr1 = this.wasm && this.wasm.__wbindgen_malloc ? this.wasm.__wbindgen_malloc(ret.length * 1, 1) : 0;
+      const len1 = ret.length;
+      if (ptr1 && getUint8Memory0()) {
+        getUint8Memory0().subarray(ptr1, ptr1 + len1).set(new TextEncoder().encode(ret));
+        getUint8Memory0()[ptr1 + len1] = 0;
+      }
+      const dataView = new DataView(getUint8Memory0().buffer);
+      dataView.setInt32(arg0 + 4 * 1, len1, true);
+      dataView.setInt32(arg0 + 4 * 0, ptr1, true);
+    }.bind(this);
+    
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {
       const obj = getObject(arg1);
       const debugStr = String(obj);
-      const ptr = this.wasm.__wbindgen_malloc(debugStr.length * 1);
+      const ptr = this.wasm && this.wasm.__wbindgen_malloc ? this.wasm.__wbindgen_malloc(debugStr.length * 1, 1) : 0;
       const len = debugStr.length;
-      getUint8Memory0().subarray(ptr, ptr + len).set(new TextEncoder().encode(debugStr));
-      getUint8Memory0()[ptr + len] = 0;
-      getObject(arg0).value = ptr;
-    };
+      if (ptr && getUint8Memory0()) {
+        getUint8Memory0().subarray(ptr, ptr + len).set(new TextEncoder().encode(debugStr));
+        getUint8Memory0()[ptr + len] = 0;
+      }
+      const dataView = new DataView(getUint8Memory0().buffer);
+      dataView.setInt32(arg0 + 4 * 1, len, true);
+      dataView.setInt32(arg0 + 4 * 0, ptr, true);
+    }.bind(this);
     
     imports.wbg.__wbindgen_is_undefined = function(arg0) {
       return getObject(arg0) === undefined;
@@ -302,11 +328,15 @@ class WasmBindingsLoader {
       const obj = getObject(arg1);
       const val = typeof(obj) === 'string' ? obj : undefined;
       if (!isLikeNone(val)) {
-        const ptr = this.wasm.__wbindgen_malloc(val.length * 1);
+        const ptr = this.wasm && this.wasm.__wbindgen_malloc ? this.wasm.__wbindgen_malloc(val.length * 1, 1) : 0;
         const len = val.length;
-        getUint8Memory0().subarray(ptr, ptr + len).set(new TextEncoder().encode(val));
-        getUint8Memory0()[ptr + len] = 0;
-        getObject(arg0).value = ptr;
+        if (ptr && getUint8Memory0()) {
+          getUint8Memory0().subarray(ptr, ptr + len).set(new TextEncoder().encode(val));
+          getUint8Memory0()[ptr + len] = 0;
+        }
+        const dataView = new DataView(getUint8Memory0().buffer);
+        dataView.setInt32(arg0 + 4 * 1, len, true);
+        dataView.setInt32(arg0 + 4 * 0, ptr, true);
         return 1;
       }
       return 0;

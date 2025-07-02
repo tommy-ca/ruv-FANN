@@ -5,13 +5,38 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
+/// Duration serialization helpers
+mod duration_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(duration.as_millis() as u64)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let millis = u64::deserialize(deserializer)?;
+        Ok(Duration::from_millis(millis))
+    }
+}
+
 /// Core performance metrics collected during benchmark execution
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PerformanceMetrics {
     // Timing Metrics
+    #[serde(with = "duration_serde")]
     pub task_completion_time: Duration,
+    #[serde(with = "duration_serde")]
     pub time_to_first_output: Duration,
+    #[serde(with = "duration_serde")]
     pub agent_coordination_overhead: Duration,
+    #[serde(with = "duration_serde")]
     pub ml_inference_time: Duration,
 
     // Code Quality Metrics
@@ -65,6 +90,7 @@ pub struct SwarmCoordinationMetrics {
     pub agent_utilization: f64,
     pub communication_efficiency: f64,
     pub task_distribution_balance: f64,
+    #[serde(with = "duration_serde")]
     pub conflict_resolution_time: Duration,
     pub consensus_achievement_rate: f64,
     pub active_agents: u32,
@@ -76,6 +102,7 @@ pub struct SwarmCoordinationMetrics {
 pub struct ToolInvocation {
     pub tool_name: String,
     pub timestamp: DateTime<Utc>,
+    #[serde(with = "duration_serde")]
     pub duration: Duration,
     pub parameters: serde_json::Value,
     pub result_size: usize,
@@ -86,6 +113,7 @@ pub struct ToolInvocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkingSequence {
     pub start_time: DateTime<Utc>,
+    #[serde(with = "duration_serde")]
     pub duration: Duration,
     pub token_count: usize,
     pub decision_points: Vec<String>,

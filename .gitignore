@@ -16,12 +16,7 @@ node_modules
 *.rej
 *.swp
 *.swo
-*.swn
-.venv/
+*.swn.venv/
 
-# Ignore polyglot benchmark directory
-polyglot-benchmark/
-
-# Set an ignore folder for scratch work
 ignore/
 .devcontainer.json

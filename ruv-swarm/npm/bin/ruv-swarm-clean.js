@@ -153,21 +153,6 @@ async function initializeSystem() {
 
 async function handleInit(args) {
     try {
-        // Check for onboarding flag
-        if (args.includes('--onboard')) {
-            const { runOnboarding } = await import('../src/onboarding/index.js');
-            const options = {
-                autoAccept: args.includes('-y') || args.includes('--yes'),
-                verbose: args.includes('-v') || args.includes('--verbose')
-            };
-            
-            const result = await runOnboarding(options);
-            if (!result.success) {
-                process.exit(1);
-            }
-            return;
-        }
-        
         const { mcpTools } = await initializeSystem();
         
         // Filter out flags to get positional arguments
@@ -768,16 +753,16 @@ async function handleMcpRequest(request, mcpTools) {
 
 async function handleHook(args) {
     // Hook handler for Claude Code integration
-    const hooksCLI = require('../src/hooks/cli');
+    const { main: hooksCLIMain } = await import('../src/hooks/cli.js');
     
     // Pass through to hooks CLI with 'hook' already consumed
     process.argv = ['node', 'ruv-swarm', 'hook', ...args];
     
-    return hooksCLI.main();
+    return hooksCLIMain();
 }
 
 async function handleNeural(args) {
-    const { neuralCLI } = require('../src/neural');
+    const { neuralCLI } = await import('../src/neural.js');
     const subcommand = args[0] || 'help';
     
     try {
@@ -811,30 +796,8 @@ Examples:
     }
 }
 
-async function handleLaunch(args) {
-    try {
-        const { launchClaudeCode } = await import('../src/onboarding/index.js');
-        
-        // Parse launch options
-        const options = {
-            verbose: args.includes('--verbose') || args.includes('-v'),
-            args: args.filter(arg => !arg.startsWith('--') && !arg.startsWith('-'))
-        };
-        
-        const result = await launchClaudeCode(options);
-        
-        if (!result.success) {
-            console.error('❌ Launch failed:', result.error);
-            process.exit(1);
-        }
-    } catch (error) {
-        console.error('❌ Launch error:', error.message);
-        process.exit(1);
-    }
-}
-
 async function handleBenchmark(args) {
-    const { benchmarkCLI } = require('../src/benchmark');
+    const { benchmarkCLI } = await import('../src/benchmark.js');
     const subcommand = args[0] || 'help';
     
     try {
@@ -862,7 +825,7 @@ Examples:
 }
 
 async function handlePerformance(args) {
-    const { performanceCLI } = require('../src/performance');
+    const { performanceCLI } = await import('../src/performance.js');
     const subcommand = args[0] || 'help';
     
     try {
@@ -900,7 +863,6 @@ Usage: ruv-swarm <command> [options]
 
 Commands:
   init [topology] [maxAgents]     Initialize swarm (--claude for integration)
-  launch [options]                Launch Claude Code with MCP configuration
   spawn <type> [name]             Spawn an agent (researcher, coder, analyst, etc.)
   orchestrate <task>              Orchestrate a task across agents
   status [--verbose]              Show swarm status
@@ -915,9 +877,7 @@ Commands:
   help                            Show this help message
 
 Examples:
-  ruv-swarm init --onboard                Run interactive onboarding
-  ruv-swarm init mesh 5 --claude --force  Initialize with Claude integration
-  ruv-swarm launch                         Launch Claude Code with MCP
+  ruv-swarm init mesh 5 --claude --force
   ruv-swarm spawn researcher "AI Research Specialist"
   ruv-swarm orchestrate "Build a REST API with authentication"
   ruv-swarm mcp start
@@ -976,9 +936,6 @@ async function main() {
             case 'claude-invoke':
             case 'claude':
                 await handleClaudeInvoke(args.slice(1));
-                break;
-            case 'launch':
-                await handleLaunch(args.slice(1));
                 break;
             case 'neural':
                 await handleNeural(args.slice(1));
