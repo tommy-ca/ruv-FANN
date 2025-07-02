@@ -27,22 +27,17 @@ impl fmt::Display for TaskId {
 }
 
 /// Task priority levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum TaskPriority {
     /// Low priority task - executed when no higher priority tasks are available
     Low = 0,
     /// Normal priority task - default priority level for most tasks
+    #[default]
     Normal = 1,
     /// High priority task - prioritized over normal and low priority tasks
     High = 2,
     /// Critical priority task - highest priority, executed immediately
     Critical = 3,
-}
-
-impl Default for TaskPriority {
-    fn default() -> Self {
-        TaskPriority::Normal
-    }
 }
 
 /// Task status
@@ -101,24 +96,28 @@ impl Task {
     }
 
     /// Set task priority
+    #[must_use]
     pub fn with_priority(mut self, priority: TaskPriority) -> Self {
         self.priority = priority;
         self
     }
 
     /// Set task payload
+    #[must_use]
     pub fn with_payload(mut self, payload: TaskPayload) -> Self {
         self.payload = payload;
         self
     }
 
     /// Add required capability
+    #[must_use]
     pub fn require_capability(mut self, capability: impl Into<String>) -> Self {
         self.required_capabilities.push(capability.into());
         self
     }
 
     /// Set timeout
+    #[must_use]
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = Some(timeout_ms);
         self
@@ -203,12 +202,14 @@ impl TaskResult {
     }
 
     /// Set task ID
+    #[must_use]
     pub fn with_task_id(mut self, task_id: TaskId) -> Self {
         self.task_id = task_id;
         self
     }
 
     /// Set execution time
+    #[must_use]
     pub fn with_execution_time(mut self, time_ms: u64) -> Self {
         self.execution_time_ms = time_ms;
         self
@@ -247,11 +248,12 @@ impl From<Vec<u8>> for TaskOutput {
 }
 
 /// Task distribution strategy
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DistributionStrategy {
     /// Round-robin distribution
     RoundRobin,
     /// Least loaded agent first
+    #[default]
     LeastLoaded,
     /// Random distribution
     Random,
@@ -259,10 +261,4 @@ pub enum DistributionStrategy {
     Priority,
     /// Capability-based distribution
     CapabilityBased,
-}
-
-impl Default for DistributionStrategy {
-    fn default() -> Self {
-        DistributionStrategy::LeastLoaded
-    }
 }

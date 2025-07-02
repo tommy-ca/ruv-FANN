@@ -549,7 +549,6 @@ class EnhancedMCPTools {
           };
         });
 
-<<<<<<< HEAD
         // Aggregate agent performance
         const agentMetrics = results.agent_results.map(ar => ar.performance);
         results.aggregated_performance = {
@@ -560,25 +559,44 @@ class EnhancedMCPTools {
           overall_success_rate: agentMetrics.length > 0 ?
             agentMetrics.reduce((sum, m) => sum + m.success_rate, 0) / agentMetrics.length : 0,
           agent_count: agentMetrics.length,
-=======
-    // Helper method to calculate task efficiency score
-    calculateEfficiencyScore(results) {
-        if (!results.execution_summary || !results.aggregated_performance) {
-            return 0.5; // Default score for incomplete data
-        }
-        
-        const factors = {
-            success: results.execution_summary.success ? 1.0 : 0.0,
-            speed: Math.max(0, 1.0 - (results.execution_time_ms / 60000)), // Penalty for tasks > 1 minute
-            resource_usage: results.aggregated_performance.total_memory_usage_mb < 100 ? 1.0 : 0.7,
-            agent_coordination: results.aggregated_performance.overall_success_rate || 0.5
         };
-        
-        return Object.values(factors).reduce((sum, factor) => sum + factor, 0) / Object.keys(factors).length;
-    }
+      }
 
-    // Enhanced agent_list with comprehensive agent information
-    async agent_list(params) {
+      // Format results based on requested format
+      if (format === 'detailed') {
+        this.recordToolMetrics('task_results', startTime, 'success');
+        return results;
+      } else if (format === 'summary') {
+        const summary = {
+          task_id: taskId,
+          status: results.status,
+          execution_summary: results.execution_summary,
+          agent_count: results.assigned_agents?.length || 0,
+          completion_time: results.execution_time_ms || results.execution_summary?.duration_ms,
+          success: results.status === 'completed',
+          efficiency_score: this.calculateEfficiencyScore(results),
+        };
+        this.recordToolMetrics('task_results', startTime, 'success');
+        return summary;
+      } else {
+        // Raw format
+        this.recordToolMetrics('task_results', startTime, 'success');
+        return {
+          ...results,
+          raw_data: {
+            database_record: dbTask,
+            task_results: dbTaskResults,
+          },
+        };
+      }
+    } catch (error) {
+      this.recordToolMetrics('task_results', startTime, 'error', error.message);
+      throw error;
+    }
+  }
+
+  // Enhanced agent_list with comprehensive agent information
+  async agent_list(params) {
         const startTime = performance.now();
         
         try {
@@ -1191,50 +1209,9 @@ class EnhancedMCPTools {
             successful_runs: successfulRuns,
             total_iterations: iterations,
             wasm_module_functional: successfulRuns > 0
->>>>>>> origin/main
         };
-      }
-
-      // Format results based on requested format
-      if (format === 'detailed') {
-        this.recordToolMetrics('task_results', startTime, 'success');
-        return results;
-      } else if (format === 'summary') {
-        const summary = {
-          task_id: taskId,
-          status: results.status,
-          execution_summary: results.execution_summary,
-          agent_count: results.assigned_agents?.length || 0,
-          completion_time: results.execution_time_ms || results.execution_summary?.duration_ms,
-          success: results.status === 'completed',
-          has_errors: Boolean(results.error_details),
-          result_available: Boolean(results.final_result),
-        };
-
-        this.recordToolMetrics('task_results', startTime, 'success');
-        return summary;
-      } else if (format === 'performance') {
-        const performance = {
-          task_id: taskId,
-          execution_metrics: results.execution_summary,
-          agent_performance: results.aggregated_performance || {},
-          resource_utilization: {
-            peak_memory_mb: results.aggregated_performance?.total_memory_usage_mb || 0,
-            cpu_time_ms: results.execution_time_ms || 0,
-            efficiency_score: this.calculateEfficiencyScore(results),
-          },
-        };
-
-        this.recordToolMetrics('task_results', startTime, 'success');
-        return performance;
-      }
-      this.recordToolMetrics('task_results', startTime, 'success');
+      
       return results;
-
-    } catch (error) {
-      this.recordToolMetrics('task_results', startTime, 'error', error.message);
-      throw error;
-    }
   }
 
   // Helper method to generate recovery suggestions for task errors

@@ -22,7 +22,7 @@ wee_alloc = { version = "0.4", optional = true }
 rayon = { version = "1.8", optional = true }
 
 # Internal crate dependencies with WASM features
-ruv-fann = { path = "../../../../", features = ["wasm"], optional = true }
+ruv-fann = { path = "../../../../", features = ["wasm", "binary"], optional = true }
 neuro-divergent = { path = "../../../../../neuro-divergent", optional = true }
 ruv-swarm-core = { path = "../ruv-swarm-core", features = ["wasm"] }
 ruv-swarm-persistence = { path = "../ruv-swarm-persistence", features = ["wasm"] }

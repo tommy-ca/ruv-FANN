@@ -11,9 +11,10 @@ use alloc::{
 use std::collections::{HashMap, HashSet};
 
 /// Type of swarm topology
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TopologyType {
     /// All agents can communicate with all other agents
+    #[default]
     Mesh,
     /// Agents organized in a tree structure
     Hierarchical,
@@ -25,12 +26,6 @@ pub enum TopologyType {
     Star,
     /// Custom topology defined by user
     Custom,
-}
-
-impl Default for TopologyType {
-    fn default() -> Self {
-        TopologyType::Mesh
-    }
 }
 
 /// Swarm topology configuration
@@ -75,19 +70,19 @@ impl Topology {
     }
 
     /// Create a star topology with a central coordinator
-    pub fn star(center: AgentId, agents: &[AgentId]) -> Self {
+    pub fn star(center: &str, agents: &[AgentId]) -> Self {
         let mut topology = Topology::new(TopologyType::Star);
 
         // Center connects to all agents
         let center_connections: HashSet<AgentId> = agents.iter().cloned().collect();
         topology
             .connections
-            .insert(center.clone(), center_connections);
+            .insert(center.to_string(), center_connections);
 
         // All agents connect only to center
         for agent in agents {
             let mut connections = HashSet::new();
-            connections.insert(center.clone());
+            connections.insert(center.to_string());
             topology.connections.insert(agent.clone(), connections);
         }
 
@@ -121,14 +116,14 @@ impl Topology {
     pub fn add_connection(&mut self, from: AgentId, to: AgentId) {
         self.connections
             .entry(from.clone())
-            .or_insert_with(HashSet::new)
+            .or_default()
             .insert(to.clone());
 
         // For undirected graphs, add reverse connection
         if self.topology_type != TopologyType::Pipeline {
             self.connections
                 .entry(to)
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(from);
         }
     }
@@ -156,15 +151,14 @@ impl Topology {
     pub fn are_connected(&self, from: &AgentId, to: &AgentId) -> bool {
         self.connections
             .get(from)
-            .map(|connections| connections.contains(to))
-            .unwrap_or(false)
+            .is_some_and(|connections| connections.contains(to))
     }
 
     /// Add an agent to a group
     pub fn add_to_group(&mut self, group_name: impl Into<String>, agent: AgentId) {
         self.groups
             .entry(group_name.into())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(agent);
     }
 
@@ -177,12 +171,16 @@ impl Topology {
     pub fn connection_count(&self) -> usize {
         self.connections
             .values()
-            .map(|conns| conns.len())
+            .map(HashSet::len)
             .sum::<usize>()
             / 2 // Divide by 2 for undirected graphs
     }
 
     /// Check if the topology is fully connected
+    ///
+    /// # Panics
+    ///
+    /// This function won't panic under normal circumstances, but may panic if the connections map is modified during iteration
     pub fn is_fully_connected(&self) -> bool {
         let agent_count = self.connections.len();
         if agent_count == 0 {

@@ -4078,16 +4078,26 @@ dependencies = [
 [[package]]
 name = "ruv-fann"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebc87dfe7e8537926a24751e5181a7c3c9170e12973c768ee413cc31cd4e651c"
 dependencies = [
+ "anyhow",
+ "async-trait",
+ "bincode",
+ "chrono",
+ "colored",
+ "dialoguer",
+ "directories",
  "log",
  "num-traits",
  "rand 0.8.5",
  "rand_distr 0.4.3",
+ "regex",
  "serde",
  "serde_json",
+ "serde_yaml",
+ "tempfile",
  "thiserror 1.0.69",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

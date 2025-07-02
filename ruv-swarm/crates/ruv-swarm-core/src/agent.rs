@@ -177,6 +177,7 @@ impl CognitivePattern {
     }
 
     /// Get complementary pattern
+    #[must_use]
     pub fn complement(&self) -> CognitivePattern {
         match self {
             CognitivePattern::Convergent => CognitivePattern::Divergent,
@@ -376,13 +377,21 @@ impl DynamicAgent {
     }
 
     /// Start the agent
-    pub async fn start(&mut self) -> crate::error::Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the agent fails to start
+    pub fn start(&mut self) -> crate::error::Result<()> {
         self.status = AgentStatus::Running;
         Ok(())
     }
 
     /// Shutdown the agent
-    pub async fn shutdown(&mut self) -> crate::error::Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the agent fails to shutdown
+    pub fn shutdown(&mut self) -> crate::error::Result<()> {
         self.status = AgentStatus::Offline;
         Ok(())
     }
