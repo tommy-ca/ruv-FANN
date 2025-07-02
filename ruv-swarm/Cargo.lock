@@ -3899,21 +3899,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ruv-swarm-ml"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6b49e609c67aaa3bdf111b057fc55e5c2fb2a6f48a716ce3c7bf329ef47826b"
-dependencies = [
- "js-sys",
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "ruv-swarm-ml-training"
 version = "0.2.0"
 dependencies = [
@@ -4008,7 +3993,7 @@ dependencies = [
  "num-traits",
  "ruv-fann",
  "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ruv-swarm-ml 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ruv-swarm-ml",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

@@ -303,7 +303,7 @@ impl ToString for ExecutionMode {
 }
 
 /// Result of a single scenario execution
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ScenarioResult {
     pub run_id: String,
     pub scenario_name: String,
@@ -314,7 +314,7 @@ pub struct ScenarioResult {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum ExecutionStatus {
     Running,
     Completed,

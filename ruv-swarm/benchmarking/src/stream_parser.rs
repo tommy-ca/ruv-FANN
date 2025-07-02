@@ -541,7 +541,7 @@ impl EventProcessor for ErrorRecoveryTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::io::Cursor;
+    use std::io::Cursor;
 
     #[tokio::test]
     async fn test_stream_event_parsing() {

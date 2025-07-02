@@ -184,7 +184,7 @@ impl SWEBenchEvaluator {
             solved_scenarios: total_solve_count,
             overall_solve_rate,
             difficulty_breakdown: difficulty_stats,
-            scenario_results,
+            scenario_results: scenario_results.clone(),
             performance_summary: self
                 .calculate_performance_summary(&scenario_results)
                 .await?,
@@ -823,7 +823,7 @@ pub struct ScenarioEvaluationResult {
     pub solve_status: SolveStatus,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SolveStatus {
     Solved,
     Partial,
@@ -831,7 +831,7 @@ pub enum SolveStatus {
     Timeout,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImprovementMetrics {
     pub execution_time_improvement: Option<f64>,
     pub token_efficiency_improvement: Option<f64>,

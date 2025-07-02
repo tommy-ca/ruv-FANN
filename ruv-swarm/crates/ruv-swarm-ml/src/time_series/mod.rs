@@ -17,12 +17,44 @@ use wasm_bindgen::prelude::*;
 
 /// Time series data structure
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct TimeSeriesData {
     pub values: Vec<f32>,
     pub timestamps: Vec<f64>,
     pub frequency: String,
     pub unique_id: String,
+}
+
+/// WASM-compatible wrapper for TimeSeriesData
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+pub struct TimeSeriesDataWasm {
+    inner: TimeSeriesData,
+}
+
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+impl TimeSeriesDataWasm {
+    #[wasm_bindgen(constructor)]
+    pub fn new(frequency: String, unique_id: String) -> Self {
+        Self {
+            inner: TimeSeriesData {
+                values: Vec::new(),
+                timestamps: Vec::new(),
+                frequency,
+                unique_id,
+            },
+        }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn frequency(&self) -> String {
+        self.inner.frequency.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn unique_id(&self) -> String {
+        self.inner.unique_id.clone()
+    }
 }
 
 impl TimeSeriesData {
@@ -46,39 +78,6 @@ impl TimeSeriesData {
     }
 }
 
-#[cfg(feature = "wasm")]
-#[wasm_bindgen]
-impl TimeSeriesData {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        values: Vec<f32>,
-        timestamps: Vec<f64>,
-        frequency: String,
-        unique_id: String,
-    ) -> Self {
-        Self {
-            values,
-            timestamps,
-            frequency,
-            unique_id,
-        }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn length(&self) -> usize {
-        self.values.len()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn mean_wasm(&self) -> f32 {
-        self.mean()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn std_dev_wasm(&self) -> f32 {
-        self.std_dev()
-    }
-}
 
 /// Time series processor for data transformations
 pub struct TimeSeriesProcessor {

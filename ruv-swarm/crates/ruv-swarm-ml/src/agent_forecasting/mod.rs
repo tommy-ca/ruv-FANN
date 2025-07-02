@@ -39,11 +39,37 @@ pub struct AgentForecastContext {
 
 /// Model specialization based on forecast domain
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct ModelSpecialization {
     pub forecast_domain: ForecastDomain,
     pub temporal_patterns: Vec<TemporalPattern>,
     pub optimization_objectives: Vec<OptimizationObjective>,
+}
+
+/// WASM-compatible wrapper for ModelSpecialization
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+pub struct ModelSpecializationWasm {
+    inner: ModelSpecialization,
+}
+
+#[cfg(feature = "wasm")]
+#[wasm_bindgen]
+impl ModelSpecializationWasm {
+    #[wasm_bindgen(constructor)]
+    pub fn new(forecast_domain: ForecastDomain) -> Self {
+        Self {
+            inner: ModelSpecialization {
+                forecast_domain,
+                temporal_patterns: Vec::new(),
+                optimization_objectives: Vec::new(),
+            },
+        }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn forecast_domain(&self) -> ForecastDomain {
+        self.inner.forecast_domain
+    }
 }
 
 /// Forecast domain types
