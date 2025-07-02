@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod protocol_tests {
     use crate::protocol::*;
-    
+
     #[test]
     fn test_message_creation() {
         let msg = Message::new("test".to_string(), MessageType::Heartbeat { seq: 1 });
@@ -11,7 +11,7 @@ mod protocol_tests {
         assert_eq!(msg.priority, 128);
         assert!(msg.ttl.is_none());
     }
-    
+
     #[test]
     fn test_protocol_version() {
         let v1 = ProtocolVersion::CURRENT;
@@ -25,18 +25,18 @@ mod protocol_tests {
 #[cfg(test)]
 mod ring_buffer_tests {
     use crate::shared_memory::RingBuffer;
-    
+
     #[test]
     fn test_ring_buffer_basic() {
         let buffer = RingBuffer::new(1024);
         assert!(buffer.is_empty());
         assert_eq!(buffer.available_space(), 1024);
-        
+
         // Write some data
         let data = b"Hello, World!";
         buffer.write(data).unwrap();
         assert!(!buffer.is_empty());
-        
+
         // Read it back
         let read = buffer.read().unwrap();
         assert_eq!(read, data);

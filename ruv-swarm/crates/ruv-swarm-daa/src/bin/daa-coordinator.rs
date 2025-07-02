@@ -1,7 +1,7 @@
 #!/usr/bin/env cargo run --bin daa-coordinator --
 
 //! DAA Coordinator Binary
-//! 
+//!
 //! Central coordination daemon for Decentralized Autonomous Agents (DAA)
 //! Provides orchestration, monitoring, and cross-agent coordination services.
 
@@ -71,12 +71,12 @@ impl DAACoordinator {
         drop(active);
 
         println!("🚀 DAA Coordinator starting...");
-        
+
         // Initialize subsystems
         self.initialize_coordination_layer().await?;
         self.start_monitoring_loop().await?;
         self.start_learning_adaptation().await?;
-        
+
         println!("✅ DAA Coordinator started successfully");
         Ok(())
     }
@@ -88,7 +88,7 @@ impl DAACoordinator {
         drop(active);
 
         println!("🛑 DAA Coordinator stopping...");
-        
+
         // Graceful shutdown of all agents
         let agents = self.agents.read().await;
         for (id, agent) in agents.iter() {
@@ -103,7 +103,10 @@ impl DAACoordinator {
     }
 
     /// Register new DAA agent
-    pub async fn register_agent(&self, agent: Box<dyn DAAAgent + Send + Sync>) -> Result<String, DAAError> {
+    pub async fn register_agent(
+        &self,
+        agent: Box<dyn DAAAgent + Send + Sync>,
+    ) -> Result<String, DAAError> {
         let agent_id = agent.get_id().await?;
         let mut agents = self.agents.write().await;
         agents.insert(agent_id.clone(), agent);
@@ -138,15 +141,16 @@ impl DAACoordinator {
     /// Coordinate task execution across agents
     pub async fn coordinate_task(&self, task: TaskRequest) -> Result<TaskResult, DAAError> {
         let start_time = Instant::now();
-        
+
         // Find best agent for task
         let agent_id = self.select_optimal_agent(&task).await?;
-        
+
         // Execute task
         let agents = self.agents.read().await;
-        let agent = agents.get(&agent_id)
+        let agent = agents
+            .get(&agent_id)
             .ok_or_else(|| DAAError::AgentNotFound(agent_id.clone()))?;
-        
+
         let result = agent.execute_task(task.clone()).await?;
         drop(agents);
 
@@ -154,23 +158,25 @@ impl DAACoordinator {
         let mut metrics = self.metrics.lock().await;
         metrics.completed_tasks += 1;
         let response_time = start_time.elapsed().as_millis() as f64;
-        metrics.average_response_time = 
-            (metrics.average_response_time * (metrics.completed_tasks - 1) as f64 + response_time) 
-            / metrics.completed_tasks as f64;
+        metrics.average_response_time =
+            (metrics.average_response_time * (metrics.completed_tasks - 1) as f64 + response_time)
+                / metrics.completed_tasks as f64;
         drop(metrics);
 
         // Store coordination event
         let mut memory = self.coordination_memory.lock().await;
-        memory.store_event(CoordinationEvent {
-            timestamp: chrono::Utc::now(),
-            agent_id: agent_id.clone(),
-            task_id: task.id.clone(),
-            event_type: "task_completion".to_string(),
-            metadata: json!({
-                "response_time_ms": response_time,
-                "success": true
-            }),
-        }).await?;
+        memory
+            .store_event(CoordinationEvent {
+                timestamp: chrono::Utc::now(),
+                agent_id: agent_id.clone(),
+                task_id: task.id.clone(),
+                event_type: "task_completion".to_string(),
+                metadata: json!({
+                    "response_time_ms": response_time,
+                    "success": true
+                }),
+            })
+            .await?;
         drop(memory);
 
         Ok(result)
@@ -180,7 +186,7 @@ impl DAACoordinator {
     pub async fn get_status(&self) -> Result<Value, DAAError> {
         let agents = self.agents.read().await;
         let metrics = self.metrics.lock().await;
-        
+
         let status = json!({
             "status": "active",
             "coordinator_version": env!("CARGO_PKG_VERSION"),
@@ -213,7 +219,7 @@ impl DAACoordinator {
     /// Initialize coordination layer
     async fn initialize_coordination_layer(&self) -> Result<(), DAAError> {
         println!("🔧 Initializing coordination layer...");
-        
+
         // Initialize neural coordination
         let mut neural_manager = self.neural_manager.lock().await;
         neural_manager.initialize_coordination_patterns().await?;
@@ -233,10 +239,10 @@ impl DAACoordinator {
         let active = Arc::clone(&self.active);
         let metrics = Arc::clone(&self.metrics);
         let agents = Arc::clone(&self.agents);
-        
+
         tokio::spawn(async move {
             let start_time = Instant::now();
-            
+
             while *active.lock().await {
                 // Update metrics
                 {
@@ -267,15 +273,18 @@ impl DAACoordinator {
         let active = Arc::clone(&self.active);
         let learning_engine = Arc::clone(&self.learning_engine);
         let coordination_memory = Arc::clone(&self.coordination_memory);
-        
+
         tokio::spawn(async move {
             while *active.lock().await {
                 // Perform adaptive learning
                 {
                     let mut engine = learning_engine.lock().await;
                     let memory = coordination_memory.lock().await;
-                    
-                    if let Err(e) = engine.adapt_from_events(&memory.get_recent_events(100).await.unwrap_or_default()).await {
+
+                    if let Err(e) = engine
+                        .adapt_from_events(&memory.get_recent_events(100).await.unwrap_or_default())
+                        .await
+                    {
                         eprintln!("⚠️  Learning adaptation failed: {}", e);
                     }
                 }
@@ -290,7 +299,7 @@ impl DAACoordinator {
     /// Select optimal agent for task
     async fn select_optimal_agent(&self, task: &TaskRequest) -> Result<String, DAAError> {
         let agents = self.agents.read().await;
-        
+
         if agents.is_empty() {
             return Err(DAAError::NoAgentsAvailable);
         }
@@ -301,15 +310,18 @@ impl DAACoordinator {
     }
 
     /// Get agent types distribution
-    async fn get_agent_types(&self, agents: &HashMap<String, Box<dyn DAAAgent + Send + Sync>>) -> HashMap<String, usize> {
+    async fn get_agent_types(
+        &self,
+        agents: &HashMap<String, Box<dyn DAAAgent + Send + Sync>>,
+    ) -> HashMap<String, usize> {
         let mut types = HashMap::new();
-        
+
         for agent in agents.values() {
             if let Ok(agent_type) = agent.get_type().await {
                 *types.entry(agent_type).or_insert(0) += 1;
             }
         }
-        
+
         types
     }
 
@@ -383,9 +395,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize coordinator
     let coordinator = DAACoordinator::new().await?;
-    
+
     println!("🤖 DAA Coordinator v{}", env!("CARGO_PKG_VERSION"));
-    println!("🔧 Configuration: {}", matches.get_one::<String>("config").unwrap());
+    println!(
+        "🔧 Configuration: {}",
+        matches.get_one::<String>("config").unwrap()
+    );
     println!("📡 Port: {}", matches.get_one::<String>("port").unwrap());
 
     // Start coordination service
@@ -407,7 +422,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Graceful shutdown
     coordinator_for_signal.stop().await?;
-    
+
     println!("👋 DAA Coordinator shutdown complete");
     Ok(())
 }
@@ -420,7 +435,7 @@ mod tests {
     async fn test_coordinator_initialization() {
         let coordinator = DAACoordinator::new().await.unwrap();
         let status = coordinator.get_status().await.unwrap();
-        
+
         assert_eq!(status["status"], "active");
         assert_eq!(status["agents"]["total"], 0);
     }
@@ -428,13 +443,13 @@ mod tests {
     #[tokio::test]
     async fn test_agent_registration() {
         let coordinator = DAACoordinator::new().await.unwrap();
-        
+
         // Create mock agent
         let agent = StandardDAAAgent::new("test-agent".to_string(), AgentType::Researcher);
         let agent_id = coordinator.register_agent(Box::new(agent)).await.unwrap();
-        
+
         assert_eq!(agent_id, "test-agent");
-        
+
         let status = coordinator.get_status().await.unwrap();
         assert_eq!(status["agents"]["total"], 1);
     }

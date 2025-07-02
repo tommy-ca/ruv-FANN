@@ -1,20 +1,20 @@
 //! Integration tests for SWE-Bench adapter
 
-use swe_bench_adapter::{
-    ClaudePromptGenerator, DifficultyLevel, InstanceLoader, PatchEvaluator,
-    PromptConfig, SWEBenchAdapter, SWEBenchConfig, SWEBenchInstance, StreamParser,
-};
 use std::path::PathBuf;
+use swe_bench_adapter::{
+    ClaudePromptGenerator, DifficultyLevel, InstanceLoader, PatchEvaluator, PromptConfig,
+    SWEBenchAdapter, SWEBenchConfig, SWEBenchInstance, StreamParser,
+};
 
 #[tokio::test]
 async fn test_instance_loader() {
     let temp_dir = tempfile::tempdir().unwrap();
     let mut loader = InstanceLoader::new(temp_dir.path()).unwrap();
-    
+
     // Load a mock instance (will be created automatically)
     let result = loader.load_instance("test-001").await;
     assert!(result.is_ok());
-    
+
     let instance = result.unwrap();
     assert_eq!(instance.instance_id, "test-001");
     assert_eq!(instance.difficulty, DifficultyLevel::Medium);
@@ -22,12 +22,12 @@ async fn test_instance_loader() {
 
 #[test]
 fn test_prompt_generation() {
-    use swe_bench_adapter::loader::InstanceMetrics;
     use std::collections::HashMap;
-    
+    use swe_bench_adapter::loader::InstanceMetrics;
+
     let config = PromptConfig::default();
     let generator = ClaudePromptGenerator::new(config);
-    
+
     let instance = SWEBenchInstance {
         instance_id: "test-001".to_string(),
         repo: "test/repo".to_string(),
@@ -49,10 +49,10 @@ fn test_prompt_generation() {
         },
         metadata: HashMap::new(),
     };
-    
+
     let result = generator.generate_prompt(&instance);
     assert!(result.is_ok());
-    
+
     let prompt = result.unwrap();
     assert!(prompt.token_count > 0);
     assert!(prompt.content.contains("test/repo"));
@@ -61,7 +61,7 @@ fn test_prompt_generation() {
 #[test]
 fn test_stream_parser() {
     let mut parser = StreamParser::new();
-    
+
     let output = r#"
 Starting execution...
 <function_calls>
@@ -70,10 +70,10 @@ Read file: test.py
 Error: Test failed
 Tokens: 500
 "#;
-    
+
     let result = parser.parse_stream(output);
     assert!(result.is_ok());
-    
+
     let metrics = result.unwrap();
     assert_eq!(metrics.total_tokens, 500);
     // The parser counts both "<function_calls>" and lines with "Read"
@@ -90,7 +90,7 @@ async fn test_adapter_creation() {
         memory_path: PathBuf::from("./test-memory"),
         ..Default::default()
     };
-    
+
     let result = SWEBenchAdapter::new(config).await;
     assert!(result.is_ok());
 }
@@ -98,7 +98,7 @@ async fn test_adapter_creation() {
 #[test]
 fn test_difficulty_categorization() {
     use swe_bench_adapter::loader::InstanceMetrics;
-    
+
     let easy_metrics = InstanceMetrics {
         files_changed: 1,
         lines_changed: 10,
@@ -108,7 +108,7 @@ fn test_difficulty_categorization() {
         domain_specific: false,
         requires_external_api: false,
     };
-    
+
     let hard_metrics = InstanceMetrics {
         files_changed: 5,
         lines_changed: 150,
@@ -118,7 +118,13 @@ fn test_difficulty_categorization() {
         domain_specific: true,
         requires_external_api: true,
     };
-    
-    assert_eq!(DifficultyLevel::from_metrics(&easy_metrics), DifficultyLevel::Easy);
-    assert_eq!(DifficultyLevel::from_metrics(&hard_metrics), DifficultyLevel::Hard);
+
+    assert_eq!(
+        DifficultyLevel::from_metrics(&easy_metrics),
+        DifficultyLevel::Easy
+    );
+    assert_eq!(
+        DifficultyLevel::from_metrics(&hard_metrics),
+        DifficultyLevel::Hard
+    );
 }

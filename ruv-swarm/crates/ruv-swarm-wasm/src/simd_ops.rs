@@ -107,28 +107,24 @@ fn simd_dot_product(a: &[f32], b: &[f32]) -> f32 {
     let len = a.len();
     let mut sum = f32x4::splat(0.0);
     let chunks = len / 4;
-    
+
     // Process 4 elements at a time using SIMD
     for i in 0..chunks {
         let start = i * 4;
-        let a_vec = f32x4::new([
-            a[start], a[start + 1], a[start + 2], a[start + 3]
-        ]);
-        let b_vec = f32x4::new([
-            b[start], b[start + 1], b[start + 2], b[start + 3]
-        ]);
+        let a_vec = f32x4::new([a[start], a[start + 1], a[start + 2], a[start + 3]]);
+        let b_vec = f32x4::new([b[start], b[start + 1], b[start + 2], b[start + 3]]);
         sum += a_vec * b_vec;
     }
-    
+
     // Sum up the SIMD register
     let sum_array = sum.as_array_ref();
     let mut result = sum_array[0] + sum_array[1] + sum_array[2] + sum_array[3];
-    
+
     // Handle remaining elements
     for i in (chunks * 4)..len {
         result += a[i] * b[i];
     }
-    
+
     result
 }
 
@@ -136,26 +132,22 @@ fn simd_vector_add(a: &[f32], b: &[f32]) -> Vec<f32> {
     let len = a.len();
     let mut result = Vec::with_capacity(len);
     let chunks = len / 4;
-    
+
     // Process 4 elements at a time using SIMD
     for i in 0..chunks {
         let start = i * 4;
-        let a_vec = f32x4::new([
-            a[start], a[start + 1], a[start + 2], a[start + 3]
-        ]);
-        let b_vec = f32x4::new([
-            b[start], b[start + 1], b[start + 2], b[start + 3]
-        ]);
+        let a_vec = f32x4::new([a[start], a[start + 1], a[start + 2], a[start + 3]]);
+        let b_vec = f32x4::new([b[start], b[start + 1], b[start + 2], b[start + 3]]);
         let sum_vec = a_vec + b_vec;
         let sum_array = sum_vec.as_array_ref();
         result.extend_from_slice(sum_array);
     }
-    
+
     // Handle remaining elements
     for i in (chunks * 4)..len {
         result.push(a[i] + b[i]);
     }
-    
+
     result
 }
 
@@ -164,23 +156,21 @@ fn simd_vector_scale(vec: &[f32], scalar: f32) -> Vec<f32> {
     let mut result = Vec::with_capacity(len);
     let chunks = len / 4;
     let scalar_vec = f32x4::splat(scalar);
-    
+
     // Process 4 elements at a time using SIMD
     for i in 0..chunks {
         let start = i * 4;
-        let vec_simd = f32x4::new([
-            vec[start], vec[start + 1], vec[start + 2], vec[start + 3]
-        ]);
+        let vec_simd = f32x4::new([vec[start], vec[start + 1], vec[start + 2], vec[start + 3]]);
         let scaled_vec = vec_simd * scalar_vec;
         let scaled_array = scaled_vec.as_array_ref();
         result.extend_from_slice(scaled_array);
     }
-    
+
     // Handle remaining elements
     for i in (chunks * 4)..len {
         result.push(vec[i] * scalar);
     }
-    
+
     result
 }
 
@@ -189,23 +179,21 @@ fn simd_relu(vec: &[f32]) -> Vec<f32> {
     let mut result = Vec::with_capacity(len);
     let chunks = len / 4;
     let zero_vec = f32x4::splat(0.0);
-    
+
     // Process 4 elements at a time using SIMD
     for i in 0..chunks {
         let start = i * 4;
-        let vec_simd = f32x4::new([
-            vec[start], vec[start + 1], vec[start + 2], vec[start + 3]
-        ]);
+        let vec_simd = f32x4::new([vec[start], vec[start + 1], vec[start + 2], vec[start + 3]]);
         let relu_vec = vec_simd.max(zero_vec);
         let relu_array = relu_vec.as_array_ref();
         result.extend_from_slice(relu_array);
     }
-    
+
     // Handle remaining elements
     for i in (chunks * 4)..len {
         result.push(vec[i].max(0.0));
     }
-    
+
     result
 }
 
@@ -214,14 +202,12 @@ fn simd_sigmoid(vec: &[f32]) -> Vec<f32> {
     let mut result = Vec::with_capacity(len);
     let chunks = len / 4;
     let one_vec = f32x4::splat(1.0);
-    
+
     // Process elements using SIMD (sigmoid approximation for SIMD)
     for i in 0..chunks {
         let start = i * 4;
-        let vec_simd = f32x4::new([
-            vec[start], vec[start + 1], vec[start + 2], vec[start + 3]
-        ]);
-        
+        let vec_simd = f32x4::new([vec[start], vec[start + 1], vec[start + 2], vec[start + 3]]);
+
         // Fast sigmoid approximation: 1 / (1 + exp(-x))
         // Using a polynomial approximation for better SIMD performance
         let clamped = vec_simd.max(f32x4::splat(-10.0)).min(f32x4::splat(10.0));
@@ -229,12 +215,12 @@ fn simd_sigmoid(vec: &[f32]) -> Vec<f32> {
         let sigmoid_array = sigmoid_vec.as_array_ref();
         result.extend_from_slice(sigmoid_array);
     }
-    
+
     // Handle remaining elements
     for i in (chunks * 4)..len {
         result.push(1.0 / (1.0 + (-vec[i]).exp()));
     }
-    
+
     result
 }
 
@@ -242,26 +228,24 @@ fn simd_tanh(vec: &[f32]) -> Vec<f32> {
     let len = vec.len();
     let mut result = Vec::with_capacity(len);
     let chunks = len / 4;
-    
+
     // Process elements using SIMD (tanh approximation for SIMD)
     for i in 0..chunks {
         let start = i * 4;
-        let vec_simd = f32x4::new([
-            vec[start], vec[start + 1], vec[start + 2], vec[start + 3]
-        ]);
-        
+        let vec_simd = f32x4::new([vec[start], vec[start + 1], vec[start + 2], vec[start + 3]]);
+
         // Fast tanh approximation for SIMD
         let clamped = vec_simd.max(f32x4::splat(-5.0)).min(f32x4::splat(5.0));
         let tanh_vec = fast_tanh_simd(clamped);
         let tanh_array = tanh_vec.as_array_ref();
         result.extend_from_slice(tanh_array);
     }
-    
+
     // Handle remaining elements
     for i in (chunks * 4)..len {
         result.push(vec[i].tanh());
     }
-    
+
     result
 }
 
@@ -272,14 +256,14 @@ fn simd_matrix_vector_multiply(
     cols: usize,
 ) -> Vec<f32> {
     let mut result = Vec::with_capacity(rows);
-    
+
     for row in 0..rows {
         let row_start = row * cols;
         let row_slice = &matrix[row_start..row_start + cols];
         let dot_product = simd_dot_product(row_slice, vector);
         result.push(dot_product);
     }
-    
+
     result
 }
 
@@ -291,7 +275,7 @@ fn simd_matrix_multiply(
     b_cols: usize,
 ) -> Vec<f32> {
     let mut result = vec![0.0; a_rows * b_cols];
-    
+
     for i in 0..a_rows {
         for j in 0..b_cols {
             let mut sum = 0.0;
@@ -301,7 +285,7 @@ fn simd_matrix_multiply(
             result[i * b_cols + j] = sum;
         }
     }
-    
+
     result
 }
 
@@ -311,7 +295,9 @@ fn fast_sigmoid_simd(x: f32x4) -> f32x4 {
     let abs_x = x.abs();
     let numerator = f32x4::splat(2.484) + x;
     let denominator = f32x4::splat(4.968) + abs_x;
-    (numerator / denominator).max(f32x4::splat(0.0)).min(f32x4::splat(1.0))
+    (numerator / denominator)
+        .max(f32x4::splat(0.0))
+        .min(f32x4::splat(1.0))
 }
 
 fn fast_tanh_simd(x: f32x4) -> f32x4 {
@@ -338,14 +324,14 @@ impl SimdBenchmark {
     pub fn benchmark_dot_product(&self, size: usize, iterations: usize) -> String {
         let a: Vec<f32> = (0..size).map(|i| i as f32 * 0.1).collect();
         let b: Vec<f32> = (0..size).map(|i| (i as f32 * 0.2) + 1.0).collect();
-        
+
         // SIMD benchmark
         let start_time = js_sys::Date::now();
         for _ in 0..iterations {
             let _ = simd_dot_product(&a, &b);
         }
         let simd_time = js_sys::Date::now() - start_time;
-        
+
         // Scalar benchmark
         let start_time = js_sys::Date::now();
         for _ in 0..iterations {
@@ -355,9 +341,9 @@ impl SimdBenchmark {
             }
         }
         let scalar_time = js_sys::Date::now() - start_time;
-        
+
         let speedup = scalar_time / simd_time;
-        
+
         format!(
             "{{\"simd_time\": {:.2}, \"scalar_time\": {:.2}, \"speedup\": {:.2}x}}",
             simd_time, scalar_time, speedup
@@ -368,19 +354,25 @@ impl SimdBenchmark {
     #[wasm_bindgen]
     pub fn benchmark_activation(&self, size: usize, iterations: usize, activation: &str) -> String {
         let vec: Vec<f32> = (0..size).map(|i| (i as f32 * 0.1) - 5.0).collect();
-        
+
         // SIMD benchmark
         let start_time = js_sys::Date::now();
         for _ in 0..iterations {
             match activation {
-                "relu" => { let _ = simd_relu(&vec); },
-                "sigmoid" => { let _ = simd_sigmoid(&vec); },
-                "tanh" => { let _ = simd_tanh(&vec); },
+                "relu" => {
+                    let _ = simd_relu(&vec);
+                }
+                "sigmoid" => {
+                    let _ = simd_sigmoid(&vec);
+                }
+                "tanh" => {
+                    let _ = simd_tanh(&vec);
+                }
                 _ => {}
             }
         }
         let simd_time = js_sys::Date::now() - start_time;
-        
+
         // Scalar benchmark
         let start_time = js_sys::Date::now();
         for _ in 0..iterations {
@@ -388,13 +380,13 @@ impl SimdBenchmark {
                 "relu" => vec.iter().map(|&x| x.max(0.0)).collect(),
                 "sigmoid" => vec.iter().map(|&x| 1.0 / (1.0 + (-x).exp())).collect(),
                 "tanh" => vec.iter().map(|&x| x.tanh()).collect(),
-                _ => vec.clone()
+                _ => vec.clone(),
             };
         }
         let scalar_time = js_sys::Date::now() - start_time;
-        
+
         let speedup = scalar_time / simd_time;
-        
+
         format!(
             "{{\"activation\": \"{}\", \"simd_time\": {:.2}, \"scalar_time\": {:.2}, \"speedup\": {:.2}x}}",
             activation, simd_time, scalar_time, speedup
@@ -406,22 +398,22 @@ impl SimdBenchmark {
 #[wasm_bindgen]
 pub fn detect_simd_capabilities() -> String {
     let mut capabilities = Vec::new();
-    
+
     // Check compilation features
     #[cfg(target_feature = "simd128")]
     capabilities.push("\"simd128\": true");
-    
+
     #[cfg(not(target_feature = "simd128"))]
     capabilities.push("\"simd128\": false");
-    
+
     #[cfg(feature = "simd")]
     capabilities.push("\"feature_simd\": true");
-    
+
     #[cfg(not(feature = "simd"))]
     capabilities.push("\"feature_simd\": false");
-    
+
     // Runtime detection would require JS integration
     capabilities.push("\"runtime_detection\": \"requires_js_integration\"");
-    
+
     format!("{{{}}}", capabilities.join(", "))
 }

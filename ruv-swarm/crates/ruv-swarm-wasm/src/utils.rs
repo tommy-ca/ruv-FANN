@@ -76,20 +76,23 @@ fn detect_simd_support() -> bool {
 fn test_simd_functionality() -> bool {
     // Test with wide crate which should be available with simd feature
     use wide::f32x4;
-    
+
     let result = std::panic::catch_unwind(|| {
         let a = f32x4::new([1.0, 2.0, 3.0, 4.0]);
         let b = f32x4::new([2.0, 3.0, 4.0, 5.0]);
         let sum = a + b;
         let expected = f32x4::new([3.0, 5.0, 7.0, 9.0]);
-        
+
         // Check if SIMD addition works correctly
         let diff = sum - expected;
         let abs_diff = diff.abs();
-        let max_diff = abs_diff.as_array_ref().iter().fold(0.0f32, |a, &b| a.max(b));
+        let max_diff = abs_diff
+            .as_array_ref()
+            .iter()
+            .fold(0.0f32, |a, &b| a.max(b));
         max_diff < 0.001
     });
-    
+
     result.unwrap_or(false)
 }
 
@@ -110,41 +113,45 @@ fn detect_simd_support() -> bool {
         {
             return true;
         }
-        
-        #[cfg(not(any(target_feature = "sse", target_feature = "avx", target_feature = "avx2")))]
+
+        #[cfg(not(any(
+            target_feature = "sse",
+            target_feature = "avx",
+            target_feature = "avx2"
+        )))]
         {
             false
         }
     }
-    
+
     #[cfg(target_arch = "aarch64")]
     {
         #[cfg(target_feature = "neon")]
         {
             return true;
         }
-        
+
         #[cfg(not(target_feature = "neon"))]
         {
             false
         }
     }
-    
+
     false
 }
 
 #[cfg(target_arch = "wasm32")]
 fn detect_wasm_simd_runtime() -> bool {
     // Try to detect WASM SIMD support at runtime
-    use js_sys::{WebAssembly, Reflect};
+    use js_sys::{Reflect, WebAssembly};
     use wasm_bindgen::JsValue;
-    
+
     // Check if WebAssembly.validate is available and supports SIMD
     if let Ok(validate) = Reflect::get(&js_sys::global(), &JsValue::from_str("WebAssembly")) {
         if !validate.is_undefined() {
             // Create basic SIMD instruction bytecode for validation
             let simd_test_module = js_sys::Uint8Array::new_with_length(32);
-            
+
             // WebAssembly magic number + version
             simd_test_module.set_index(0, 0x00);
             simd_test_module.set_index(1, 0x61);
@@ -154,7 +161,7 @@ fn detect_wasm_simd_runtime() -> bool {
             simd_test_module.set_index(5, 0x00);
             simd_test_module.set_index(6, 0x00);
             simd_test_module.set_index(7, 0x00);
-            
+
             // Simple function with SIMD instruction would go here
             // For now, return true if compilation features are enabled
             true
@@ -173,7 +180,8 @@ fn detect_threads_support() -> bool {
         let window = web_sys::window();
         if let Some(window) = window {
             let global = window.as_ref();
-            let shared_array_buffer = js_sys::Reflect::get(global, &JsValue::from_str("SharedArrayBuffer"));
+            let shared_array_buffer =
+                js_sys::Reflect::get(global, &JsValue::from_str("SharedArrayBuffer"));
             return shared_array_buffer.is_ok() && !shared_array_buffer.unwrap().is_undefined();
         }
     }
@@ -284,10 +292,7 @@ pub fn console_warn(message: &str) {
 #[wasm_bindgen]
 pub fn format_js_error(error: JsValue) -> String {
     if let Some(error_obj) = error.dyn_ref::<js_sys::Error>() {
-        format!(
-            "Error: {}",
-            error_obj.message()
-        )
+        format!("Error: {}", error_obj.message())
     } else {
         format!("Unknown error: {:?}", error)
     }

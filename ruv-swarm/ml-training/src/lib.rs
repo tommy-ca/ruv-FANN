@@ -1,5 +1,5 @@
 //! ML Training Pipeline for Neuro-Divergent Models
-//! 
+//!
 //! This module provides a comprehensive training pipeline for LSTM, TCN, and NBEATS models
 //! with a focus on predicting performance and optimizing prompts for AI agents.
 
@@ -128,14 +128,18 @@ impl StreamDataLoader {
     }
 
     /// Load events from a stream and convert to training dataset
-    pub async fn load_from_stream(&self, event_stream: impl Iterator<Item = StreamEvent>) -> Result<TrainingDataset> {
+    pub async fn load_from_stream(
+        &self,
+        event_stream: impl Iterator<Item = StreamEvent>,
+    ) -> Result<TrainingDataset> {
         let mut sequences = Vec::new();
         let mut labels = Vec::new();
         let mut agent_events: HashMap<String, Vec<StreamEvent>> = HashMap::new();
 
         // Group events by agent
         for event in event_stream {
-            agent_events.entry(event.agent_id.clone())
+            agent_events
+                .entry(event.agent_id.clone())
                 .or_default()
                 .push(event);
         }
@@ -180,7 +184,9 @@ impl StreamDataLoader {
 
         let metadata = DatasetMetadata {
             total_samples: sequences.len(),
-            feature_count: self.feature_extractors.iter()
+            feature_count: self
+                .feature_extractors
+                .iter()
                 .map(|e| e.feature_names().len())
                 .sum(),
             sequence_length: self.sequence_length,
@@ -260,7 +266,7 @@ impl FeatureExtractor for TemporalFeatureExtractor {
     fn extract(&self, event: &StreamEvent) -> Vec<f64> {
         let hour = (event.timestamp / 3600) % 24;
         let day_of_week = (event.timestamp / 86400) % 7;
-        
+
         vec![
             hour as f64,
             day_of_week as f64,
@@ -284,7 +290,11 @@ impl FeatureExtractor for TemporalFeatureExtractor {
 /// Trait for neuro-divergent models
 pub trait NeuroDivergentModel: Send + Sync {
     fn name(&self) -> &str;
-    fn train(&mut self, dataset: &TrainingDataset, config: &TrainingConfig) -> Result<TrainingMetrics>;
+    fn train(
+        &mut self,
+        dataset: &TrainingDataset,
+        config: &TrainingConfig,
+    ) -> Result<TrainingMetrics>;
     fn predict(&self, sequence: &TimeSeriesSequence) -> Result<Vec<f64>>;
     fn save(&self, path: &str) -> Result<()>;
     fn load(&mut self, path: &str) -> Result<()>;
@@ -318,39 +328,45 @@ impl NeuroDivergentModel for LSTMModel {
         "LSTM"
     }
 
-    fn train(&mut self, dataset: &TrainingDataset, config: &TrainingConfig) -> Result<TrainingMetrics> {
+    fn train(
+        &mut self,
+        dataset: &TrainingDataset,
+        config: &TrainingConfig,
+    ) -> Result<TrainingMetrics> {
         // Simplified training implementation
         // In production, this would interface with a proper ML framework
-        
+
         let mut metrics = TrainingMetrics::new();
-        
+
         for epoch in 0..config.epochs {
             let mut epoch_loss = 0.0;
-            
+
             for (sequence, label) in dataset.sequences.iter().zip(&dataset.labels) {
                 // Forward pass simulation
                 let prediction = self.predict(sequence)?;
                 let loss = calculate_mse(&prediction, label);
                 epoch_loss += loss;
             }
-            
+
             let avg_loss = epoch_loss / dataset.sequences.len() as f64;
             metrics.add_epoch_loss(epoch, avg_loss);
-            
+
             if epoch % 10 == 0 {
                 println!("LSTM Epoch {}: Loss = {:.4}", epoch, avg_loss);
             }
         }
-        
+
         Ok(metrics)
     }
 
     fn predict(&self, sequence: &TimeSeriesSequence) -> Result<Vec<f64>> {
         // Simplified prediction
         // In production, this would use actual LSTM computation
-        let last_features = sequence.features.last()
+        let last_features = sequence
+            .features
+            .last()
             .ok_or_else(|| TrainingError::ModelError("Empty sequence".to_string()))?;
-        
+
         // Mock prediction based on last features
         Ok(vec![
             last_features[0] * 0.95, // Predicted latency
@@ -420,26 +436,30 @@ impl NeuroDivergentModel for TCNModel {
         "TCN"
     }
 
-    fn train(&mut self, dataset: &TrainingDataset, config: &TrainingConfig) -> Result<TrainingMetrics> {
+    fn train(
+        &mut self,
+        dataset: &TrainingDataset,
+        config: &TrainingConfig,
+    ) -> Result<TrainingMetrics> {
         let mut metrics = TrainingMetrics::new();
-        
+
         for epoch in 0..config.epochs {
             let mut epoch_loss = 0.0;
-            
+
             for (sequence, label) in dataset.sequences.iter().zip(&dataset.labels) {
                 let prediction = self.predict(sequence)?;
                 let loss = calculate_mse(&prediction, label);
                 epoch_loss += loss;
             }
-            
+
             let avg_loss = epoch_loss / dataset.sequences.len() as f64;
             metrics.add_epoch_loss(epoch, avg_loss);
-            
+
             if epoch % 10 == 0 {
                 println!("TCN Epoch {}: Loss = {:.4}", epoch, avg_loss);
             }
         }
-        
+
         Ok(metrics)
     }
 
@@ -447,12 +467,10 @@ impl NeuroDivergentModel for TCNModel {
         // Simplified TCN prediction
         let avg_features: Vec<f64> = (0..sequence.features[0].len())
             .map(|i| {
-                sequence.features.iter()
-                    .map(|f| f[i])
-                    .sum::<f64>() / sequence.features.len() as f64
+                sequence.features.iter().map(|f| f[i]).sum::<f64>() / sequence.features.len() as f64
             })
             .collect();
-        
+
         Ok(vec![
             avg_features[0] * 0.93,
             avg_features[1] * 1.07,
@@ -527,26 +545,30 @@ impl NeuroDivergentModel for NBEATSModel {
         "N-BEATS"
     }
 
-    fn train(&mut self, dataset: &TrainingDataset, config: &TrainingConfig) -> Result<TrainingMetrics> {
+    fn train(
+        &mut self,
+        dataset: &TrainingDataset,
+        config: &TrainingConfig,
+    ) -> Result<TrainingMetrics> {
         let mut metrics = TrainingMetrics::new();
-        
+
         for epoch in 0..config.epochs {
             let mut epoch_loss = 0.0;
-            
+
             for (sequence, label) in dataset.sequences.iter().zip(&dataset.labels) {
                 let prediction = self.predict(sequence)?;
                 let loss = calculate_mse(&prediction, label);
                 epoch_loss += loss;
             }
-            
+
             let avg_loss = epoch_loss / dataset.sequences.len() as f64;
             metrics.add_epoch_loss(epoch, avg_loss);
-            
+
             if epoch % 10 == 0 {
                 println!("N-BEATS Epoch {}: Loss = {:.4}", epoch, avg_loss);
             }
         }
-        
+
         Ok(metrics)
     }
 
@@ -554,7 +576,7 @@ impl NeuroDivergentModel for NBEATSModel {
         // Simplified N-BEATS prediction with trend and seasonality components
         let trend = calculate_trend(&sequence.features);
         let seasonality = calculate_seasonality(&sequence.features);
-        
+
         Ok(vec![
             trend[0] + seasonality[0],
             trend[1] + seasonality[1],
@@ -644,30 +666,35 @@ impl HyperparameterOptimizer {
         for trial in 0..self.num_trials {
             // Sample hyperparameters
             let params = self.sample_parameters(trial);
-            
+
             // Create and configure model
             let mut model = model_factory();
             model.set_hyperparameters(params.clone());
-            
+
             // Train model
             let metrics = model.train(dataset, config)?;
-            
+
             // Evaluate model
             let score = self.evaluate_model(&*model, dataset)?;
-            
+
             trial_results.push(TrialResult {
                 trial_id: trial,
                 parameters: params.clone(),
                 score,
                 metrics,
             });
-            
+
             if score < best_score {
                 best_score = score;
                 best_params = params;
             }
-            
-            println!("Trial {}/{}: Score = {:.4}", trial + 1, self.num_trials, score);
+
+            println!(
+                "Trial {}/{}: Score = {:.4}",
+                trial + 1,
+                self.num_trials,
+                score
+            );
         }
 
         Ok(OptimizationResult {
@@ -679,7 +706,7 @@ impl HyperparameterOptimizer {
 
     fn sample_parameters(&self, _trial: usize) -> HashMap<String, f64> {
         let mut params = HashMap::new();
-        
+
         match &self.optimization_method {
             OptimizationMethod::RandomSearch => {
                 for (name, range) in &self.search_space.parameters {
@@ -708,24 +735,28 @@ impl HyperparameterOptimizer {
                 // Implement Hyperband logic
             }
         }
-        
+
         params
     }
 
-    fn evaluate_model(&self, model: &dyn NeuroDivergentModel, dataset: &TrainingDataset) -> Result<f64> {
+    fn evaluate_model(
+        &self,
+        model: &dyn NeuroDivergentModel,
+        dataset: &TrainingDataset,
+    ) -> Result<f64> {
         let mut total_error = 0.0;
         let mut count = 0;
-        
+
         // Simple validation split (last 20% of data)
         let split_idx = (dataset.sequences.len() as f64 * 0.8) as usize;
-        
+
         for i in split_idx..dataset.sequences.len() {
             let prediction = model.predict(&dataset.sequences[i])?;
             let error = calculate_mse(&prediction, &dataset.labels[i]);
             total_error += error;
             count += 1;
         }
-        
+
         Ok(total_error / count as f64)
     }
 }
@@ -766,23 +797,23 @@ impl ModelEvaluator {
         for model in models {
             let mut predictions = Vec::new();
             let mut labels = Vec::new();
-            
+
             // Generate predictions for validation set
             let split_idx = (dataset.sequences.len() as f64 * 0.8) as usize;
-            
+
             for i in split_idx..dataset.sequences.len() {
                 let prediction = model.predict(&dataset.sequences[i])?;
                 predictions.push(prediction);
                 labels.push(dataset.labels[i].clone());
             }
-            
+
             // Calculate all metrics
             let mut scores = HashMap::new();
             for metric in &self.metrics {
                 let score = metric.calculate(&predictions, &labels);
                 scores.insert(metric.name().to_string(), score);
             }
-            
+
             model_scores.push(ModelScore {
                 model_name: model.name().to_string(),
                 scores,
@@ -791,7 +822,7 @@ impl ModelEvaluator {
 
         // Select best model based on composite score
         let best_model_idx = self.select_best_model(&model_scores);
-        
+
         Ok(ModelSelectionResult {
             best_model: model_scores[best_model_idx].model_name.clone(),
             all_scores: model_scores,
@@ -801,10 +832,10 @@ impl ModelEvaluator {
     fn select_best_model(&self, scores: &[ModelScore]) -> usize {
         // Composite scoring: weighted average of normalized metrics
         let weights = HashMap::from([
-            ("MSE", -1.0), // Lower is better
-            ("MAE", -1.0), // Lower is better
-            ("R2", 1.0),   // Higher is better
-            ("LatencyAccuracy", 1.0), // Higher is better
+            ("MSE", -1.0),                  // Lower is better
+            ("MAE", -1.0),                  // Lower is better
+            ("R2", 1.0),                    // Higher is better
+            ("LatencyAccuracy", 1.0),       // Higher is better
             ("SuccessRatePrediction", 1.0), // Higher is better
         ]);
 
@@ -1000,7 +1031,7 @@ impl Default for TrainingConfig {
 impl TrainingPipeline {
     pub fn new(config: TrainingConfig) -> Self {
         let data_loader = StreamDataLoader::new(1000, 50);
-        
+
         let models: Vec<Box<dyn NeuroDivergentModel>> = vec![
             Box::new(LSTMModel::new(128, 2)),
             Box::new(TCNModel::new(vec![64, 64, 64], 3)),
@@ -1012,11 +1043,23 @@ impl TrainingPipeline {
 
         let search_space = SearchSpace {
             parameters: HashMap::from([
-                ("learning_rate".to_string(), ParameterRange::Continuous { min: 0.0001, max: 0.01 }),
-                ("dropout".to_string(), ParameterRange::Continuous { min: 0.1, max: 0.5 }),
-                ("hidden_size".to_string(), ParameterRange::Discrete { 
-                    values: vec![64.0, 128.0, 256.0, 512.0] 
-                }),
+                (
+                    "learning_rate".to_string(),
+                    ParameterRange::Continuous {
+                        min: 0.0001,
+                        max: 0.01,
+                    },
+                ),
+                (
+                    "dropout".to_string(),
+                    ParameterRange::Continuous { min: 0.1, max: 0.5 },
+                ),
+                (
+                    "hidden_size".to_string(),
+                    ParameterRange::Discrete {
+                        values: vec![64.0, 128.0, 256.0, 512.0],
+                    },
+                ),
             ]),
         };
 
@@ -1038,15 +1081,18 @@ impl TrainingPipeline {
     }
 
     /// Run the complete training pipeline
-    pub async fn run(&mut self, event_stream: impl Iterator<Item = StreamEvent>) -> Result<PipelineResult> {
+    pub async fn run(
+        &mut self,
+        event_stream: impl Iterator<Item = StreamEvent>,
+    ) -> Result<PipelineResult> {
         println!("Starting ML Training Pipeline...");
 
         // Step 1: Load and prepare data
         println!("Loading training data from stream...");
         let dataset = self.data_loader.load_from_stream(event_stream).await?;
-        println!("Loaded {} sequences with {} features", 
-            dataset.metadata.total_samples,
-            dataset.metadata.feature_count
+        println!(
+            "Loaded {} sequences with {} features",
+            dataset.metadata.total_samples, dataset.metadata.feature_count
         );
 
         // Step 2: Optimize hyperparameters for each model
@@ -1055,18 +1101,20 @@ impl TrainingPipeline {
 
         for model in &self.models {
             println!("Optimizing {} model...", model.name());
-            
+
             let model_name = model.name().to_string();
-            let optimization_result = self.optimizer.optimize(
-                || self.create_model(&model_name),
-                &dataset,
-                &self.config,
-            ).await?;
+            let optimization_result = self
+                .optimizer
+                .optimize(|| self.create_model(&model_name), &dataset, &self.config)
+                .await?;
 
             let mut optimized_model = self.create_model(&model_name);
             optimized_model.set_hyperparameters(optimization_result.best_parameters);
-            
-            println!("Best score for {}: {:.4}", model_name, optimization_result.best_score);
+
+            println!(
+                "Best score for {}: {:.4}",
+                model_name, optimization_result.best_score
+            );
             optimized_models.push(optimized_model);
         }
 
@@ -1077,19 +1125,25 @@ impl TrainingPipeline {
         for mut model in optimized_models {
             println!("Training {} model...", model.name());
             let metrics = model.train(&dataset, &self.config)?;
-            
+
             if self.config.save_checkpoints {
-                let path = format!("{}/{}_final.model", self.config.checkpoint_dir, model.name());
+                let path = format!(
+                    "{}/{}_final.model",
+                    self.config.checkpoint_dir,
+                    model.name()
+                );
                 model.save(&path)?;
             }
-            
+
             trained_models.push(model);
         }
 
         // Step 4: Evaluate and select best model
         println!("\nEvaluating models...");
-        let selection_result = self.evaluator.evaluate_and_select(trained_models, &dataset)?;
-        
+        let selection_result = self
+            .evaluator
+            .evaluate_and_select(trained_models, &dataset)?;
+
         println!("\nBest model: {}", selection_result.best_model);
         println!("Model scores:");
         for score in &selection_result.all_scores {
@@ -1178,26 +1232,28 @@ pub struct PipelineResult {
 struct ModelWeights;
 
 fn calculate_mse(predictions: &[f64], labels: &[f64]) -> f64 {
-    predictions.iter()
+    predictions
+        .iter()
         .zip(labels)
         .map(|(p, l)| (p - l).powi(2))
-        .sum::<f64>() / predictions.len() as f64
+        .sum::<f64>()
+        / predictions.len() as f64
 }
 
 fn calculate_trend(features: &[Vec<f64>]) -> Vec<f64> {
     if features.is_empty() {
         return vec![0.0; 5];
     }
-    
+
     let n = features.len() as f64;
     let mut trends = vec![0.0; features[0].len()];
-    
+
     for i in 0..features[0].len() {
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
         let mut sum_xy = 0.0;
         let mut sum_x2 = 0.0;
-        
+
         for (j, feature) in features.iter().enumerate() {
             let x = j as f64;
             let y = feature[i];
@@ -1206,13 +1262,13 @@ fn calculate_trend(features: &[Vec<f64>]) -> Vec<f64> {
             sum_xy += x * y;
             sum_x2 += x * x;
         }
-        
+
         let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
         let intercept = (sum_y - slope * sum_x) / n;
-        
+
         trends[i] = intercept + slope * n;
     }
-    
+
     trends
 }
 
@@ -1220,24 +1276,23 @@ fn calculate_seasonality(features: &[Vec<f64>]) -> Vec<f64> {
     if features.is_empty() {
         return vec![0.0; 5];
     }
-    
+
     // Simple moving average for seasonality
     let window = 7.min(features.len());
     let mut seasonality = vec![0.0; features[0].len()];
-    
+
     for i in 0..features[0].len() {
         let recent_avg = features[features.len().saturating_sub(window)..]
             .iter()
             .map(|f| f[i])
-            .sum::<f64>() / window as f64;
-        
-        let overall_avg = features.iter()
-            .map(|f| f[i])
-            .sum::<f64>() / features.len() as f64;
-        
+            .sum::<f64>()
+            / window as f64;
+
+        let overall_avg = features.iter().map(|f| f[i]).sum::<f64>() / features.len() as f64;
+
         seasonality[i] = recent_avg - overall_avg;
     }
-    
+
     seasonality
 }
 

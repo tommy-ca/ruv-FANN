@@ -65,7 +65,7 @@ pub async fn execute(
             .items(&backends)
             .default(0)
             .interact()?;
-        
+
         configure_persistence(backends[selection], non_interactive)?
     } else {
         // Default to memory backend
@@ -83,18 +83,16 @@ pub async fn execute(
     } else {
         // Create new configuration
         let swarm_id = Uuid::new_v4().to_string();
-        
+
         let initial_agents = if !non_interactive {
             configure_initial_agents(output)?
         } else {
             // Default initial agents
-            vec![
-                AgentSpec {
-                    name: "orchestrator-1".to_string(),
-                    agent_type: "orchestrator".to_string(),
-                    capabilities: vec!["coordination".to_string(), "task_distribution".to_string()],
-                },
-            ]
+            vec![AgentSpec {
+                name: "orchestrator-1".to_string(),
+                agent_type: "orchestrator".to_string(),
+                capabilities: vec!["coordination".to_string(), "task_distribution".to_string()],
+            }]
         };
 
         SwarmInit {
@@ -111,8 +109,14 @@ pub async fn execute(
     output.key_value(&[
         ("Swarm ID".to_string(), swarm_init.swarm_id.clone()),
         ("Topology".to_string(), swarm_init.topology.clone()),
-        ("Persistence".to_string(), swarm_init.persistence.backend.clone()),
-        ("Initial Agents".to_string(), swarm_init.initial_agents.len().to_string()),
+        (
+            "Persistence".to_string(),
+            swarm_init.persistence.backend.clone(),
+        ),
+        (
+            "Initial Agents".to_string(),
+            swarm_init.initial_agents.len().to_string(),
+        ),
     ]);
 
     // Confirm configuration
@@ -125,21 +129,21 @@ pub async fn execute(
 
     // Initialize the swarm
     let spinner = output.spinner("Initializing swarm components...");
-    
+
     // Simulate initialization steps
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-    
+
     // Create persistence backend
     initialize_persistence(&swarm_init.persistence, output).await?;
-    
+
     // Set up swarm topology
     initialize_topology(&swarm_init.topology, output).await?;
-    
+
     // Spawn initial agents
     for agent in &swarm_init.initial_agents {
         spawn_initial_agent(agent, output).await?;
     }
-    
+
     if let Some(pb) = spinner {
         pb.finish_with_message("Swarm initialization complete");
     }
@@ -154,19 +158,22 @@ pub async fn execute(
 
     // Show next steps
     output.section("Next Steps");
-    output.list(&[
-        format!("Spawn additional agents: ruv-swarm spawn <type>"),
-        format!("Start orchestration: ruv-swarm orchestrate <strategy> <task>"),
-        format!("Monitor swarm: ruv-swarm monitor"),
-        format!("Check status: ruv-swarm status"),
-    ], true);
+    output.list(
+        &[
+            format!("Spawn additional agents: ruv-swarm spawn <type>"),
+            format!("Start orchestration: ruv-swarm orchestrate <strategy> <task>"),
+            format!("Monitor swarm: ruv-swarm monitor"),
+            format!("Check status: ruv-swarm status"),
+        ],
+        true,
+    );
 
     Ok(())
 }
 
 fn configure_persistence(backend: &str, non_interactive: bool) -> Result<PersistenceConfig> {
     let mut options = HashMap::new();
-    
+
     let connection = match backend {
         "memory" => ":memory:".to_string(),
         "sqlite" => {
@@ -222,7 +229,7 @@ fn configure_persistence(backend: &str, non_interactive: bool) -> Result<Persist
 
 fn configure_initial_agents(output: &OutputHandler) -> Result<Vec<AgentSpec>> {
     let mut agents = Vec::new();
-    
+
     // Always add an orchestrator
     agents.push(AgentSpec {
         name: "orchestrator-1".to_string(),
@@ -235,13 +242,7 @@ fn configure_initial_agents(output: &OutputHandler) -> Result<Vec<AgentSpec>> {
         .default(true)
         .interact()?
     {
-        let agent_types = vec![
-            "researcher",
-            "coder",
-            "analyst",
-            "reviewer",
-            "tester",
-        ];
+        let agent_types = vec!["researcher", "coder", "analyst", "reviewer", "tester"];
 
         loop {
             let selection = Select::with_theme(&ColorfulTheme::default())
@@ -299,7 +300,7 @@ fn default_capabilities(agent_type: &str) -> String {
 
 fn load_config_file<P: AsRef<Path>>(path: P) -> Result<SwarmInit> {
     let content = std::fs::read_to_string(path)?;
-    
+
     // Try to parse as YAML first, then JSON
     serde_yaml::from_str(&content)
         .or_else(|_| serde_json::from_str(&content))
@@ -307,8 +308,11 @@ fn load_config_file<P: AsRef<Path>>(path: P) -> Result<SwarmInit> {
 }
 
 async fn initialize_persistence(config: &PersistenceConfig, output: &OutputHandler) -> Result<()> {
-    output.info(&format!("Setting up {} persistence backend...", config.backend));
-    
+    output.info(&format!(
+        "Setting up {} persistence backend...",
+        config.backend
+    ));
+
     // Simulate persistence initialization
     match config.backend.as_str() {
         "memory" => {
@@ -328,16 +332,16 @@ async fn initialize_persistence(config: &PersistenceConfig, output: &OutputHandl
         }
         _ => {}
     }
-    
+
     Ok(())
 }
 
 async fn initialize_topology(topology: &str, output: &OutputHandler) -> Result<()> {
     output.info(&format!("Configuring {} topology...", topology));
-    
+
     // Simulate topology setup
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-    
+
     Ok(())
 }
 
@@ -346,29 +350,33 @@ async fn spawn_initial_agent(agent: &AgentSpec, output: &OutputHandler) -> Resul
         "Spawning {} agent '{}'...",
         agent.agent_type, agent.name
     ));
-    
+
     // Simulate agent spawning
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
+
     Ok(())
 }
 
-fn save_swarm_config(swarm_init: &SwarmInit, config: &Config, output: &OutputHandler) -> Result<()> {
+fn save_swarm_config(
+    swarm_init: &SwarmInit,
+    config: &Config,
+    output: &OutputHandler,
+) -> Result<()> {
     let config_dir = directories::ProjectDirs::from("com", "ruv-fann", "ruv-swarm")
         .map(|dirs| dirs.data_local_dir().to_path_buf())
         .unwrap_or_else(|| Path::new(".").to_path_buf());
-    
+
     std::fs::create_dir_all(&config_dir)?;
-    
+
     let swarm_file = config_dir.join(format!("swarm-{}.json", swarm_init.swarm_id));
     let content = serde_json::to_string_pretty(swarm_init)?;
     std::fs::write(&swarm_file, content)?;
-    
+
     // Also save as "current" swarm
     let current_file = config_dir.join("current-swarm.json");
     std::fs::write(&current_file, serde_json::to_string_pretty(swarm_init)?)?;
-    
+
     output.info(&format!("Configuration saved to {:?}", swarm_file));
-    
+
     Ok(())
 }

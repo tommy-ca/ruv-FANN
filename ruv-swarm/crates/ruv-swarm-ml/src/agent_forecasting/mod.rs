@@ -7,9 +7,9 @@ use alloc::{
     boxed::Box,
     collections::BTreeMap as HashMap,
     string::{String, ToString},
-    vec::Vec,
     sync::Arc,
     vec,
+    vec::Vec,
 };
 use core::fmt;
 
@@ -133,10 +133,10 @@ impl AgentForecastingManager {
     ) -> Result<String, String> {
         // Select optimal model based on agent type
         let primary_model = self.select_optimal_model(&agent_type, &requirements)?;
-        
+
         // Create model specialization
         let model_specialization = self.create_specialization(&agent_type, &requirements);
-        
+
         // Create adaptive configuration
         let adaptive_config = AdaptiveModelConfig {
             online_learning_enabled: requirements.online_learning,
@@ -145,7 +145,7 @@ impl AgentForecastingManager {
             ensemble_weighting_strategy: EnsembleWeightingStrategy::DynamicPerformance,
             retraining_frequency: 100,
         };
-        
+
         // Initialize performance history
         let performance_history = ModelPerformanceHistory {
             total_forecasts: 0,
@@ -154,7 +154,7 @@ impl AgentForecastingManager {
             recent_accuracies: Vec::new(),
             model_switches: Vec::new(),
         };
-        
+
         // Create forecast context
         let context = AgentForecastContext {
             agent_id: agent_id.clone(),
@@ -165,10 +165,10 @@ impl AgentForecastingManager {
             adaptive_config,
             performance_history,
         };
-        
+
         // Store context
         self.agent_models.insert(agent_id.clone(), context);
-        
+
         Ok(agent_id)
     }
 
@@ -185,29 +185,33 @@ impl AgentForecastingManager {
         accuracy: f32,
         confidence: f32,
     ) -> Result<(), String> {
-        let context = self.agent_models.get_mut(agent_id)
+        let context = self
+            .agent_models
+            .get_mut(agent_id)
             .ok_or_else(|| format!("Agent {} not found", agent_id))?;
-        
+
         // Update performance metrics
         let history = &mut context.performance_history;
         history.total_forecasts += 1;
-        
+
         // Update moving averages
         let alpha = 0.1; // Exponential moving average factor
-        history.average_latency_ms = (1.0 - alpha) * history.average_latency_ms + alpha * latency_ms;
-        history.average_confidence = (1.0 - alpha) * history.average_confidence + alpha * confidence;
-        
+        history.average_latency_ms =
+            (1.0 - alpha) * history.average_latency_ms + alpha * latency_ms;
+        history.average_confidence =
+            (1.0 - alpha) * history.average_confidence + alpha * confidence;
+
         // Track recent accuracies
         history.recent_accuracies.push(accuracy);
         if history.recent_accuracies.len() > 100 {
             history.recent_accuracies.remove(0);
         }
-        
+
         // Check if model switch is needed
         if accuracy < context.adaptive_config.model_switching_threshold {
             // TODO: Implement model switching logic
         }
-        
+
         Ok(())
     }
 
@@ -224,14 +228,14 @@ impl AgentForecastingManager {
                 } else {
                     ModelType::TFT // Temporal Fusion Transformer
                 }
-            },
-            "coder" => ModelType::LSTM, // Sequential task patterns
-            "analyst" => ModelType::TFT, // Interpretable attention mechanism
+            }
+            "coder" => ModelType::LSTM,       // Sequential task patterns
+            "analyst" => ModelType::TFT,      // Interpretable attention mechanism
             "optimizer" => ModelType::NBEATS, // Pure neural architecture
             "coordinator" => ModelType::DeepAR, // Probabilistic forecasts
-            _ => ModelType::MLP, // Generic baseline
+            _ => ModelType::MLP,              // Generic baseline
         };
-        
+
         Ok(model)
     }
 
@@ -249,7 +253,7 @@ impl AgentForecastingManager {
             "coordinator" => ForecastDomain::SwarmDynamics,
             _ => ForecastDomain::AgentPerformance,
         };
-        
+
         let temporal_patterns = vec![
             TemporalPattern {
                 pattern_type: "daily".to_string(),
@@ -264,13 +268,13 @@ impl AgentForecastingManager {
                 confidence: 0.85,
             },
         ];
-        
+
         let optimization_objectives = if requirements.latency_requirement_ms < 100.0 {
             vec![OptimizationObjective::MinimizeLatency]
         } else {
             vec![OptimizationObjective::BalanceAccuracyLatency]
         };
-        
+
         ModelSpecialization {
             forecast_domain,
             temporal_patterns,
@@ -310,13 +314,13 @@ mod tests {
     fn test_agent_model_assignment() {
         let mut manager = AgentForecastingManager::new(100.0);
         let requirements = ForecastRequirements::default();
-        
+
         let result = manager.assign_model(
             "agent_1".to_string(),
             "researcher".to_string(),
             requirements,
         );
-        
+
         assert!(result.is_ok());
         assert!(manager.get_agent_state("agent_1").is_some());
     }

@@ -39,7 +39,7 @@ impl PatternManager {
             evolution_history: Vec::new(),
         }
     }
-    
+
     fn initialize_patterns() -> Vec<CognitivePatternDefinition> {
         vec![
             CognitivePatternDefinition {

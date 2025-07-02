@@ -1,12 +1,18 @@
 //! Swarm orchestrator implementation
 
-use crate::agent::{DynamicAgent, AgentId, AgentStatus};
+use crate::agent::{AgentId, AgentStatus, DynamicAgent};
 use crate::error::{Result, SwarmError};
-use crate::task::{Task, TaskId, DistributionStrategy};
+use crate::task::{DistributionStrategy, Task, TaskId};
 use crate::topology::{Topology, TopologyType};
 
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, string::{String, ToString}, vec::Vec, collections::BTreeMap as HashMap, format};
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap as HashMap,
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
@@ -59,7 +65,7 @@ impl Swarm {
             agent_loads: HashMap::new(),
         }
     }
-    
+
     /// Register an agent with the swarm
     pub fn register_agent(&mut self, agent: DynamicAgent) -> Result<()> {
         if self.agents.len() >= self.config.max_agents {
@@ -67,18 +73,19 @@ impl Swarm {
                 resource: "agent slots".into(),
             });
         }
-        
+
         let agent_id = agent.id().to_string();
         self.agents.insert(agent_id.clone(), agent);
         self.agent_loads.insert(agent_id.clone(), 0);
-        
+
         // Update topology based on type
         match self.config.topology_type {
             TopologyType::Mesh => {
                 // Connect to all existing agents
                 for existing_id in self.agents.keys() {
                     if existing_id != &agent_id {
-                        self.topology.add_connection(agent_id.clone(), existing_id.clone());
+                        self.topology
+                            .add_connection(agent_id.clone(), existing_id.clone());
                     }
                 }
             }
@@ -86,23 +93,27 @@ impl Swarm {
                 // Connect to the first agent (coordinator)
                 if let Some(coordinator) = self.agents.keys().next() {
                     if coordinator != &agent_id {
-                        self.topology.add_connection(agent_id.clone(), coordinator.clone());
+                        self.topology
+                            .add_connection(agent_id.clone(), coordinator.clone());
                     }
                 }
             }
             _ => {}
         }
-        
+
         Ok(())
     }
-    
+
     /// Remove an agent from the swarm
     pub fn unregister_agent(&mut self, agent_id: &AgentId) -> Result<()> {
-        self.agents.remove(agent_id)
-            .ok_or_else(|| SwarmError::AgentNotFound { id: agent_id.to_string() })?;
-        
+        self.agents
+            .remove(agent_id)
+            .ok_or_else(|| SwarmError::AgentNotFound {
+                id: agent_id.to_string(),
+            })?;
+
         self.agent_loads.remove(agent_id);
-        
+
         // Remove from topology
         let neighbors = self.topology.get_neighbors(agent_id).cloned();
         if let Some(neighbors) = neighbors {
@@ -110,38 +121,39 @@ impl Swarm {
                 self.topology.remove_connection(agent_id, &neighbor);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Submit a task to the swarm
     pub fn submit_task(&mut self, task: Task) -> Result<()> {
         self.task_queue.push(task);
         Ok(())
     }
-    
+
     /// Assign tasks to agents based on distribution strategy
     pub async fn distribute_tasks(&mut self) -> Result<Vec<(TaskId, AgentId)>> {
         let mut assignments = Vec::new();
         let mut tasks_to_assign = Vec::new();
-        
+
         // Collect tasks that can be assigned
         while let Some(task) = self.task_queue.pop() {
             tasks_to_assign.push(task);
         }
-        
+
         for task in tasks_to_assign {
             if let Some(agent_id) = self.select_agent_for_task(&task)? {
                 let task_id = task.id.clone();
-                
+
                 // Assign task to agent
-                self.task_assignments.insert(task_id.clone(), agent_id.clone());
-                
+                self.task_assignments
+                    .insert(task_id.clone(), agent_id.clone());
+
                 // Update agent load
                 if let Some(load) = self.agent_loads.get_mut(&agent_id) {
                     *load += 1;
                 }
-                
+
                 // In a real implementation, we would process the task here
                 // For now, just add to assignments
                 assignments.push((task_id, agent_id));
@@ -150,25 +162,23 @@ impl Swarm {
                 self.task_queue.push(task);
             }
         }
-        
+
         Ok(assignments)
     }
-    
+
     /// Select an agent for a task based on distribution strategy
     fn select_agent_for_task(&self, task: &Task) -> Result<Option<AgentId>> {
-        let available_agents: Vec<&AgentId> = self.agents
+        let available_agents: Vec<&AgentId> = self
+            .agents
             .iter()
-            .filter(|(_, agent)| {
-                agent.status() == AgentStatus::Running && 
-                agent.can_handle(task)
-            })
+            .filter(|(_, agent)| agent.status() == AgentStatus::Running && agent.can_handle(task))
             .map(|(id, _)| id)
             .collect();
-        
+
         if available_agents.is_empty() {
             return Ok(None);
         }
-        
+
         let selected = match self.config.distribution_strategy {
             DistributionStrategy::RoundRobin => {
                 // Simple round-robin (would need state to track last assigned)
@@ -176,7 +186,8 @@ impl Swarm {
             }
             DistributionStrategy::LeastLoaded => {
                 // Select agent with lowest load
-                available_agents.iter()
+                available_agents
+                    .iter()
                     .min_by_key(|id| self.agent_loads.get(id.as_str()).unwrap_or(&0))
                     .cloned()
             }
@@ -193,60 +204,65 @@ impl Swarm {
                 available_agents.first().cloned()
             }
         };
-        
+
         Ok(selected.cloned())
     }
-    
+
     /// Get the status of all agents
     pub fn agent_statuses(&self) -> HashMap<AgentId, AgentStatus> {
-        self.agents.iter()
+        self.agents
+            .iter()
             .map(|(id, agent)| (id.clone(), agent.status()))
             .collect()
     }
-    
+
     /// Get the current task queue size
     pub fn task_queue_size(&self) -> usize {
         self.task_queue.len()
     }
-    
+
     /// Get assigned tasks count
     pub fn assigned_tasks_count(&self) -> usize {
         self.task_assignments.len()
     }
-    
+
     /// Get agent by ID
     pub fn get_agent(&self, agent_id: &AgentId) -> Option<&DynamicAgent> {
         self.agents.get(agent_id)
     }
-    
+
     /// Get mutable agent by ID
     pub fn get_agent_mut(&mut self, agent_id: &AgentId) -> Option<&mut DynamicAgent> {
         self.agents.get_mut(agent_id)
     }
-    
+
     /// Start all agents
     pub async fn start_all_agents(&mut self) -> Result<()> {
         for (id, agent) in self.agents.iter_mut() {
-            agent.start().await
-                .map_err(|e| SwarmError::Custom(format!("Failed to start agent {}: {:?}", id, e)))?;
+            agent.start().await.map_err(|e| {
+                SwarmError::Custom(format!("Failed to start agent {}: {:?}", id, e))
+            })?;
         }
         Ok(())
     }
-    
+
     /// Shutdown all agents
     pub async fn shutdown_all_agents(&mut self) -> Result<()> {
         for (id, agent) in self.agents.iter_mut() {
-            agent.shutdown().await
-                .map_err(|e| SwarmError::Custom(format!("Failed to shutdown agent {}: {:?}", id, e)))?;
+            agent.shutdown().await.map_err(|e| {
+                SwarmError::Custom(format!("Failed to shutdown agent {}: {:?}", id, e))
+            })?;
         }
         Ok(())
     }
-    
+
     /// Get swarm metrics
     pub fn metrics(&self) -> SwarmMetrics {
         SwarmMetrics {
             total_agents: self.agents.len(),
-            active_agents: self.agents.iter()
+            active_agents: self
+                .agents
+                .iter()
                 .filter(|(_, agent)| agent.status() == AgentStatus::Running)
                 .count(),
             queued_tasks: self.task_queue.len(),

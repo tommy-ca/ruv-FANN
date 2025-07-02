@@ -1,14 +1,14 @@
 //! Basic Swarm Example
-//! 
+//!
 //! This example demonstrates how to create a simple swarm, register agents,
 //! and submit tasks for processing.
 
 use ruv_swarm_core::{
     agent::DynamicAgent,
+    error::Result,
     swarm::{Swarm, SwarmConfig},
     task::{Task, TaskPriority},
     topology::TopologyType,
-    error::Result,
 };
 use std::time::Duration;
 use tokio::time::timeout;
@@ -32,15 +32,24 @@ async fn main() -> Result<()> {
 
     // Register worker agents
     println!("Registering agents...");
-    let agent1 = DynamicAgent::new("agent-1", vec!["compute".to_string(), "data-processing".to_string()]);
+    let agent1 = DynamicAgent::new(
+        "agent-1",
+        vec!["compute".to_string(), "data-processing".to_string()],
+    );
     swarm.register_agent(agent1)?;
     println!("  Agent 1 registered");
 
-    let agent2 = DynamicAgent::new("agent-2", vec!["compute".to_string(), "analysis".to_string()]);
+    let agent2 = DynamicAgent::new(
+        "agent-2",
+        vec!["compute".to_string(), "analysis".to_string()],
+    );
     swarm.register_agent(agent2)?;
     println!("  Agent 2 registered");
 
-    let agent3 = DynamicAgent::new("agent-3", vec!["compute".to_string(), "aggregation".to_string()]);
+    let agent3 = DynamicAgent::new(
+        "agent-3",
+        vec!["compute".to_string(), "aggregation".to_string()],
+    );
     swarm.register_agent(agent3)?;
     println!("  Agent 3 registered");
 
@@ -52,11 +61,11 @@ async fn main() -> Result<()> {
     let task1 = Task::new("task-1", "data-processing")
         .with_priority(TaskPriority::High)
         .require_capability("compute");
-    
+
     let task2 = Task::new("task-2", "analysis")
         .with_priority(TaskPriority::Normal)
         .require_capability("analysis");
-        
+
     let task3 = Task::new("task-3", "aggregation")
         .with_priority(TaskPriority::Normal)
         .require_capability("aggregation");
@@ -64,7 +73,7 @@ async fn main() -> Result<()> {
     swarm.submit_task(task1)?;
     swarm.submit_task(task2)?;
     swarm.submit_task(task3)?;
-    
+
     // Distribute tasks to agents
     let assignments = swarm.distribute_tasks().await?;
     println!("Task assignments: {:?}", assignments);

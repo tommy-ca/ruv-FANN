@@ -1,37 +1,35 @@
 //! RUV-Swarm MCP (Model Context Protocol) Server
-//! 
+//!
 //! Provides MCP server integration for RUV-Swarm, enabling Claude and other
 //! MCP-compatible clients to interact with the swarm orchestration system.
 
-use std::sync::Arc;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{
     extract::{State, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
-    Router,
-    Json,
+    Json, Router,
 };
 use dashmap::DashMap;
-use futures::{StreamExt, SinkExt};
+use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{mpsc, RwLock};
 use tower_http::cors::CorsLayer;
-use tracing::{info, error, debug};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
-
-pub mod tools;
 pub mod handlers;
-pub mod types;
 pub mod orchestrator;
+pub mod tools;
+pub mod types;
 
 use crate::orchestrator::SwarmOrchestrator;
 
-use crate::tools::ToolRegistry;
 use crate::handlers::RequestHandler;
+use crate::tools::ToolRegistry;
 
 /// MCP Server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,33 +84,33 @@ impl McpServer {
     /// Create a new MCP server
     pub fn new(orchestrator: Arc<SwarmOrchestrator>, config: McpConfig) -> Self {
         let tools = Arc::new(ToolRegistry::new());
-        
+
         // Register all tools
         tools::register_tools(&tools);
-        
+
         let state = Arc::new(McpServerState {
             orchestrator,
             tools,
             sessions: Arc::new(DashMap::new()),
             config,
         });
-        
+
         Self { state }
     }
-    
+
     /// Start the MCP server
     pub async fn start(&self) -> anyhow::Result<()> {
         let app = self.build_router();
         let addr = self.state.config.bind_addr;
-        
+
         info!("Starting MCP server on {}", addr);
-        
+
         let listener = tokio::net::TcpListener::bind(addr).await?;
         axum::serve(listener, app).await?;
-        
+
         Ok(())
     }
-    
+
     /// Build the router
     fn build_router(&self) -> Router {
         Router::new()
@@ -167,10 +165,7 @@ async fn websocket_handler(
 }
 
 /// Handle WebSocket connection
-async fn handle_socket(
-    socket: axum::extract::ws::WebSocket,
-    state: Arc<McpServerState>,
-) {
+async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<McpServerState>) {
     let session_id = Uuid::new_v4();
     let session = Arc::new(Session {
         id: session_id,
@@ -178,13 +173,13 @@ async fn handle_socket(
         last_activity: RwLock::new(chrono::Utc::now()),
         metadata: DashMap::new(),
     });
-    
+
     state.sessions.insert(session_id, session.clone());
     info!("New MCP session: {}", session_id);
-    
+
     let (mut sender, mut receiver) = socket.split();
     let (tx, mut rx) = mpsc::channel(100);
-    
+
     // Spawn task to handle outgoing messages
     let tx_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
@@ -193,7 +188,7 @@ async fn handle_socket(
             }
         }
     });
-    
+
     // Create request handler
     let handler = RequestHandler::new(
         state.orchestrator.clone(),
@@ -201,17 +196,17 @@ async fn handle_socket(
         session.clone(),
         tx.clone(),
     );
-    
+
     // Handle incoming messages
     while let Some(Ok(msg)) = receiver.next().await {
         if let axum::extract::ws::Message::Text(text) = msg {
             match serde_json::from_str::<McpRequest>(&text) {
                 Ok(request) => {
                     debug!("Received MCP request: {:?}", request.method);
-                    
+
                     // Update last activity
                     *session.last_activity.write().await = chrono::Utc::now();
-                    
+
                     // Handle request
                     match handler.handle_request(request).await {
                         Ok(response) => {
@@ -221,11 +216,8 @@ async fn handle_socket(
                         }
                         Err(e) => {
                             error!("Error handling request: {}", e);
-                            let error_response = McpResponse::error(
-                                None,
-                                -32603,
-                                format!("Internal error: {}", e),
-                            );
+                            let error_response =
+                                McpResponse::error(None, -32603, format!("Internal error: {}", e));
                             if let Ok(json) = serde_json::to_string(&error_response) {
                                 let _ = tx.send(axum::extract::ws::Message::Text(json)).await;
                             }
@@ -234,11 +226,8 @@ async fn handle_socket(
                 }
                 Err(e) => {
                     error!("Failed to parse MCP request: {}", e);
-                    let error_response = McpResponse::error(
-                        None,
-                        -32700,
-                        "Parse error".to_string(),
-                    );
+                    let error_response =
+                        McpResponse::error(None, -32700, "Parse error".to_string());
                     if let Ok(json) = serde_json::to_string(&error_response) {
                         let _ = tx.send(axum::extract::ws::Message::Text(json)).await;
                     }
@@ -246,7 +235,7 @@ async fn handle_socket(
             }
         }
     }
-    
+
     // Cleanup
     tx_task.abort();
     state.sessions.remove(&session_id);
@@ -283,7 +272,7 @@ impl McpResponse {
             id,
         }
     }
-    
+
     pub fn error(id: Option<Value>, code: i32, message: String) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -310,14 +299,14 @@ pub struct McpError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_mcp_server_creation() {
         use ruv_swarm_core::SwarmConfig;
         let config = SwarmConfig::default();
         let orchestrator = Arc::new(SwarmOrchestrator::new(config));
         let mcp_config = McpConfig::default();
-        
+
         let server = McpServer::new(orchestrator, mcp_config);
         assert!(server.state.tools.count() > 0);
     }

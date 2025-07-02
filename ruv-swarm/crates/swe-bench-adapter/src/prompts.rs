@@ -17,53 +17,52 @@ impl ClaudePromptGenerator {
     pub fn new(config: crate::PromptConfig) -> Self {
         let generator_config = PromptGeneratorConfig::from(config);
         let templates = Self::initialize_templates();
-        
+
         Self {
             config: generator_config,
             templates,
         }
     }
-    
+
     /// Generate prompt for a SWE-Bench instance
     pub fn generate_prompt(&self, instance: &SWEBenchInstance) -> Result<GeneratedPrompt> {
         let template = self.select_template(&instance.difficulty);
-        let base_prompt = self.templates.get(&template)
+        let base_prompt = self
+            .templates
+            .get(&template)
             .ok_or_else(|| anyhow::anyhow!("Template not found: {:?}", template))?;
-        
+
         // Build context sections
         let issue_context = self.build_issue_context(instance);
         let test_context = self.build_test_context(instance);
         let hints_context = self.build_hints_context(instance);
         let constraints = self.build_constraints(instance);
-        
+
         // Combine all sections
-        let mut prompt_parts = vec![
-            base_prompt.clone(),
-            issue_context,
-        ];
-        
+        let mut prompt_parts = vec![base_prompt.clone(), issue_context];
+
         if self.config.include_test_hints {
             prompt_parts.push(test_context);
         }
-        
+
         if !instance.hints.is_empty() && self.config.include_hints {
             prompt_parts.push(hints_context);
         }
-        
+
         prompt_parts.push(constraints);
-        
+
         let full_prompt = prompt_parts.join("\n\n");
         let token_count = self.estimate_tokens(&full_prompt);
-        
+
         // Truncate if necessary
         let content = if token_count > self.config.max_tokens {
             self.truncate_prompt(full_prompt, self.config.max_tokens)?
         } else {
             full_prompt
         };
-        
+
         let final_token_count = self.estimate_tokens(&content);
-        
+
         Ok(GeneratedPrompt {
             content,
             token_count: final_token_count,
@@ -72,17 +71,15 @@ impl ClaudePromptGenerator {
             metadata: self.build_metadata(instance),
         })
     }
-    
+
     /// Generate batch prompts for multiple instances
-    pub fn generate_batch(
-        &self,
-        instances: &[SWEBenchInstance],
-    ) -> Result<Vec<GeneratedPrompt>> {
-        instances.iter()
+    pub fn generate_batch(&self, instances: &[SWEBenchInstance]) -> Result<Vec<GeneratedPrompt>> {
+        instances
+            .iter()
             .map(|instance| self.generate_prompt(instance))
             .collect()
     }
-    
+
     /// Select appropriate template based on difficulty
     fn select_template(&self, difficulty: &DifficultyLevel) -> PromptTemplate {
         match difficulty {
@@ -92,12 +89,14 @@ impl ClaudePromptGenerator {
             DifficultyLevel::Expert => PromptTemplate::Expert,
         }
     }
-    
+
     /// Initialize prompt templates
     fn initialize_templates() -> HashMap<PromptTemplate, String> {
         let mut templates = HashMap::new();
-        
-        templates.insert(PromptTemplate::Simple, r#"
+
+        templates.insert(
+            PromptTemplate::Simple,
+            r#"
 You are working on fixing an issue in the {repo} repository.
 
 ## Issue Description
@@ -110,9 +109,13 @@ Please analyze the issue and implement a fix. Focus on:
 3. Ensuring the fix doesn't break existing functionality
 
 Use the available tools to explore the codebase, understand the issue, and implement your solution.
-"#.to_string());
+"#
+            .to_string(),
+        );
 
-        templates.insert(PromptTemplate::Standard, r#"
+        templates.insert(
+            PromptTemplate::Standard,
+            r#"
 You are an expert software engineer working on the {repo} repository (version {version}).
 
 ## Issue: {issue_title}
@@ -134,9 +137,13 @@ You are an expert software engineer working on the {repo} repository (version {v
 - Write clear, maintainable code
 
 Begin by investigating the relevant files mentioned in the issue description.
-"#.to_string());
+"#
+            .to_string(),
+        );
 
-        templates.insert(PromptTemplate::Detailed, r#"
+        templates.insert(
+            PromptTemplate::Detailed,
+            r#"
 You are an expert software engineer tasked with resolving a complex issue in the {repo} repository.
 
 ## Repository Context
@@ -187,9 +194,13 @@ The following tests must pass after your implementation:
 - Ensure thread safety if applicable
 
 Start by examining the test patch to understand the expected behavior.
-"#.to_string());
+"#
+            .to_string(),
+        );
 
-        templates.insert(PromptTemplate::Expert, r#"
+        templates.insert(
+            PromptTemplate::Expert,
+            r#"
 You are a senior software architect working on a critical issue in the {repo} repository.
 
 ## Context
@@ -253,13 +264,15 @@ You are a senior software architect working on a critical issue in the {repo} re
 Remember: As an expert, you're not just fixing a bug—you're improving the system.
 
 Begin with a thorough analysis of the codebase architecture.
-"#.to_string());
+"#
+            .to_string(),
+        );
 
         templates.insert(PromptTemplate::Custom("".to_string()), String::new());
-        
+
         templates
     }
-    
+
     /// Build issue context section
     fn build_issue_context(&self, instance: &SWEBenchInstance) -> String {
         format!(
@@ -269,47 +282,44 @@ Begin with a thorough analysis of the codebase architecture.
              Issue: {}\n\
              \n\
              Description:\n{}",
-            instance.repo,
-            instance.version,
-            instance.issue_title,
-            instance.issue_description
+            instance.repo, instance.version, instance.issue_title, instance.issue_description
         )
     }
-    
+
     /// Build test context section
     fn build_test_context(&self, instance: &SWEBenchInstance) -> String {
         let mut context = String::from("## Test Information\n");
-        
+
         if !instance.test_directives.is_empty() {
             context.push_str("### Test Commands\n");
             for directive in &instance.test_directives {
                 context.push_str(&format!("- `{}`\n", directive));
             }
         }
-        
+
         if self.config.include_test_patch && !instance.test_patch.is_empty() {
             context.push_str("\n### Test Patch\n```diff\n");
             context.push_str(&instance.test_patch);
             context.push_str("\n```\n");
         }
-        
+
         context
     }
-    
+
     /// Build hints context section
     fn build_hints_context(&self, instance: &SWEBenchInstance) -> String {
         if instance.hints.is_empty() {
             return String::new();
         }
-        
+
         let mut context = String::from("## Hints\n");
         for (i, hint) in instance.hints.iter().enumerate() {
             context.push_str(&format!("{}. {}\n", i + 1, hint));
         }
-        
+
         context
     }
-    
+
     /// Build constraints section
     fn build_constraints(&self, instance: &SWEBenchInstance) -> String {
         let mut constraints = vec![
@@ -319,7 +329,7 @@ Begin with a thorough analysis of the codebase architecture.
             "- Do not modify test files unless explicitly required".to_string(),
             "- Follow the existing code style and conventions".to_string(),
         ];
-        
+
         if instance.difficulty == DifficultyLevel::Expert {
             constraints.extend(vec![
                 "- Consider performance implications of your changes".to_string(),
@@ -327,46 +337,47 @@ Begin with a thorough analysis of the codebase architecture.
                 "- Document complex logic with clear comments".to_string(),
             ]);
         }
-        
+
         constraints.join("\n")
     }
-    
+
     /// Estimate token count (rough approximation)
     fn estimate_tokens(&self, text: &str) -> usize {
         // Rough estimation: ~4 characters per token
         text.len() / 4
     }
-    
+
     /// Truncate prompt to fit token limit
     fn truncate_prompt(&self, prompt: String, max_tokens: usize) -> Result<String> {
         let sections: Vec<&str> = prompt.split("\n\n").collect();
         let mut result = Vec::new();
         let mut current_tokens = 0;
-        
+
         // Always include the first section (base template)
         if let Some(first) = sections.first() {
             result.push(*first);
             current_tokens += self.estimate_tokens(first);
         }
-        
+
         // Add sections until we approach the limit
         for section in sections.iter().skip(1) {
             let section_tokens = self.estimate_tokens(section);
-            if current_tokens + section_tokens > max_tokens * 9 / 10 { // Leave 10% buffer
+            if current_tokens + section_tokens > max_tokens * 9 / 10 {
+                // Leave 10% buffer
                 break;
             }
             result.push(*section);
             current_tokens += section_tokens;
         }
-        
+
         // Add truncation notice
         if result.len() < sections.len() {
             result.push("... (Content truncated due to token limit)");
         }
-        
+
         Ok(result.join("\n\n"))
     }
-    
+
     /// Build metadata for the prompt
     fn build_metadata(&self, instance: &SWEBenchInstance) -> HashMap<String, String> {
         let mut metadata = HashMap::new();
@@ -465,7 +476,7 @@ impl<'de> Deserialize<'de> for PromptTemplate {
 mod tests {
     use super::*;
     use crate::loader::InstanceMetrics;
-    
+
     fn create_test_instance() -> SWEBenchInstance {
         SWEBenchInstance {
             instance_id: "test-001".to_string(),
@@ -489,27 +500,27 @@ mod tests {
             metadata: HashMap::new(),
         }
     }
-    
+
     #[test]
     fn test_prompt_generation() {
         let config = crate::PromptConfig::default();
         let generator = ClaudePromptGenerator::new(config);
         let instance = create_test_instance();
-        
+
         let result = generator.generate_prompt(&instance);
         assert!(result.is_ok());
-        
+
         let prompt = result.unwrap();
         assert!(prompt.content.contains("python/cpython"));
         assert!(prompt.content.contains("Fix memory leak in dict"));
         assert!(prompt.token_count > 0);
     }
-    
+
     #[test]
     fn test_template_selection() {
         let config = crate::PromptConfig::default();
         let generator = ClaudePromptGenerator::new(config);
-        
+
         assert_eq!(
             generator.select_template(&DifficultyLevel::Easy),
             PromptTemplate::Simple

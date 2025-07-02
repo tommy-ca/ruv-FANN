@@ -7,7 +7,9 @@ use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 use std::path::Path;
 use tracing::info;
 
-use crate::metrics::{PerformanceMetrics, MetricType, ToolInvocation, ThinkingSequence, ErrorRecovery};
+use crate::metrics::{
+    ErrorRecovery, MetricType, PerformanceMetrics, ThinkingSequence, ToolInvocation,
+};
 
 /// Benchmark storage using SQLite
 pub struct BenchmarkStorage {
@@ -21,20 +23,20 @@ impl BenchmarkStorage {
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        
+
         let db_url = format!("sqlite:{}", db_path.display());
-        
+
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
             .connect(&db_url)
             .await?;
-        
+
         let storage = Self { pool };
         storage.initialize_schema().await?;
-        
+
         Ok(storage)
     }
-    
+
     /// Initialize database schema
     async fn initialize_schema(&self) -> Result<()> {
         sqlx::query(
@@ -55,9 +57,11 @@ impl BenchmarkStorage {
                 environment TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS stream_events (
@@ -70,9 +74,11 @@ impl BenchmarkStorage {
                 sequence_number INTEGER NOT NULL,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS tool_invocations (
@@ -88,9 +94,11 @@ impl BenchmarkStorage {
                 sequence_in_run INTEGER NOT NULL,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS thinking_sequences (
@@ -104,9 +112,11 @@ impl BenchmarkStorage {
                 context_after TEXT,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS error_recovery_events (
@@ -121,9 +131,11 @@ impl BenchmarkStorage {
                 recovery_success BOOLEAN,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS performance_metrics (
@@ -137,9 +149,11 @@ impl BenchmarkStorage {
                 metadata TEXT,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS code_quality_metrics (
@@ -154,9 +168,11 @@ impl BenchmarkStorage {
                 issues TEXT,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS resource_usage (
@@ -172,9 +188,11 @@ impl BenchmarkStorage {
                 agent_count INTEGER,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS swarm_coordination_metrics (
@@ -189,9 +207,11 @@ impl BenchmarkStorage {
                 task_distribution TEXT,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS comparison_results (
@@ -208,9 +228,11 @@ impl BenchmarkStorage {
                 FOREIGN KEY (baseline_run_id) REFERENCES benchmark_runs(run_id),
                 FOREIGN KEY (ml_run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS swe_bench_results (
@@ -225,16 +247,18 @@ impl BenchmarkStorage {
                 validation_output TEXT,
                 FOREIGN KEY (run_id) REFERENCES benchmark_runs(run_id)
             )
-            "#
-        ).execute(&self.pool).await?;
-        
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         // Create indexes for performance
         self.create_indexes().await?;
-        
+
         info!("Database schema initialized successfully");
         Ok(())
     }
-    
+
     /// Create indexes for better query performance
     async fn create_indexes(&self) -> Result<()> {
         let indexes = vec![
@@ -248,14 +272,14 @@ impl BenchmarkStorage {
             "CREATE INDEX IF NOT EXISTS idx_error_recovery_run ON error_recovery_events(run_id, error_time)",
             "CREATE INDEX IF NOT EXISTS idx_benchmark_instance ON benchmark_runs(instance_id, execution_mode)",
         ];
-        
+
         for index_sql in indexes {
             sqlx::query(index_sql).execute(&self.pool).await?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Create a new benchmark run
     pub async fn create_benchmark_run(
         &self,
@@ -272,13 +296,13 @@ impl BenchmarkStorage {
             "timeout": 1800,
             "max_retries": 3,
         });
-        
+
         let environment = serde_json::json!({
             "rust_version": "1.75.0",
             "os": std::env::consts::OS,
             "arch": std::env::consts::ARCH,
         });
-        
+
         sqlx::query(
             r#"
             INSERT INTO benchmark_runs (
@@ -286,7 +310,7 @@ impl BenchmarkStorage {
                 difficulty, execution_mode, start_time, status,
                 claude_command, configuration, environment
             ) VALUES (?, ?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(instance_id)
@@ -300,10 +324,10 @@ impl BenchmarkStorage {
         .bind(environment.to_string())
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Update run status
     pub async fn update_run_status(&self, run_id: &str, status: &str) -> Result<()> {
         sqlx::query(
@@ -311,52 +335,73 @@ impl BenchmarkStorage {
             UPDATE benchmark_runs 
             SET status = ?, end_time = ?
             WHERE run_id = ?
-            "#
+            "#,
         )
         .bind(status)
         .bind(Utc::now())
         .bind(run_id)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store performance metrics
     pub async fn store_metrics(&self, run_id: &str, metrics: &PerformanceMetrics) -> Result<()> {
         // Store individual metrics
-        self.store_metric(run_id, MetricType::TaskCompletionTime, 
-            metrics.task_completion_time.as_millis() as f64).await?;
-        self.store_metric(run_id, MetricType::TimeToFirstOutput,
-            metrics.time_to_first_output.as_millis() as f64).await?;
-        self.store_metric(run_id, MetricType::CodeQualityOverall,
-            metrics.code_quality_score.overall).await?;
-        self.store_metric(run_id, MetricType::CpuUsageAverage,
-            metrics.cpu_usage.average).await?;
-        self.store_metric(run_id, MetricType::MemoryUsageAverage,
-            metrics.memory_usage.average).await?;
-        
+        self.store_metric(
+            run_id,
+            MetricType::TaskCompletionTime,
+            metrics.task_completion_time.as_millis() as f64,
+        )
+        .await?;
+        self.store_metric(
+            run_id,
+            MetricType::TimeToFirstOutput,
+            metrics.time_to_first_output.as_millis() as f64,
+        )
+        .await?;
+        self.store_metric(
+            run_id,
+            MetricType::CodeQualityOverall,
+            metrics.code_quality_score.overall,
+        )
+        .await?;
+        self.store_metric(
+            run_id,
+            MetricType::CpuUsageAverage,
+            metrics.cpu_usage.average,
+        )
+        .await?;
+        self.store_metric(
+            run_id,
+            MetricType::MemoryUsageAverage,
+            metrics.memory_usage.average,
+        )
+        .await?;
+
         // Store tool invocations
         for (i, tool) in metrics.tool_invocations.iter().enumerate() {
             self.store_tool_invocation(run_id, tool, i as i32).await?;
         }
-        
+
         // Store thinking sequences
         for sequence in &metrics.thinking_sequences {
             self.store_thinking_sequence(run_id, sequence).await?;
         }
-        
+
         // Store error recoveries
         for recovery in &metrics.error_recoveries {
             self.store_error_recovery(run_id, recovery).await?;
         }
-        
+
         // Store swarm metrics
-        self.store_swarm_metrics(run_id, &metrics.swarm_metrics).await?;
-        
+        self.store_swarm_metrics(run_id, &metrics.swarm_metrics)
+            .await?;
+
         Ok(())
     }
-    
+
     /// Store a single metric
     async fn store_metric(&self, run_id: &str, metric_type: MetricType, value: f64) -> Result<()> {
         sqlx::query(
@@ -364,7 +409,7 @@ impl BenchmarkStorage {
             INSERT INTO performance_metrics (
                 run_id, metric_type, metric_name, metric_value, unit, timestamp
             ) VALUES (?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(metric_type.to_string())
@@ -374,19 +419,24 @@ impl BenchmarkStorage {
         .bind(Utc::now())
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store tool invocation
-    async fn store_tool_invocation(&self, run_id: &str, tool: &ToolInvocation, sequence: i32) -> Result<()> {
+    async fn store_tool_invocation(
+        &self,
+        run_id: &str,
+        tool: &ToolInvocation,
+        sequence: i32,
+    ) -> Result<()> {
         sqlx::query(
             r#"
             INSERT INTO tool_invocations (
                 run_id, tool_name, invocation_time, duration_ms,
                 parameters, result_size, success, error_message, sequence_in_run
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(&tool.tool_name)
@@ -399,18 +449,22 @@ impl BenchmarkStorage {
         .bind(sequence)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store thinking sequence
-    async fn store_thinking_sequence(&self, run_id: &str, sequence: &ThinkingSequence) -> Result<()> {
+    async fn store_thinking_sequence(
+        &self,
+        run_id: &str,
+        sequence: &ThinkingSequence,
+    ) -> Result<()> {
         sqlx::query(
             r#"
             INSERT INTO thinking_sequences (
                 run_id, start_time, duration_ms, token_count, decision_points
             ) VALUES (?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(sequence.start_time)
@@ -419,10 +473,10 @@ impl BenchmarkStorage {
         .bind(serde_json::to_string(&sequence.decision_points)?)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store error recovery event
     async fn store_error_recovery(&self, run_id: &str, recovery: &ErrorRecovery) -> Result<()> {
         sqlx::query(
@@ -431,7 +485,7 @@ impl BenchmarkStorage {
                 run_id, error_time, error_type, error_message,
                 recovery_started, recovery_completed, recovery_strategy, recovery_success
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(recovery.error_time)
@@ -443,19 +497,23 @@ impl BenchmarkStorage {
         .bind(recovery.recovery_success)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store swarm coordination metrics
-    async fn store_swarm_metrics(&self, run_id: &str, metrics: &crate::metrics::SwarmCoordinationMetrics) -> Result<()> {
+    async fn store_swarm_metrics(
+        &self,
+        run_id: &str,
+        metrics: &crate::metrics::SwarmCoordinationMetrics,
+    ) -> Result<()> {
         sqlx::query(
             r#"
             INSERT INTO swarm_coordination_metrics (
                 run_id, timestamp, active_agents, messages_passed,
                 conflicts_resolved, consensus_rounds, coordination_efficiency
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(Utc::now())
@@ -466,10 +524,10 @@ impl BenchmarkStorage {
         .bind(metrics.communication_efficiency)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store stream event
     pub async fn store_stream_event(
         &self,
@@ -485,7 +543,7 @@ impl BenchmarkStorage {
                 run_id, event_type, event_timestamp, relative_time_ms,
                 event_data, sequence_number
             ) VALUES (?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(event_type)
@@ -495,10 +553,10 @@ impl BenchmarkStorage {
         .bind(sequence)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Store comparison result
     pub async fn store_comparison(
         &self,
@@ -516,7 +574,7 @@ impl BenchmarkStorage {
                 comparison_id, instance_id, baseline_run_id, ml_run_id,
                 metric_improvements, statistical_analysis, summary
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(comparison_id)
         .bind(instance_id)
@@ -527,24 +585,24 @@ impl BenchmarkStorage {
         .bind(summary)
         .execute(&self.pool)
         .await?;
-        
+
         Ok(())
     }
-    
+
     /// Get benchmark run by ID
     pub async fn get_run(&self, run_id: &str) -> Result<Option<BenchmarkRun>> {
         let row = sqlx::query_as::<_, BenchmarkRunRow>(
             r#"
             SELECT * FROM benchmark_runs WHERE run_id = ?
-            "#
+            "#,
         )
         .bind(run_id)
         .fetch_optional(&self.pool)
         .await?;
-        
+
         Ok(row.map(|r| r.into()))
     }
-    
+
     /// Get runs by instance ID
     pub async fn get_runs_by_instance(&self, instance_id: &str) -> Result<Vec<BenchmarkRun>> {
         let rows = sqlx::query_as::<_, BenchmarkRunRow>(
@@ -552,15 +610,15 @@ impl BenchmarkStorage {
             SELECT * FROM benchmark_runs 
             WHERE instance_id = ?
             ORDER BY start_time DESC
-            "#
+            "#,
         )
         .bind(instance_id)
         .fetch_all(&self.pool)
         .await?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
-    
+
     /// Get metrics for a run
     pub async fn get_run_metrics(&self, run_id: &str) -> Result<Vec<MetricRecord>> {
         let rows = sqlx::query_as::<_, MetricRow>(
@@ -568,12 +626,12 @@ impl BenchmarkStorage {
             SELECT * FROM performance_metrics
             WHERE run_id = ?
             ORDER BY timestamp
-            "#
+            "#,
         )
         .bind(run_id)
         .fetch_all(&self.pool)
         .await?;
-        
+
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 }
@@ -682,46 +740,52 @@ pub type ResourceUsageRecord = serde_json::Value;
 mod tests {
     use super::*;
     use tempfile::tempdir;
-    
+
     #[tokio::test]
     async fn test_storage_creation() {
         let temp_dir = tempdir().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        
+
         let storage = BenchmarkStorage::new(&db_path).await;
         assert!(storage.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_benchmark_run_crud() {
         let temp_dir = tempdir().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        
+
         let storage = BenchmarkStorage::new(&db_path).await.unwrap();
-        
+
         // Create a run
         let run_id = "test-run-001";
-        storage.create_benchmark_run(
-            run_id,
-            "test-instance",
-            "test/repo",
-            "Test issue",
-            "easy",
-            "baseline",
-            "test command"
-        ).await.unwrap();
-        
+        storage
+            .create_benchmark_run(
+                run_id,
+                "test-instance",
+                "test/repo",
+                "Test issue",
+                "easy",
+                "baseline",
+                "test command",
+            )
+            .await
+            .unwrap();
+
         // Get the run
         let run = storage.get_run(run_id).await.unwrap();
         assert!(run.is_some());
-        
+
         let run = run.unwrap();
         assert_eq!(run.run_id, run_id);
         assert_eq!(run.status, "running");
-        
+
         // Update status
-        storage.update_run_status(run_id, "completed").await.unwrap();
-        
+        storage
+            .update_run_status(run_id, "completed")
+            .await
+            .unwrap();
+
         // Verify update
         let updated_run = storage.get_run(run_id).await.unwrap().unwrap();
         assert_eq!(updated_run.status, "completed");

@@ -57,18 +57,19 @@ impl ToolRegistry {
             tools: DashMap::new(),
         }
     }
-    
+
     pub fn register(&self, tool: Tool) {
         let name = tool.name.clone();
         self.tools.insert(name, tool);
     }
-    
+
     pub fn get(&self, name: &str) -> Option<Tool> {
         self.tools.get(name).map(|t| t.clone())
     }
-    
+
     pub fn list_tools(&self) -> Vec<Tool> {
-        self.tools.iter()
+        self.tools
+            .iter()
             .map(|entry| {
                 let mut tool = entry.value().clone();
                 // Don't serialize the handler
@@ -77,7 +78,7 @@ impl ToolRegistry {
             })
             .collect()
     }
-    
+
     pub fn count(&self) -> usize {
         self.tools.len()
     }
@@ -124,7 +125,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Orchestrate task tool
     registry.register(Tool {
         name: "ruv-swarm.orchestrate".to_string(),
@@ -186,7 +187,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Query swarm state tool
     registry.register(Tool {
         name: "ruv-swarm.query".to_string(),
@@ -211,7 +212,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Monitor events tool
     registry.register(Tool {
         name: "ruv-swarm.monitor".to_string(),
@@ -244,7 +245,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Optimize performance tool
     registry.register(Tool {
         name: "ruv-swarm.optimize".to_string(),
@@ -283,7 +284,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Memory store tool
     registry.register(Tool {
         name: "ruv-swarm.memory.store".to_string(),
@@ -316,24 +317,22 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Memory retrieve tool
     registry.register(Tool {
         name: "ruv-swarm.memory.get".to_string(),
         description: "Retrieve data from swarm memory".to_string(),
-        parameters: vec![
-            ToolParameter {
-                name: "key".to_string(),
-                description: "Memory key to retrieve".to_string(),
-                param_type: "string".to_string(),
-                required: true,
-                default: None,
-                enum_values: None,
-            },
-        ],
+        parameters: vec![ToolParameter {
+            name: "key".to_string(),
+            description: "Memory key to retrieve".to_string(),
+            param_type: "string".to_string(),
+            required: true,
+            default: None,
+            enum_values: None,
+        }],
         handler: None,
     });
-    
+
     // Task create tool
     registry.register(Tool {
         name: "ruv-swarm.task.create".to_string(),
@@ -379,7 +378,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Workflow execute tool
     registry.register(Tool {
         name: "ruv-swarm.workflow.execute".to_string(),
@@ -412,7 +411,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Agent list tool
     registry.register(Tool {
         name: "ruv-swarm.agent.list".to_string(),
@@ -442,7 +441,7 @@ pub fn register_tools(registry: &ToolRegistry) {
         ],
         handler: None,
     });
-    
+
     // Agent metrics tool
     registry.register(Tool {
         name: "ruv-swarm.agent.metrics".to_string(),

@@ -1,11 +1,15 @@
 //! Core agent trait and related types
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use core::fmt;
+use serde::{Deserialize, Serialize};
 
 #[cfg(not(feature = "std"))]
-use alloc::{boxed::Box, string::{String, ToString}, vec::Vec};
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 use crate::error::Result;
 
@@ -45,57 +49,62 @@ pub struct AgentConfig {
 pub trait Agent: Send + Sync {
     /// Input type for this agent
     type Input: Send;
-    
+
     /// Output type for this agent
     type Output: Send;
-    
+
     /// Error type for this agent
     type Error: fmt::Debug + Send;
-    
+
     /// Process an input and produce an output
-    async fn process(&mut self, input: Self::Input) -> core::result::Result<Self::Output, Self::Error>;
-    
+    async fn process(
+        &mut self,
+        input: Self::Input,
+    ) -> core::result::Result<Self::Output, Self::Error>;
+
     /// Get agent capabilities
     fn capabilities(&self) -> &[String];
-    
+
     /// Get unique agent identifier
     fn id(&self) -> &str;
-    
+
     /// Get agent metadata
     fn metadata(&self) -> AgentMetadata {
         AgentMetadata::default()
     }
-    
+
     /// Check if agent can handle a specific capability
     fn has_capability(&self, capability: &str) -> bool {
         self.capabilities().iter().any(|c| c == capability)
     }
-    
+
     /// Agent health check
     async fn health_check(&self) -> Result<HealthStatus> {
         Ok(HealthStatus::Healthy)
     }
-    
+
     /// Get current agent status
     fn status(&self) -> AgentStatus {
         AgentStatus::Running
     }
-    
+
     /// Check if agent can handle a specific task
     fn can_handle(&self, task: &crate::task::Task) -> bool {
-        task.required_capabilities.iter().all(|cap| self.has_capability(cap))
+        task.required_capabilities
+            .iter()
+            .all(|cap| self.has_capability(cap))
     }
-    
+
     /// Lifecycle: Start the agent
     async fn start(&mut self) -> Result<()> {
         self.initialize().await
     }
-    
+
     /// Lifecycle: Initialize the agent
     async fn initialize(&mut self) -> Result<()> {
         Ok(())
     }
-    
+
     /// Lifecycle: Shutdown the agent
     async fn shutdown(&mut self) -> Result<()> {
         Ok(())
@@ -107,19 +116,19 @@ pub trait Agent: Send + Sync {
 pub struct AgentMetadata {
     /// Agent name
     pub name: String,
-    
+
     /// Agent version
     pub version: String,
-    
+
     /// Agent description
     pub description: String,
-    
+
     /// Cognitive pattern
     pub cognitive_pattern: CognitivePattern,
-    
+
     /// Resource requirements
     pub resources: ResourceRequirements,
-    
+
     /// Performance metrics
     pub metrics: AgentMetrics,
 }
@@ -166,7 +175,7 @@ impl CognitivePattern {
             CognitivePattern::Abstract,
         ]
     }
-    
+
     /// Get complementary pattern
     pub fn complement(&self) -> CognitivePattern {
         match self {
@@ -198,16 +207,16 @@ pub enum HealthStatus {
 pub struct ResourceRequirements {
     /// Minimum memory in MB
     pub min_memory_mb: u32,
-    
+
     /// Maximum memory in MB
     pub max_memory_mb: u32,
-    
+
     /// CPU cores required
     pub cpu_cores: f32,
-    
+
     /// GPU required
     pub requires_gpu: bool,
-    
+
     /// Network bandwidth in Mbps
     pub network_bandwidth_mbps: u32,
 }
@@ -229,19 +238,19 @@ impl Default for ResourceRequirements {
 pub struct AgentMetrics {
     /// Total tasks processed
     pub tasks_processed: u64,
-    
+
     /// Tasks succeeded
     pub tasks_succeeded: u64,
-    
+
     /// Tasks failed
     pub tasks_failed: u64,
-    
+
     /// Average processing time in ms
     pub avg_processing_time_ms: f64,
-    
+
     /// Current queue size
     pub queue_size: usize,
-    
+
     /// Uptime in seconds
     #[cfg(feature = "std")]
     pub uptime_seconds: u64,
@@ -269,44 +278,46 @@ pub type BoxedAgent<I, O, E> = Box<dyn Agent<Input = I, Output = O, Error = E>>;
 pub trait ErasedAgent: Send + Sync {
     /// Get unique agent identifier
     fn id(&self) -> &str;
-    
+
     /// Get agent capabilities
     fn capabilities(&self) -> &[String];
-    
+
     /// Check if agent has a specific capability
     #[inline]
     fn has_capability(&self, capability: &str) -> bool {
         self.capabilities().iter().any(|c| c == capability)
     }
-    
+
     /// Get current agent status
     fn status(&self) -> AgentStatus;
-    
+
     /// Check if agent can handle a specific task
     fn can_handle(&self, task: &crate::task::Task) -> bool {
-        task.required_capabilities.iter().all(|cap| self.has_capability(cap))
+        task.required_capabilities
+            .iter()
+            .all(|cap| self.has_capability(cap))
     }
-    
+
     /// Get agent metadata
     fn metadata(&self) -> AgentMetadata {
         AgentMetadata::default()
     }
-    
+
     /// Agent health check
     async fn health_check(&self) -> Result<HealthStatus> {
         Ok(HealthStatus::Healthy)
     }
-    
+
     /// Lifecycle: Start the agent
     async fn start(&mut self) -> Result<()> {
         Ok(())
     }
-    
+
     /// Lifecycle: Shutdown the agent
     async fn shutdown(&mut self) -> Result<()> {
         Ok(())
     }
-    
+
     /// Process a JSON value (type-erased)
     async fn process_json(&mut self, input: serde_json::Value) -> Result<serde_json::Value>;
 }
@@ -331,44 +342,45 @@ impl DynamicAgent {
             processor: Box::new(DefaultProcessor),
         }
     }
-    
+
     /// Get agent ID
     pub fn id(&self) -> &str {
         &self.id
     }
-    
+
     /// Get agent capabilities  
     pub fn capabilities(&self) -> &[String] {
         &self.capabilities
     }
-    
+
     /// Get agent status
     pub fn status(&self) -> AgentStatus {
         self.status
     }
-    
+
     /// Set agent status
     pub fn set_status(&mut self, status: AgentStatus) {
         self.status = status;
     }
-    
+
     /// Check if agent can handle a task
     pub fn can_handle(&self, task: &crate::task::Task) -> bool {
-        task.required_capabilities.iter()
+        task.required_capabilities
+            .iter()
             .all(|cap| self.capabilities.contains(cap))
     }
-    
+
     /// Check if agent has capability
     pub fn has_capability(&self, capability: &str) -> bool {
         self.capabilities.iter().any(|c| c == capability)
     }
-    
+
     /// Start the agent
     pub async fn start(&mut self) -> crate::error::Result<()> {
         self.status = AgentStatus::Running;
         Ok(())
     }
-    
+
     /// Shutdown the agent
     pub async fn shutdown(&mut self) -> crate::error::Result<()> {
         self.status = AgentStatus::Offline;
@@ -381,7 +393,10 @@ struct DefaultProcessor;
 
 #[async_trait]
 impl AgentProcessor for DefaultProcessor {
-    async fn process_dynamic(&mut self, input: serde_json::Value) -> crate::error::Result<serde_json::Value> {
+    async fn process_dynamic(
+        &mut self,
+        input: serde_json::Value,
+    ) -> crate::error::Result<serde_json::Value> {
         Ok(input)
     }
 }
@@ -397,16 +412,16 @@ trait AgentProcessor: Send + Sync {
 pub struct AgentMessage<T> {
     /// Source agent ID
     pub from: String,
-    
+
     /// Target agent ID
     pub to: String,
-    
+
     /// Message payload
     pub payload: T,
-    
+
     /// Message type
     pub msg_type: MessageType,
-    
+
     /// Correlation ID for request/response
     pub correlation_id: Option<String>,
 }
@@ -432,9 +447,18 @@ mod tests {
 
     #[test]
     fn test_cognitive_pattern_complement() {
-        assert_eq!(CognitivePattern::Convergent.complement(), CognitivePattern::Divergent);
-        assert_eq!(CognitivePattern::Divergent.complement(), CognitivePattern::Convergent);
-        assert_eq!(CognitivePattern::Lateral.complement(), CognitivePattern::Systems);
+        assert_eq!(
+            CognitivePattern::Convergent.complement(),
+            CognitivePattern::Divergent
+        );
+        assert_eq!(
+            CognitivePattern::Divergent.complement(),
+            CognitivePattern::Convergent
+        );
+        assert_eq!(
+            CognitivePattern::Lateral.complement(),
+            CognitivePattern::Systems
+        );
     }
 
     #[test]

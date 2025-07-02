@@ -286,20 +286,19 @@ impl Config {
 
     /// Save configuration to file
     pub fn save(&self, path: &Path) -> Result<()> {
-        let toml = toml::to_string_pretty(self)
-            .context("Failed to serialize configuration to TOML")?;
+        let toml =
+            toml::to_string_pretty(self).context("Failed to serialize configuration to TOML")?;
 
         std::fs::create_dir_all(path.parent().unwrap_or(Path::new(".")))?;
-        std::fs::write(path, toml)
-            .context("Failed to write configuration file")?;
+        std::fs::write(path, toml).context("Failed to write configuration file")?;
 
         Ok(())
     }
 
     /// Create default configuration files
     pub fn init_config_files() -> Result<PathBuf> {
-        let config_dir = Self::config_dir()
-            .context("Failed to determine configuration directory")?;
+        let config_dir =
+            Self::config_dir().context("Failed to determine configuration directory")?;
 
         std::fs::create_dir_all(&config_dir)?;
 

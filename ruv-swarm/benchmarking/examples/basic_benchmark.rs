@@ -1,12 +1,11 @@
 //! Basic benchmarking example
-//! 
+//!
 //! This example demonstrates how to use the RUV-SWARM benchmarking framework
 //! to compare baseline vs ML-optimized swarm performance.
 
 use anyhow::Result;
 use ruv_swarm_benchmarking::{
-    BenchmarkingFramework, BenchmarkConfig, BenchmarkScenario, 
-    Difficulty, ExecutionMode
+    BenchmarkConfig, BenchmarkScenario, BenchmarkingFramework, Difficulty, ExecutionMode,
 };
 use std::path::PathBuf;
 use tokio;
@@ -17,7 +16,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter("ruv_swarm_benchmarking=debug")
         .init();
-    
+
     // Configure the benchmarking framework
     let config = BenchmarkConfig {
         database_path: PathBuf::from("benchmark_results.db"),
@@ -27,10 +26,10 @@ async fn main() -> Result<()> {
         execution_timeout: std::time::Duration::from_secs(900), // 15 minutes
         trial_count: 3,
     };
-    
+
     // Create the benchmarking framework
     let mut framework = BenchmarkingFramework::new(config).await?;
-    
+
     // Define test scenarios
     let scenarios = vec![
         BenchmarkScenario {
@@ -65,7 +64,8 @@ async fn main() -> Result<()> {
             repository: "astropy/astropy".to_string(),
             issue_description: "Refactor coordinate transformations for performance".to_string(),
             difficulty: Difficulty::Hard,
-            claude_command: "Refactor coordinate transformation system for better performance".to_string(),
+            claude_command: "Refactor coordinate transformation system for better performance"
+                .to_string(),
             expected_files_modified: vec![
                 "astropy/coordinates/transformations.py".to_string(),
                 "astropy/coordinates/builtin_frames.py".to_string(),
@@ -77,47 +77,58 @@ async fn main() -> Result<()> {
             ],
         },
     ];
-    
-    println!("Starting benchmark suite with {} scenarios", scenarios.len());
+
+    println!(
+        "Starting benchmark suite with {} scenarios",
+        scenarios.len()
+    );
     println!("Monitor available at: http://localhost:8080");
-    
+
     // Run the benchmark suite
     let report = framework.run_benchmark_suite(scenarios).await?;
-    
+
     // Print summary results
     println!("\n=== Benchmark Results ===");
     println!("Total scenarios: {}", report.summary.total_scenarios);
     println!("Successful: {}", report.summary.successful_scenarios);
     println!("Failed: {}", report.summary.failed_scenarios);
-    println!("Average improvement: {:.1}%", report.summary.average_improvement * 100.0);
-    
+    println!(
+        "Average improvement: {:.1}%",
+        report.summary.average_improvement * 100.0
+    );
+
     println!("\nKey findings:");
     for finding in &report.summary.key_findings {
         println!("  - {}", finding);
     }
-    
+
     // Print detailed results for each scenario
     println!("\n=== Detailed Results ===");
     for result in &report.results {
         println!("\nScenario: {}", result.scenario.name);
         println!("  Baseline duration: {:?}", result.baseline.duration);
-        println!("  ML-optimized duration: {:?}", result.ml_optimized.duration);
-        
+        println!(
+            "  ML-optimized duration: {:?}",
+            result.ml_optimized.duration
+        );
+
         if let Some(speed_imp) = result.comparison.speed_improvement {
             println!("  Speed improvement: {:.1}%", speed_imp * 100.0);
         }
-        
+
         if let Some(quality_imp) = result.comparison.quality_improvement {
             println!("  Quality improvement: {:.1}%", quality_imp * 100.0);
         }
-        
+
         if let Some(resource_eff) = result.comparison.resource_efficiency {
             println!("  Resource efficiency: {:.1}%", resource_eff * 100.0);
         }
-        
-        println!("  Statistical significance: p={:.4}", 
-            result.comparison.statistical_significance.p_value);
+
+        println!(
+            "  Statistical significance: p={:.4}",
+            result.comparison.statistical_significance.p_value
+        );
     }
-    
+
     Ok(())
 }

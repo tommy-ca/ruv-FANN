@@ -1,5 +1,5 @@
 //! RUV-SWARM Benchmarking Framework
-//! 
+//!
 //! Comprehensive benchmarking system for evaluating Claude Code CLI performance
 //! with ML-optimized swarm intelligence against baseline implementations.
 
@@ -48,7 +48,7 @@ impl BenchmarkingFramework {
     /// Create a new benchmarking framework
     pub async fn new(config: BenchmarkConfig) -> Result<Self> {
         let storage = BenchmarkStorage::new(&config.database_path).await?;
-        
+
         let monitor = if config.enable_real_time_monitoring {
             Some(RealTimeMonitor::new(config.monitor_port).await?)
         } else {
@@ -69,22 +69,29 @@ impl BenchmarkingFramework {
         &mut self,
         scenarios: Vec<BenchmarkScenario>,
     ) -> Result<BenchmarkReport> {
-        info!("Starting benchmark suite with {} scenarios", scenarios.len());
-        
+        info!(
+            "Starting benchmark suite with {} scenarios",
+            scenarios.len()
+        );
+
         let mut results = Vec::new();
-        
+
         for scenario in scenarios {
             info!("Executing scenario: {}", scenario.name);
-            
+
             // Run baseline
-            let baseline_result = self.run_scenario(&scenario, ExecutionMode::Baseline).await?;
-            
+            let baseline_result = self
+                .run_scenario(&scenario, ExecutionMode::Baseline)
+                .await?;
+
             // Run ML-optimized
-            let ml_result = self.run_scenario(&scenario, ExecutionMode::MLOptimized).await?;
-            
+            let ml_result = self
+                .run_scenario(&scenario, ExecutionMode::MLOptimized)
+                .await?;
+
             // Compare results
             let comparison = self.comparator.compare(&baseline_result, &ml_result)?;
-            
+
             results.push(BenchmarkResult {
                 scenario: scenario.clone(),
                 baseline: baseline_result,
@@ -92,9 +99,9 @@ impl BenchmarkingFramework {
                 comparison,
             });
         }
-        
+
         let summary = self.generate_summary(&results);
-        
+
         Ok(BenchmarkReport {
             timestamp: Utc::now(),
             results,
@@ -109,36 +116,38 @@ impl BenchmarkingFramework {
         mode: ExecutionMode,
     ) -> Result<ScenarioResult> {
         let run_id = Uuid::new_v4().to_string();
-        
+
         // Initialize benchmark run in storage
-        self.storage.create_benchmark_run(
-            &run_id,
-            &scenario.instance_id,
-            &scenario.repository,
-            &scenario.issue_description,
-            &scenario.difficulty.to_string(),
-            &mode.to_string(),
-            &scenario.claude_command,
-        ).await?;
-        
+        self.storage
+            .create_benchmark_run(
+                &run_id,
+                &scenario.instance_id,
+                &scenario.repository,
+                &scenario.issue_description,
+                &scenario.difficulty.to_string(),
+                &mode.to_string(),
+                &scenario.claude_command,
+            )
+            .await?;
+
         // Start monitoring if enabled
         if let Some(monitor) = &self.monitor {
             monitor.start_monitoring(&run_id).await?;
         }
-        
+
         // Execute the scenario
         let start_time = Instant::now();
         let execution_result = self.executor.execute(scenario, mode.clone(), &run_id).await;
         let duration = start_time.elapsed();
-        
+
         match execution_result {
             Ok(metrics) => {
                 // Store metrics
                 self.storage.store_metrics(&run_id, &metrics).await?;
-                
+
                 // Update run status
                 self.storage.update_run_status(&run_id, "completed").await?;
-                
+
                 Ok(ScenarioResult {
                     run_id,
                     scenario_name: scenario.name.clone(),
@@ -151,10 +160,10 @@ impl BenchmarkingFramework {
             }
             Err(e) => {
                 error!("Scenario execution failed: {}", e);
-                
+
                 // Update run status
                 self.storage.update_run_status(&run_id, "failed").await?;
-                
+
                 Ok(ScenarioResult {
                     run_id,
                     scenario_name: scenario.name.clone(),
@@ -171,19 +180,24 @@ impl BenchmarkingFramework {
     /// Generate summary report
     fn generate_summary(&self, results: &[BenchmarkResult]) -> BenchmarkSummary {
         let total_scenarios = results.len();
-        let successful_scenarios = results.iter()
-            .filter(|r| r.baseline.status == ExecutionStatus::Completed 
-                && r.ml_optimized.status == ExecutionStatus::Completed)
+        let successful_scenarios = results
+            .iter()
+            .filter(|r| {
+                r.baseline.status == ExecutionStatus::Completed
+                    && r.ml_optimized.status == ExecutionStatus::Completed
+            })
             .count();
-        
+
         let avg_improvement = if successful_scenarios > 0 {
-            results.iter()
+            results
+                .iter()
                 .filter_map(|r| r.comparison.overall_improvement)
-                .sum::<f64>() / successful_scenarios as f64
+                .sum::<f64>()
+                / successful_scenarios as f64
         } else {
             0.0
         };
-        
+
         BenchmarkSummary {
             total_scenarios,
             successful_scenarios,
@@ -195,17 +209,19 @@ impl BenchmarkingFramework {
 
     fn extract_key_findings(&self, results: &[BenchmarkResult]) -> Vec<String> {
         let mut findings = Vec::new();
-        
+
         // Calculate average metrics
-        let avg_speed_improvement = results.iter()
+        let avg_speed_improvement = results
+            .iter()
             .filter_map(|r| r.comparison.speed_improvement)
             .collect::<Vec<_>>();
-        
+
         if !avg_speed_improvement.is_empty() {
-            let avg = avg_speed_improvement.iter().sum::<f64>() / avg_speed_improvement.len() as f64;
+            let avg =
+                avg_speed_improvement.iter().sum::<f64>() / avg_speed_improvement.len() as f64;
             findings.push(format!("Average speed improvement: {:.1}%", avg * 100.0));
         }
-        
+
         findings
     }
 }
@@ -371,17 +387,19 @@ impl BenchmarkExecutor {
         run_id: &str,
     ) -> Result<PerformanceMetrics> {
         info!("Executing scenario {} in {:?} mode", scenario.name, mode);
-        
+
         let command = self.build_command(scenario, mode)?;
         let mut child = self.spawn_command(&command)?;
-        
+
         // Set up stream processing
-        let stdout = child.stdout.take()
+        let stdout = child
+            .stdout
+            .take()
             .ok_or_else(|| anyhow!("Failed to capture stdout"))?;
-        
+
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
-        
+
         // Process output stream
         let collector = self.stream_collector.clone();
         let metrics_task = tokio::spawn(async move {
@@ -392,10 +410,10 @@ impl BenchmarkExecutor {
                 }
             }
         });
-        
+
         // Wait for completion with timeout
         let result = timeout(self.config.execution_timeout, child.wait()).await;
-        
+
         match result {
             Ok(Ok(status)) => {
                 if !status.success() {
@@ -413,30 +431,38 @@ impl BenchmarkExecutor {
                 return Err(anyhow!("Command execution timeout"));
             }
         }
-        
+
         // Wait for metrics collection to complete
         let _ = metrics_task.await;
-        
+
         // Extract metrics
         let collector = self.stream_collector.lock().await;
         Ok(collector.finalize())
     }
 
     /// Build the command to execute
-    fn build_command(&self, scenario: &BenchmarkScenario, mode: ExecutionMode) -> Result<Vec<String>> {
-        let mut command = vec![
-            self.config.claude_executable.to_string_lossy().to_string(),
-        ];
-        
+    fn build_command(
+        &self,
+        scenario: &BenchmarkScenario,
+        mode: ExecutionMode,
+    ) -> Result<Vec<String>> {
+        let mut command = vec![self.config.claude_executable.to_string_lossy().to_string()];
+
         match mode {
             ExecutionMode::Baseline => {
-                command.push(format!("solve SWE-bench instance {} without ML optimization", scenario.instance_id));
+                command.push(format!(
+                    "solve SWE-bench instance {} without ML optimization",
+                    scenario.instance_id
+                ));
             }
             ExecutionMode::MLOptimized => {
-                command.push(format!("solve SWE-bench instance {} using ML-optimized swarm coordination", scenario.instance_id));
+                command.push(format!(
+                    "solve SWE-bench instance {} using ML-optimized swarm coordination",
+                    scenario.instance_id
+                ));
             }
         }
-        
+
         // Add common flags
         command.extend(vec![
             "-p".to_string(),
@@ -445,7 +471,7 @@ impl BenchmarkExecutor {
             "stream-json".to_string(),
             "--verbose".to_string(),
         ]);
-        
+
         Ok(command)
     }
 
@@ -454,12 +480,12 @@ impl BenchmarkExecutor {
         if args.is_empty() {
             return Err(anyhow!("No command provided"));
         }
-        
+
         let mut cmd = Command::new(&args[0]);
         for arg in &args[1..] {
             cmd.arg(arg);
         }
-        
+
         cmd.stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
@@ -468,25 +494,24 @@ impl BenchmarkExecutor {
 }
 
 // Module exports
-pub use claude_executor::{ExecutionResult};
+pub use claude_executor::ExecutionResult;
 pub use comparator::{ComparisonFramework, StatisticalAnalyzer};
 pub use metrics::{
-    CodeQualityScore, MetricType, ResourceUsage, SwarmCoordinationMetrics,
-    ToolInvocation, ThinkingSequence, ErrorRecovery,
+    CodeQualityScore, ErrorRecovery, MetricType, ResourceUsage, SwarmCoordinationMetrics,
+    ThinkingSequence, ToolInvocation,
 };
-pub use realtime::{RealTimeEvent, MonitoringServer};
+pub use realtime::{MonitoringServer, RealTimeEvent};
 pub use storage::{
-    BenchmarkRun, StreamEvent, ToolInvocationRecord, ThinkingSequenceRecord,
-    ErrorRecoveryEvent, CodeQualityMetric, ResourceUsageRecord,
+    BenchmarkRun, CodeQualityMetric, ErrorRecoveryEvent, ResourceUsageRecord, StreamEvent,
+    ThinkingSequenceRecord, ToolInvocationRecord,
 };
 pub use stream_parser::{
-    StreamJSONParser, EventProcessor, ToolUsageProcessor,
-    ThinkingPatternAnalyzer, ErrorRecoveryTracker,
+    ErrorRecoveryTracker, EventProcessor, StreamJSONParser, ThinkingPatternAnalyzer,
+    ToolUsageProcessor,
 };
 pub use swe_bench_evaluator::{
-    SWEBenchEvaluator, SWEBenchEvaluatorConfig, ModelConfig, ModelType,
-    ComprehensiveEvaluationReport, ModelEvaluationReport, SolveStatus,
-    SWEBenchInstances, SWEBenchInstance,
+    ComprehensiveEvaluationReport, ModelConfig, ModelEvaluationReport, ModelType,
+    SWEBenchEvaluator, SWEBenchEvaluatorConfig, SWEBenchInstance, SWEBenchInstances, SolveStatus,
 };
 
 #[cfg(test)]
@@ -502,7 +527,7 @@ mod tests {
             enable_real_time_monitoring: false,
             ..Default::default()
         };
-        
+
         let framework = BenchmarkingFramework::new(config).await;
         assert!(framework.is_ok());
     }
@@ -519,7 +544,7 @@ mod tests {
             expected_files_modified: vec![],
             validation_tests: vec![],
         };
-        
+
         // Test scenario creation
         assert_eq!(scenario.difficulty.to_string(), "easy");
     }

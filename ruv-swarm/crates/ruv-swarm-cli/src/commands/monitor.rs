@@ -23,33 +23,32 @@ pub struct MonitorArgs {
 }
 
 /// Execute the monitor command
-pub async fn execute(
-    config: &Config,
-    args: &MonitorArgs,
-    output: &OutputHandler,
-) -> Result<()> {
+pub async fn execute(config: &Config, args: &MonitorArgs, output: &OutputHandler) -> Result<()> {
     output.section("RUV Swarm Monitor");
-    
+
     if args.watch {
-        output.info(&format!("Starting continuous monitoring (interval: {}s)", args.interval));
+        output.info(&format!(
+            "Starting continuous monitoring (interval: {}s)",
+            args.interval
+        ));
         output.info("Press Ctrl+C to stop monitoring");
-        
+
         loop {
             display_monitoring_data(config, args, output).await?;
-            
+
             if !args.watch {
                 break;
             }
-            
+
             tokio::time::sleep(tokio::time::Duration::from_secs(args.interval)).await;
-            
+
             // Clear screen for next update
             print!("\x1B[2J\x1B[1;1H");
         }
     } else {
         display_monitoring_data(config, args, output).await?;
     }
-    
+
     Ok(())
 }
 
@@ -59,10 +58,10 @@ async fn display_monitoring_data(
     output: &OutputHandler,
 ) -> Result<()> {
     output.info("Monitor functionality not yet implemented");
-    
+
     if let Some(filter) = &args.filter {
         output.info(&format!("Filter: {}", filter));
     }
-    
+
     Ok(())
 }

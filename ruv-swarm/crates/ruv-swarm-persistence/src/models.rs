@@ -34,12 +34,12 @@ impl AgentModel {
             updated_at: now,
         }
     }
-    
+
     pub fn update_heartbeat(&mut self) {
         self.heartbeat = Utc::now();
         self.updated_at = Utc::now();
     }
-    
+
     pub fn set_status(&mut self, status: AgentStatus) {
         self.status = status;
         self.updated_at = Utc::now();
@@ -69,7 +69,8 @@ impl ToString for AgentStatus {
             AgentStatus::Paused => "paused",
             AgentStatus::Error => "error",
             AgentStatus::Shutdown => "shutdown",
-        }.to_string()
+        }
+        .to_string()
     }
 }
 
@@ -114,26 +115,26 @@ impl TaskModel {
             completed_at: None,
         }
     }
-    
+
     pub fn assign_to(&mut self, agent_id: &str) {
         self.assigned_to = Some(agent_id.to_string());
         self.status = TaskStatus::Assigned;
         self.updated_at = Utc::now();
     }
-    
+
     pub fn start(&mut self) {
         self.status = TaskStatus::Running;
         self.started_at = Some(Utc::now());
         self.updated_at = Utc::now();
     }
-    
+
     pub fn complete(&mut self, result: serde_json::Value) {
         self.status = TaskStatus::Completed;
         self.result = Some(result);
         self.completed_at = Some(Utc::now());
         self.updated_at = Utc::now();
     }
-    
+
     pub fn fail(&mut self, error: String) {
         self.retry_count += 1;
         if self.retry_count >= self.max_retries {
@@ -195,12 +196,12 @@ impl EventModel {
             sequence: 0, // Should be set by storage layer
         }
     }
-    
+
     pub fn with_agent(mut self, agent_id: String) -> Self {
         self.agent_id = Some(agent_id);
         self
     }
-    
+
     pub fn with_task(mut self, task_id: String) -> Self {
         self.task_id = Some(task_id);
         self
@@ -240,12 +241,12 @@ impl MessageModel {
             read_at: None,
         }
     }
-    
+
     pub fn with_priority(mut self, priority: MessagePriority) -> Self {
         self.priority = priority;
         self
     }
-    
+
     pub fn mark_read(&mut self) {
         self.read = true;
         self.read_at = Some(Utc::now());
@@ -286,12 +287,12 @@ impl MetricModel {
             timestamp: Utc::now(),
         }
     }
-    
+
     pub fn with_agent(mut self, agent_id: String) -> Self {
         self.agent_id = Some(agent_id);
         self
     }
-    
+
     pub fn with_tag(mut self, key: String, value: String) -> Self {
         self.tags.insert(key, value);
         self
@@ -301,7 +302,7 @@ impl MetricModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_agent_model() {
         let mut agent = AgentModel::new(
@@ -309,12 +310,12 @@ mod tests {
             "worker".to_string(),
             vec!["compute".to_string(), "storage".to_string()],
         );
-        
+
         assert_eq!(agent.status, AgentStatus::Initializing);
         agent.set_status(AgentStatus::Active);
         assert_eq!(agent.status, AgentStatus::Active);
     }
-    
+
     #[test]
     fn test_task_model() {
         let mut task = TaskModel::new(
@@ -322,7 +323,7 @@ mod tests {
             serde_json::json!({"data": "test"}),
             TaskPriority::High,
         );
-        
+
         assert_eq!(task.status, TaskStatus::Pending);
         task.assign_to("agent-1");
         assert_eq!(task.status, TaskStatus::Assigned);

@@ -150,12 +150,12 @@ impl StandardDAAAgent {
     pub fn builder() -> DAAAgentBuilder {
         DAAAgentBuilder::new()
     }
-    
+
     /// Create a new DAA agent with default configuration
     pub async fn new(cognitive_pattern: CognitivePattern) -> DAAResult<Self> {
         let id = Uuid::new_v4().to_string();
         let configuration = AgentConfiguration::default();
-        
+
         let agent = Self {
             id: id.clone(),
             cognitive_pattern,
@@ -175,26 +175,29 @@ impl StandardDAAAgent {
             configuration,
             is_learning: Arc::new(RwLock::new(false)),
         };
-        
+
         Ok(agent)
     }
-    
+
     /// Update agent metrics
     async fn update_metrics(&self, task_result: &TaskResult) -> DAAResult<()> {
         let mut metrics = self.metrics.write().await;
         metrics.tasks_completed += 1;
-        
+
         // Update success rate
         let success_count = if task_result.success { 1.0 } else { 0.0 };
-        metrics.success_rate = (metrics.success_rate * (metrics.tasks_completed - 1) as f64 + success_count) 
+        metrics.success_rate = (metrics.success_rate * (metrics.tasks_completed - 1) as f64
+            + success_count)
             / metrics.tasks_completed as f64;
-        
+
         // Update average response time
-        metrics.average_response_time_ms = (metrics.average_response_time_ms * (metrics.tasks_completed - 1) as f64 
-            + task_result.execution_time_ms as f64) / metrics.tasks_completed as f64;
-        
+        metrics.average_response_time_ms = (metrics.average_response_time_ms
+            * (metrics.tasks_completed - 1) as f64
+            + task_result.execution_time_ms as f64)
+            / metrics.tasks_completed as f64;
+
         metrics.last_updated = chrono::Utc::now();
-        
+
         Ok(())
     }
 }
@@ -204,75 +207,84 @@ impl DAAAgent for StandardDAAAgent {
     fn id(&self) -> &str {
         &self.id
     }
-    
+
     fn cognitive_pattern(&self) -> &CognitivePattern {
         &self.cognitive_pattern
     }
-    
+
     async fn start_autonomous_learning(&mut self) -> DAAResult<()> {
         *self.is_learning.write().await = true;
         tracing::info!("Agent {} started autonomous learning", self.id);
-        
+
         // Initialize learning session
         let mut learning_engine = self.learning_engine.write().await;
         learning_engine.start_learning_session().await?;
-        
+
         Ok(())
     }
-    
+
     async fn stop_autonomous_learning(&mut self) -> DAAResult<()> {
         *self.is_learning.write().await = false;
         tracing::info!("Agent {} stopped autonomous learning", self.id);
-        
+
         let mut learning_engine = self.learning_engine.write().await;
         learning_engine.end_learning_session().await?;
-        
+
         Ok(())
     }
-    
+
     async fn adapt_strategy(&mut self, feedback: &Feedback) -> DAAResult<()> {
         let mut learning_engine = self.learning_engine.write().await;
-        
+
         // Analyze feedback and determine if adaptation is needed
         if feedback.performance_score < self.configuration.adaptation_threshold {
             let old_pattern = self.cognitive_pattern.clone();
-            
+
             // Evolve cognitive pattern based on feedback
             self.cognitive_pattern = self.determine_optimal_pattern(feedback).await?;
-            
+
             // Record adaptation event
             let adaptation_event = AdaptationEvent {
                 timestamp: chrono::Utc::now(),
-                trigger: format!("Performance below threshold: {}", feedback.performance_score),
+                trigger: format!(
+                    "Performance below threshold: {}",
+                    feedback.performance_score
+                ),
                 old_pattern,
                 new_pattern: self.cognitive_pattern.clone(),
                 success_rate: feedback.performance_score,
             };
-            
+
             learning_engine.adaptation_history.push(adaptation_event);
-            
-            tracing::info!("Agent {} adapted strategy from {:?} to {:?}", 
-                self.id, old_pattern, self.cognitive_pattern);
+
+            tracing::info!(
+                "Agent {} adapted strategy from {:?} to {:?}",
+                self.id,
+                old_pattern,
+                self.cognitive_pattern
+            );
         }
-        
+
         Ok(())
     }
-    
+
     async fn evolve_cognitive_pattern(&mut self) -> DAAResult<CognitivePattern> {
         let learning_engine = self.learning_engine.read().await;
-        
+
         // Analyze past performance and adapt pattern
-        let performance_history: Vec<f64> = learning_engine.adaptation_history
+        let performance_history: Vec<f64> = learning_engine
+            .adaptation_history
             .iter()
             .map(|event| event.success_rate)
             .collect();
-        
+
         if performance_history.is_empty() {
             return Ok(self.cognitive_pattern.clone());
         }
-        
-        let avg_performance = performance_history.iter().sum::<f64>() / performance_history.len() as f64;
-        
+
+        let avg_performance =
+            performance_history.iter().sum::<f64>() / performance_history.len() as f64;
+
         // Evolve pattern based on performance
         let new_pattern = if avg_performance > 0.8 {
             // High performance - maintain current pattern
@@ -288,16 +300,16 @@ impl DAAAgent for StandardDAAAgent {
             // Low performance - significant change
             CognitivePattern::Adaptive
         };
-        
+
         Ok(new_pattern)
     }
-    
+
     async fn coordinate_with_peers(&self, peers: &[String]) -> DAAResult<CoordinationResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Simulate coordination process
         let mut shared_knowledge = Vec::new();
-        
+
         for peer_id in peers {
             // In a real implementation, this would involve actual communication
             let knowledge = Knowledge {
@@ -314,7 +326,7 @@ impl DAAAgent for StandardDAAAgent {
             };
             shared_knowledge.push(knowledge);
         }
-        
+
         let result = CoordinationResult {
             success: true,
             coordinated_agents: peers.to_vec(),
@@ -322,13 +334,13 @@ impl DAAAgent for StandardDAAAgent {
             consensus_reached: true,
             coordination_time_ms: start_time.elapsed().as_millis() as u64,
         };
-        
+
         Ok(result)
     }
-    
+
     async fn process_task_autonomously(&mut self, task: &Task) -> DAAResult<TaskResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Process task based on cognitive pattern
         let success = match self.cognitive_pattern {
             CognitivePattern::Convergent => self.process_convergent(task).await?,
@@ -338,9 +350,9 @@ impl DAAAgent for StandardDAAAgent {
             CognitivePattern::Critical => self.process_critical(task).await?,
             CognitivePattern::Adaptive => self.process_adaptive(task).await?,
         };
-        
+
         let execution_time = start_time.elapsed().as_millis() as u64;
-        
+
         let result = TaskResult {
             task_id: task.id.clone(),
             success,
@@ -353,10 +365,10 @@ impl DAAAgent for StandardDAAAgent {
             learned_patterns: vec!["autonomous_processing".to_string()],
             execution_time_ms: execution_time,
         };
-        
+
         // Update metrics and learn from experience
         self.update_metrics(&result).await?;
-        
+
         if *self.is_learning.read().await {
             let experience = Experience {
                 task: task.clone(),
@@ -364,25 +376,27 @@ impl DAAAgent for StandardDAAAgent {
                 feedback: None,
                 context: HashMap::new(),
             };
-            
+
             let mut learning_engine = self.learning_engine.write().await;
             learning_engine.add_experience(experience).await?;
         }
-        
+
         Ok(result)
     }
-    
+
     async fn share_knowledge(&self, target_agent: &str, knowledge: &Knowledge) -> DAAResult<()> {
         // In a real implementation, this would involve network communication
         tracing::info!("Agent {} sharing knowledge with {}", self.id, target_agent);
-        
+
         // Store in memory for future reference
         let mut memory = self.memory_store.write().await;
-        memory.store_knowledge_sharing_event(target_agent, knowledge).await?;
-        
+        memory
+            .store_knowledge_sharing_event(target_agent, knowledge)
+            .await?;
+
         Ok(())
     }
-    
+
     async fn get_metrics(&self) -> DAAResult<AgentMetrics> {
         let metrics = self.metrics.read().await.clone();
         Ok(metrics)
@@ -394,17 +408,17 @@ impl AutonomousLearning for StandardDAAAgent {
     async fn learn_from_experience(&mut self, experience: &Experience) -> DAAResult<()> {
         let mut learning_engine = self.learning_engine.write().await;
         learning_engine.add_experience(experience.clone()).await?;
-        
+
         // Extract patterns and update learning models
         learning_engine.update_learning_models(experience).await?;
-        
+
         Ok(())
     }
-    
+
     async fn adapt_to_domain(&mut self, domain: &Domain) -> DAAResult<()> {
         let mut learning_engine = self.learning_engine.write().await;
         learning_engine.current_domain = Some(domain.name.clone());
-        
+
         // Initialize or update domain-specific learning model
         if !learning_engine.learning_models.contains_key(&domain.name) {
             let model = LearningModel {
@@ -414,16 +428,22 @@ impl AutonomousLearning for StandardDAAAgent {
                 learning_patterns: Vec::new(),
                 last_updated: chrono::Utc::now(),
             };
-            learning_engine.learning_models.insert(domain.name.clone(), model);
+            learning_engine
+                .learning_models
+                .insert(domain.name.clone(), model);
         }
-        
+
         tracing::info!("Agent {} adapted to domain: {}", self.id, domain.name);
         Ok(())
     }
-    
-    async fn transfer_knowledge(&mut self, source_domain: &str, target_domain: &str) -> DAAResult<()> {
+
+    async fn transfer_knowledge(
+        &mut self,
+        source_domain: &str,
+        target_domain: &str,
+    ) -> DAAResult<()> {
         let mut learning_engine = self.learning_engine.write().await;
-        
+
         if let Some(source_model) = learning_engine.learning_models.get(source_domain).cloned() {
             if let Some(target_model) = learning_engine.learning_models.get_mut(target_domain) {
                 // Transfer applicable knowledge
@@ -438,35 +458,44 @@ impl AutonomousLearning for StandardDAAAgent {
                         });
                     }
                 }
-                
+
                 target_model.last_updated = chrono::Utc::now();
-                tracing::info!("Agent {} transferred knowledge from {} to {}", 
-                    self.id, source_domain, target_domain);
+                tracing::info!(
+                    "Agent {} transferred knowledge from {} to {}",
+                    self.id,
+                    source_domain,
+                    target_domain
+                );
             }
         }
-        
+
         Ok(())
     }
-    
+
     async fn get_learning_progress(&self) -> DAAResult<LearningProgress> {
         let learning_engine = self.learning_engine.read().await;
-        
-        let domain = learning_engine.current_domain.clone().unwrap_or_else(|| "general".to_string());
-        let proficiency = learning_engine.learning_models.get(&domain)
+
+        let domain = learning_engine
+            .current_domain
+            .clone()
+            .unwrap_or_else(|| "general".to_string());
+        let proficiency = learning_engine
+            .learning_models
+            .get(&domain)
             .map(|model| model.proficiency)
             .unwrap_or(0.0);
-        
+
         let progress = LearningProgress {
             agent_id: self.id.clone(),
             domain,
             proficiency,
             tasks_completed: self.metrics.read().await.tasks_completed,
             knowledge_gained: learning_engine.experiences.len() as u32,
-            adaptation_rate: learning_engine.adaptation_history.len() as f64 / 
-                std::cmp::max(1, learning_engine.experiences.len()) as f64,
+            adaptation_rate: learning_engine.adaptation_history.len() as f64
+                / std::cmp::max(1, learning_engine.experiences.len()) as f64,
             last_updated: chrono::Utc::now(),
         };
-        
+
         Ok(progress)
     }
 }
@@ -476,52 +505,56 @@ impl StandardDAAAgent {
     async fn determine_optimal_pattern(&self, feedback: &Feedback) -> DAAResult<CognitivePattern> {
         // Simple heuristic for pattern selection
         let performance = feedback.performance_score;
-        
+
         let new_pattern = if performance > 0.9 {
             self.cognitive_pattern.clone() // Keep current if performing well
         } else if feedback.suggestions.iter().any(|s| s.contains("creative")) {
             CognitivePattern::Divergent
-        } else if feedback.suggestions.iter().any(|s| s.contains("systematic")) {
+        } else if feedback
+            .suggestions
+            .iter()
+            .any(|s| s.contains("systematic"))
+        {
             CognitivePattern::Systems
         } else if feedback.suggestions.iter().any(|s| s.contains("analysis")) {
             CognitivePattern::Critical
         } else {
             CognitivePattern::Adaptive
         };
-        
+
         Ok(new_pattern)
     }
-    
+
     /// Process task using convergent thinking
     async fn process_convergent(&self, _task: &Task) -> DAAResult<bool> {
         // Focused, logical approach
         Ok(true)
     }
-    
+
     /// Process task using divergent thinking
     async fn process_divergent(&self, _task: &Task) -> DAAResult<bool> {
         // Creative, exploratory approach
         Ok(true)
     }
-    
+
     /// Process task using lateral thinking
     async fn process_lateral(&self, _task: &Task) -> DAAResult<bool> {
         // Unconventional, indirect approach
         Ok(true)
     }
-    
+
     /// Process task using systems thinking
     async fn process_systems(&self, _task: &Task) -> DAAResult<bool> {
         // Holistic, interconnected approach
         Ok(true)
     }
-    
+
     /// Process task using critical thinking
     async fn process_critical(&self, _task: &Task) -> DAAResult<bool> {
         // Analytical, evaluative approach
         Ok(true)
     }
-    
+
     /// Process task using adaptive thinking
     async fn process_adaptive(&self, _task: &Task) -> DAAResult<bool> {
         // Flexible, context-aware approach
@@ -542,27 +575,27 @@ impl DAAAgentBuilder {
             configuration: AgentConfiguration::default(),
         }
     }
-    
+
     pub fn with_cognitive_pattern(mut self, pattern: CognitivePattern) -> Self {
         self.cognitive_pattern = pattern;
         self
     }
-    
+
     pub fn with_learning_rate(mut self, rate: f64) -> Self {
         self.configuration.learning_rate = rate;
         self
     }
-    
+
     pub fn with_adaptation_threshold(mut self, threshold: f64) -> Self {
         self.configuration.adaptation_threshold = threshold;
         self
     }
-    
+
     pub fn with_neural_config(mut self, config: NeuralConfig) -> Self {
         self.configuration.neural_network_config = Some(config);
         self
     }
-    
+
     pub async fn build(self) -> DAAResult<StandardDAAAgent> {
         let mut agent = StandardDAAAgent::new(self.cognitive_pattern).await?;
         agent.configuration = self.configuration;
@@ -580,22 +613,22 @@ impl AgentLearningEngine {
             current_domain: None,
         }
     }
-    
+
     pub async fn start_learning_session(&mut self) -> DAAResult<()> {
         tracing::info!("Starting autonomous learning session");
         Ok(())
     }
-    
+
     pub async fn end_learning_session(&mut self) -> DAAResult<()> {
         tracing::info!("Ending autonomous learning session");
         Ok(())
     }
-    
+
     pub async fn add_experience(&mut self, experience: Experience) -> DAAResult<()> {
         self.experiences.push(experience);
         Ok(())
     }
-    
+
     pub async fn update_learning_models(&mut self, _experience: &Experience) -> DAAResult<()> {
         // Update learning models based on new experience
         Ok(())
@@ -621,8 +654,12 @@ impl AgentMemory {
             semantic: HashMap::new(),
         }
     }
-    
-    pub async fn store_knowledge_sharing_event(&mut self, _target_agent: &str, _knowledge: &Knowledge) -> DAAResult<()> {
+
+    pub async fn store_knowledge_sharing_event(
+        &mut self,
+        _target_agent: &str,
+        _knowledge: &Knowledge,
+    ) -> DAAResult<()> {
         // Store knowledge sharing event in memory
         Ok(())
     }

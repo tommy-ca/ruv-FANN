@@ -25,7 +25,7 @@ impl BenchmarkRunner {
             metrics_registry: Arc::new(RwLock::new(MetricsRegistry::new())),
         }
     }
-    
+
     /// Run performance benchmarks on execution results
     pub async fn run_benchmark(
         &self,
@@ -33,7 +33,7 @@ impl BenchmarkRunner {
         execution: &ExecutionResult,
     ) -> Result<BenchmarkMetrics> {
         info!("Running benchmarks for instance: {}", instance.instance_id);
-        
+
         let mut metrics = BenchmarkMetrics {
             instance_id: instance.instance_id.clone(),
             execution_time: execution.duration,
@@ -42,7 +42,7 @@ impl BenchmarkRunner {
             memory_usage: None,
             profile_data: None,
         };
-        
+
         // Warm-up phase
         if self.config.warm_up > 0 {
             debug!("Running {} warm-up iterations", self.config.warm_up);
@@ -50,49 +50,55 @@ impl BenchmarkRunner {
                 self.simulate_execution(execution).await?;
             }
         }
-        
+
         // Benchmark iterations
         let mut timings = Vec::new();
         for i in 0..self.config.iterations {
-            debug!("Running benchmark iteration {}/{}", i + 1, self.config.iterations);
+            debug!(
+                "Running benchmark iteration {}/{}",
+                i + 1,
+                self.config.iterations
+            );
             let start = Instant::now();
-            
+
             self.simulate_execution(execution).await?;
-            
+
             let duration = start.elapsed();
             timings.push(duration);
-            
+
             // Record metrics
             histogram!("swe_bench_execution_time", duration.as_secs_f64());
             counter!("swe_bench_iterations", 1);
         }
-        
+
         // Calculate statistics
         let stats = self.calculate_statistics(&timings);
-        metrics.measurements.insert("execution_time".to_string(), stats);
-        
+        metrics
+            .measurements
+            .insert("execution_time".to_string(), stats);
+
         // Memory benchmarking
         if self.config.measure_memory {
             let memory_stats = self.measure_memory_usage(execution).await?;
             metrics.memory_usage = Some(memory_stats);
         }
-        
+
         // Profiling
         if self.config.profile_enabled {
             let profile = self.generate_profile(execution).await?;
             metrics.profile_data = Some(profile);
         }
-        
+
         // Update registry
         {
             let mut registry = self.metrics_registry.write().await;
             registry.record_benchmark(&metrics);
         }
-        
+
         info!("Benchmark completed for instance: {}", instance.instance_id);
         Ok(metrics)
     }
-    
+
     /// Run comparative benchmarks between multiple executions
     pub async fn run_comparison(
         &self,
@@ -100,26 +106,31 @@ impl BenchmarkRunner {
         candidate: &ExecutionResult,
         instance: &SWEBenchInstance,
     ) -> Result<ComparisonReport> {
-        info!("Running comparative benchmark for instance: {}", instance.instance_id);
-        
+        info!(
+            "Running comparative benchmark for instance: {}",
+            instance.instance_id
+        );
+
         let baseline_metrics = self.run_benchmark(instance, baseline).await?;
         let candidate_metrics = self.run_benchmark(instance, candidate).await?;
-        
-        let speedup = baseline_metrics.execution_time.as_secs_f64() 
+
+        let speedup = baseline_metrics.execution_time.as_secs_f64()
             / candidate_metrics.execution_time.as_secs_f64();
-        
-        let memory_comparison = if let (Some(base_mem), Some(cand_mem)) = 
-            (&baseline_metrics.memory_usage, &candidate_metrics.memory_usage) {
+
+        let memory_comparison = if let (Some(base_mem), Some(cand_mem)) = (
+            &baseline_metrics.memory_usage,
+            &candidate_metrics.memory_usage,
+        ) {
             Some(MemoryComparison {
                 baseline_peak: base_mem.peak_usage,
                 candidate_peak: cand_mem.peak_usage,
-                improvement: (base_mem.peak_usage as f64 - cand_mem.peak_usage as f64) 
+                improvement: (base_mem.peak_usage as f64 - cand_mem.peak_usage as f64)
                     / base_mem.peak_usage as f64,
             })
         } else {
             None
         };
-        
+
         Ok(ComparisonReport {
             instance_id: instance.instance_id.clone(),
             baseline_metrics,
@@ -129,7 +140,7 @@ impl BenchmarkRunner {
             recommendation: self.generate_recommendation(speedup),
         })
     }
-    
+
     /// Simulate execution for benchmarking
     async fn simulate_execution(&self, _execution: &ExecutionResult) -> Result<()> {
         // Simulate the execution workload
@@ -137,28 +148,30 @@ impl BenchmarkRunner {
         tokio::time::sleep(Duration::from_millis(10)).await;
         Ok(())
     }
-    
+
     /// Calculate statistics from timing measurements
     fn calculate_statistics(&self, timings: &[Duration]) -> MeasurementStats {
         let total: Duration = timings.iter().sum();
         let mean = total / timings.len() as u32;
-        
-        let variance = timings.iter()
+
+        let variance = timings
+            .iter()
             .map(|t| {
                 let diff = t.as_secs_f64() - mean.as_secs_f64();
                 diff * diff
             })
-            .sum::<f64>() / timings.len() as f64;
-        
+            .sum::<f64>()
+            / timings.len() as f64;
+
         let std_dev = variance.sqrt();
-        
+
         let mut sorted = timings.to_vec();
         sorted.sort();
-        
+
         let median = sorted[sorted.len() / 2];
         let p95 = sorted[(sorted.len() as f64 * 0.95) as usize];
         let p99 = sorted[(sorted.len() as f64 * 0.99) as usize];
-        
+
         MeasurementStats {
             mean,
             median,
@@ -169,7 +182,7 @@ impl BenchmarkRunner {
             p99,
         }
     }
-    
+
     /// Measure memory usage during execution
     async fn measure_memory_usage(&self, _execution: &ExecutionResult) -> Result<MemoryStats> {
         // In a real implementation, this would use system calls or profiling tools
@@ -182,7 +195,7 @@ impl BenchmarkRunner {
             gc_cycles: 5,
         })
     }
-    
+
     /// Generate execution profile
     async fn generate_profile(&self, _execution: &ExecutionResult) -> Result<ProfileData> {
         // In a real implementation, this would use profiling tools
@@ -205,17 +218,23 @@ impl BenchmarkRunner {
             call_graph: HashMap::new(),
         })
     }
-    
+
     /// Generate recommendation based on speedup
     fn generate_recommendation(&self, speedup: f64) -> String {
         match speedup {
-            s if s > 1.5 => "Significant performance improvement. Candidate is recommended.".to_string(),
-            s if s > 1.1 => "Moderate performance improvement. Candidate shows promise.".to_string(),
-            s if s > 0.9 => "Comparable performance. Decision should be based on other factors.".to_string(),
+            s if s > 1.5 => {
+                "Significant performance improvement. Candidate is recommended.".to_string()
+            }
+            s if s > 1.1 => {
+                "Moderate performance improvement. Candidate shows promise.".to_string()
+            }
+            s if s > 0.9 => {
+                "Comparable performance. Decision should be based on other factors.".to_string()
+            }
             _ => "Performance regression detected. Baseline is recommended.".to_string(),
         }
     }
-    
+
     /// Get aggregated benchmark statistics
     pub async fn get_statistics(&self) -> BenchmarkStatistics {
         let registry = self.metrics_registry.read().await;
@@ -340,31 +359,27 @@ impl MetricsRegistry {
             benchmarks: Vec::new(),
         }
     }
-    
+
     fn record_benchmark(&mut self, metrics: &BenchmarkMetrics) {
         self.benchmarks.push(metrics.clone());
-        
+
         // Emit Prometheus metrics
         gauge!("swe_bench_total_benchmarks", self.benchmarks.len() as f64);
     }
-    
+
     fn get_statistics(&self) -> BenchmarkStatistics {
         let total = self.benchmarks.len();
         let avg_time = if total > 0 {
-            let sum: Duration = self.benchmarks.iter()
-                .map(|b| b.execution_time)
-                .sum();
+            let sum: Duration = self.benchmarks.iter().map(|b| b.execution_time).sum();
             sum / total as u32
         } else {
             Duration::default()
         };
-        
+
         BenchmarkStatistics {
             total_benchmarks: total,
             average_execution_time: avg_time,
-            total_iterations: self.benchmarks.iter()
-                .map(|b| b.iterations)
-                .sum(),
+            total_iterations: self.benchmarks.iter().map(|b| b.iterations).sum(),
         }
     }
 }
@@ -380,12 +395,12 @@ pub struct BenchmarkStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_statistics_calculation() {
         let config = crate::BenchmarkConfig::default();
         let runner = BenchmarkRunner::new(config);
-        
+
         let timings = vec![
             Duration::from_millis(100),
             Duration::from_millis(110),
@@ -393,19 +408,19 @@ mod tests {
             Duration::from_millis(130),
             Duration::from_millis(140),
         ];
-        
+
         let stats = runner.calculate_statistics(&timings);
         assert_eq!(stats.mean, Duration::from_millis(120));
         assert_eq!(stats.median, Duration::from_millis(120));
         assert_eq!(stats.min, Duration::from_millis(100));
         assert_eq!(stats.max, Duration::from_millis(140));
     }
-    
+
     #[test]
     fn test_recommendation_generation() {
         let config = crate::BenchmarkConfig::default();
         let runner = BenchmarkRunner::new(config);
-        
+
         assert!(runner.generate_recommendation(2.0).contains("Significant"));
         assert!(runner.generate_recommendation(1.2).contains("Moderate"));
         assert!(runner.generate_recommendation(1.0).contains("Comparable"));

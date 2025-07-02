@@ -58,7 +58,10 @@ pub enum SwarmError {
     },
 
     /// Agent capability mismatch
-    #[cfg_attr(feature = "std", error("Agent {agent_id} lacks capability: {capability}"))]
+    #[cfg_attr(
+        feature = "std",
+        error("Agent {agent_id} lacks capability: {capability}")
+    )]
     CapabilityMismatch {
         /// The unique identifier of the agent lacking the capability
         agent_id: String,
@@ -90,16 +93,29 @@ impl fmt::Display for SwarmError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SwarmError::AgentNotFound { id } => write!(f, "Agent not found: {}", id),
-            SwarmError::TaskExecutionFailed { reason } => write!(f, "Task execution failed: {}", reason),
+            SwarmError::TaskExecutionFailed { reason } => {
+                write!(f, "Task execution failed: {}", reason)
+            }
             SwarmError::InvalidTopology { reason } => write!(f, "Invalid topology: {}", reason),
-            SwarmError::CommunicationError { reason } => write!(f, "Communication error: {}", reason),
-            SwarmError::ResourceExhausted { resource } => write!(f, "Resource exhausted: {}", resource),
-            SwarmError::Timeout { duration_ms } => write!(f, "Operation timed out after {}ms", duration_ms),
-            SwarmError::CapabilityMismatch { agent_id, capability } => {
+            SwarmError::CommunicationError { reason } => {
+                write!(f, "Communication error: {}", reason)
+            }
+            SwarmError::ResourceExhausted { resource } => {
+                write!(f, "Resource exhausted: {}", resource)
+            }
+            SwarmError::Timeout { duration_ms } => {
+                write!(f, "Operation timed out after {}ms", duration_ms)
+            }
+            SwarmError::CapabilityMismatch {
+                agent_id,
+                capability,
+            } => {
                 write!(f, "Agent {} lacks capability: {}", agent_id, capability)
             }
             SwarmError::StrategyError { reason } => write!(f, "Strategy error: {}", reason),
-            SwarmError::SerializationError { reason } => write!(f, "Serialization error: {}", reason),
+            SwarmError::SerializationError { reason } => {
+                write!(f, "Serialization error: {}", reason)
+            }
             SwarmError::Custom(msg) => write!(f, "{}", msg),
         }
     }
@@ -118,9 +134,9 @@ impl SwarmError {
     pub fn is_retriable(&self) -> bool {
         matches!(
             self,
-            SwarmError::CommunicationError { .. } |
-            SwarmError::Timeout { .. } |
-            SwarmError::ResourceExhausted { .. }
+            SwarmError::CommunicationError { .. }
+                | SwarmError::Timeout { .. }
+                | SwarmError::ResourceExhausted { .. }
         )
     }
 }

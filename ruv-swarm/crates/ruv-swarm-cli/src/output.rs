@@ -33,7 +33,7 @@ pub struct OutputHandler {
 impl OutputHandler {
     pub fn new(format: OutputFormat) -> Self {
         let is_terminal = atty::is(atty::Stream::Stdout);
-        
+
         Self {
             format: match format {
                 OutputFormat::Auto => {
@@ -147,7 +147,9 @@ impl OutputHandler {
         let pb = ProgressBar::new(len);
         pb.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}",
+                )
                 .unwrap()
                 .progress_chars("#>-"),
         );
@@ -180,7 +182,11 @@ impl OutputHandler {
                 table
                     .load_preset(UTF8_FULL)
                     .set_content_arrangement(ContentArrangement::Dynamic)
-                    .set_header(headers.iter().map(|h| Cell::new(h).add_attribute(Attribute::Bold)));
+                    .set_header(
+                        headers
+                            .iter()
+                            .map(|h| Cell::new(h).add_attribute(Attribute::Bold)),
+                    );
 
                 for row in rows {
                     table.add_row(row);
@@ -191,10 +197,11 @@ impl OutputHandler {
             OutputFormat::Csv => {
                 // Print CSV header
                 println!("{}", headers.join(","));
-                
+
                 // Print CSV rows
                 for row in rows {
-                    let escaped: Vec<String> = row.iter()
+                    let escaped: Vec<String> = row
+                        .iter()
                         .map(|field| {
                             if field.contains(',') || field.contains('"') || field.contains('\n') {
                                 format!("\"{}\"", field.replace('"', "\"\""))
@@ -231,10 +238,7 @@ impl OutputHandler {
                 println!("{}", header_line.join(" | "));
 
                 // Print separator
-                let separator: Vec<String> = max_widths
-                    .iter()
-                    .map(|w| "-".repeat(*w))
-                    .collect();
+                let separator: Vec<String> = max_widths.iter().map(|w| "-".repeat(*w)).collect();
                 println!("{}", separator.join("-+-"));
 
                 // Print rows
@@ -366,9 +370,8 @@ impl OutputHandler {
                 }
             }
             OutputFormat::Json => {
-                let map: std::collections::HashMap<_, _> = pairs.iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect();
+                let map: std::collections::HashMap<_, _> =
+                    pairs.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
                 self.print_data(&map).unwrap();
             }
             _ => {

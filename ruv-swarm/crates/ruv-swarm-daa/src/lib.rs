@@ -1,21 +1,21 @@
 //! # Ruv-Swarm DAA Integration
-//! 
+//!
 //! Decentralized Autonomous Agents (DAA) integration for ruv-swarm, providing
 //! autonomous learning, coordination, and adaptation capabilities.
-//! 
+//!
 //! ## Features
-//! 
+//!
 //! - **Autonomous Learning**: Agents that learn and adapt autonomously
 //! - **Neural Coordination**: Advanced neural network integration
 //! - **Meta-Learning**: Cross-domain knowledge transfer
 //! - **WASM Optimization**: High-performance WebAssembly support
 //! - **Cognitive Patterns**: Multiple thinking patterns for diverse problem-solving
-//! 
+//!
 //! ## Quick Start
-//! 
+//!
 //! ```rust
 //! use ruv_swarm_daa::{DAAAgent, AutonomousLearning};
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let mut agent = DAAAgent::builder()
@@ -28,51 +28,51 @@
 //! }
 //! ```
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 pub mod agent;
-pub mod learning;
 pub mod coordination;
+pub mod learning;
+pub mod memory;
 pub mod neural;
 pub mod patterns;
-pub mod memory;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
 pub use agent::*;
-pub use learning::*;
 pub use coordination::*;
+pub use learning::*;
+pub use memory::*;
 pub use neural::*;
 pub use patterns::*;
-pub use memory::*;
 
 /// Core DAA integration error types
 #[derive(Debug, thiserror::Error)]
 pub enum DAAError {
     #[error("Agent not found: {id}")]
     AgentNotFound { id: String },
-    
+
     #[error("Learning error: {message}")]
     LearningError { message: String },
-    
+
     #[error("Coordination error: {message}")]
     CoordinationError { message: String },
-    
+
     #[error("Neural network error: {message}")]
     NeuralError { message: String },
-    
+
     #[error("Memory error: {message}")]
     MemoryError { message: String },
-    
+
     #[error("WASM error: {message}")]
     WasmError { message: String },
-    
+
     #[error("Configuration error: {message}")]
     ConfigError { message: String },
 }
@@ -85,31 +85,31 @@ pub type DAAResult<T> = Result<T, DAAError>;
 pub trait DAAAgent: Send + Sync {
     /// Get the agent's unique identifier
     fn id(&self) -> &str;
-    
+
     /// Get the agent's current cognitive pattern
     fn cognitive_pattern(&self) -> &CognitivePattern;
-    
+
     /// Start autonomous learning process
     async fn start_autonomous_learning(&mut self) -> DAAResult<()>;
-    
+
     /// Stop autonomous learning process
     async fn stop_autonomous_learning(&mut self) -> DAAResult<()>;
-    
+
     /// Adapt the agent's strategy based on feedback
     async fn adapt_strategy(&mut self, feedback: &Feedback) -> DAAResult<()>;
-    
+
     /// Evolve the agent's cognitive pattern
     async fn evolve_cognitive_pattern(&mut self) -> DAAResult<CognitivePattern>;
-    
+
     /// Coordinate with other agents
     async fn coordinate_with_peers(&self, peers: &[String]) -> DAAResult<CoordinationResult>;
-    
+
     /// Process task autonomously
     async fn process_task_autonomously(&mut self, task: &Task) -> DAAResult<TaskResult>;
-    
+
     /// Share knowledge with other agents
     async fn share_knowledge(&self, target_agent: &str, knowledge: &Knowledge) -> DAAResult<()>;
-    
+
     /// Get agent metrics and performance
     async fn get_metrics(&self) -> DAAResult<AgentMetrics>;
 }
@@ -119,13 +119,17 @@ pub trait DAAAgent: Send + Sync {
 pub trait AutonomousLearning {
     /// Learn from experience
     async fn learn_from_experience(&mut self, experience: &Experience) -> DAAResult<()>;
-    
+
     /// Adapt to new domain
     async fn adapt_to_domain(&mut self, domain: &Domain) -> DAAResult<()>;
-    
+
     /// Transfer knowledge between domains
-    async fn transfer_knowledge(&mut self, source_domain: &str, target_domain: &str) -> DAAResult<()>;
-    
+    async fn transfer_knowledge(
+        &mut self,
+        source_domain: &str,
+        target_domain: &str,
+    ) -> DAAResult<()>;
+
     /// Get learning progress
     async fn get_learning_progress(&self) -> DAAResult<LearningProgress>;
 }
@@ -135,13 +139,17 @@ pub trait AutonomousLearning {
 pub trait NeuralCoordination {
     /// Create neural network for agent
     async fn create_neural_network(&mut self, config: &NeuralConfig) -> DAAResult<String>;
-    
+
     /// Train neural network
-    async fn train_network(&mut self, network_id: &str, data: &TrainingData) -> DAAResult<TrainingResult>;
-    
+    async fn train_network(
+        &mut self,
+        network_id: &str,
+        data: &TrainingData,
+    ) -> DAAResult<TrainingResult>;
+
     /// Get neural network predictions
     async fn predict(&self, network_id: &str, input: &[f32]) -> DAAResult<Vec<f32>>;
-    
+
     /// Evolve neural architecture
     async fn evolve_architecture(&mut self, network_id: &str) -> DAAResult<()>;
 }
@@ -317,25 +325,31 @@ impl DAACoordinator {
             learning_engine: Arc::new(RwLock::new(LearningEngine::new())),
         }
     }
-    
+
     /// Register a new DAA agent
     pub async fn register_agent(&self, agent: Box<dyn DAAAgent>) -> DAAResult<()> {
         let agent_id = agent.id().to_string();
         self.agents.write().await.insert(agent_id, agent);
         Ok(())
     }
-    
+
     /// Get agent by ID
     pub async fn get_agent(&self, agent_id: &str) -> DAAResult<Option<&dyn DAAAgent>> {
         // Note: This is a simplified implementation due to borrowing limitations
         // In a real implementation, you'd use Arc<dyn DAAAgent> or similar
-        Err(DAAError::AgentNotFound { id: agent_id.to_string() })
+        Err(DAAError::AgentNotFound {
+            id: agent_id.to_string(),
+        })
     }
-    
+
     /// Orchestrate task across multiple agents
-    pub async fn orchestrate_task(&self, task: &Task, agent_ids: &[String]) -> DAAResult<Vec<TaskResult>> {
+    pub async fn orchestrate_task(
+        &self,
+        task: &Task,
+        agent_ids: &[String],
+    ) -> DAAResult<Vec<TaskResult>> {
         let mut results = Vec::new();
-        
+
         for agent_id in agent_ids {
             // In a real implementation, this would coordinate with actual agents
             let result = TaskResult {
@@ -348,10 +362,10 @@ impl DAACoordinator {
             };
             results.push(result);
         }
-        
+
         Ok(results)
     }
-    
+
     /// Get coordination statistics
     pub async fn get_coordination_stats(&self) -> DAAResult<CoordinationStats> {
         Ok(CoordinationStats {
@@ -386,14 +400,14 @@ pub async fn initialize_daa() -> DAAResult<DAACoordinator> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_daa_coordinator_creation() {
         let coordinator = DAACoordinator::new();
         let stats = coordinator.get_coordination_stats().await.unwrap();
         assert_eq!(stats.total_agents, 0);
     }
-    
+
     #[test]
     fn test_cognitive_pattern_serialization() {
         let pattern = CognitivePattern::Adaptive;

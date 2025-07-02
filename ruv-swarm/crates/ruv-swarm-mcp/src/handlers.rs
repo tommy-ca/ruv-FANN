@@ -5,14 +5,11 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
-use tracing::{info, debug, error};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use crate::{
-    McpRequest, McpResponse,
-    tools::ToolRegistry,
-    orchestrator::SwarmOrchestrator,
-    types::*,
+    orchestrator::SwarmOrchestrator, tools::ToolRegistry, types::*, McpRequest, McpResponse,
     Session,
 };
 
@@ -38,7 +35,7 @@ impl RequestHandler {
             tx,
         }
     }
-    
+
     /// Handle MCP request
     pub async fn handle_request(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         match request.method.as_str() {
@@ -48,11 +45,11 @@ impl RequestHandler {
             "tools/call" => self.handle_tool_call(request).await,
             "notifications/subscribe" => self.handle_subscribe(request).await,
             "notifications/unsubscribe" => self.handle_unsubscribe(request).await,
-            
+
             // Custom methods
             "ruv-swarm/status" => self.handle_swarm_status(request).await,
             "ruv-swarm/metrics" => self.handle_swarm_metrics(request).await,
-            
+
             _ => Ok(McpResponse::error(
                 request.id,
                 -32601,
@@ -60,11 +57,11 @@ impl RequestHandler {
             )),
         }
     }
-    
+
     /// Handle initialize request
     async fn handle_initialize(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         info!("MCP client initializing session: {}", self.session.id);
-        
+
         let result = json!({
             "protocolVersion": "1.0",
             "serverInfo": {
@@ -79,35 +76,36 @@ impl RequestHandler {
             },
             "sessionId": self.session.id,
         });
-        
+
         Ok(McpResponse::success(request.id, result))
     }
-    
+
     /// Handle tools/list request
     async fn handle_tools_list(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         let tools = self.tools.list_tools();
         let result = json!({
             "tools": tools,
         });
-        
+
         Ok(McpResponse::success(request.id, result))
     }
-    
+
     /// Handle tools/call request
     async fn handle_tool_call(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
-        let params = request.params.ok_or_else(|| {
-            anyhow::anyhow!("Missing params for tool call")
-        })?;
-        
-        let tool_name = params.get("name")
+        let params = request
+            .params
+            .ok_or_else(|| anyhow::anyhow!("Missing params for tool call"))?;
+
+        let tool_name = params
+            .get("name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing tool name"))?;
-        
+
         let default_params = json!({});
         let tool_params = params.get("arguments").unwrap_or(&default_params);
-        
+
         debug!("Calling tool: {} with params: {:?}", tool_name, tool_params);
-        
+
         match tool_name {
             "ruv-swarm.spawn" => self.handle_spawn(request.id, tool_params).await,
             "ruv-swarm.orchestrate" => self.handle_orchestrate(request.id, tool_params).await,
@@ -117,7 +115,9 @@ impl RequestHandler {
             "ruv-swarm.memory.store" => self.handle_memory_store(request.id, tool_params).await,
             "ruv-swarm.memory.get" => self.handle_memory_get(request.id, tool_params).await,
             "ruv-swarm.task.create" => self.handle_task_create(request.id, tool_params).await,
-            "ruv-swarm.workflow.execute" => self.handle_workflow_execute(request.id, tool_params).await,
+            "ruv-swarm.workflow.execute" => {
+                self.handle_workflow_execute(request.id, tool_params).await
+            }
             "ruv-swarm.agent.list" => self.handle_agent_list(request.id, tool_params).await,
             "ruv-swarm.agent.metrics" => self.handle_agent_metrics(request.id, tool_params).await,
             _ => Ok(McpResponse::error(
@@ -127,13 +127,14 @@ impl RequestHandler {
             )),
         }
     }
-    
+
     /// Handle spawn tool
     async fn handle_spawn(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let agent_type_str = params.get("agent_type")
+        let agent_type_str = params
+            .get("agent_type")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: agent_type"))?;
-        
+
         let agent_type = match agent_type_str {
             "researcher" => AgentType::Researcher,
             "coder" => AgentType::Coder,
@@ -141,46 +142,58 @@ impl RequestHandler {
             "tester" => AgentType::Tester,
             "reviewer" => AgentType::Reviewer,
             "documenter" => AgentType::Documenter,
-            _ => return Ok(McpResponse::error(
-                id,
-                -32602,
-                format!("Invalid agent_type: {}", agent_type_str),
-            )),
+            _ => {
+                return Ok(McpResponse::error(
+                    id,
+                    -32602,
+                    format!("Invalid agent_type: {}", agent_type_str),
+                ))
+            }
         };
-        
-        let name = params.get("name")
+
+        let name = params
+            .get("name")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
-        
+
         let capabilities = if let Some(cap_value) = params.get("capabilities") {
             serde_json::from_value(cap_value.clone())?
         } else {
             AgentCapabilities::default()
         };
-        
+
         // Spawn agent
-        let agent_id = self.orchestrator.spawn_agent(agent_type, name, capabilities).await?;
-        
+        let agent_id = self
+            .orchestrator
+            .spawn_agent(agent_type, name, capabilities)
+            .await?;
+
         let result = json!({
             "agent_id": agent_id,
             "agent_type": agent_type_str,
             "status": "active",
             "created_at": chrono::Utc::now(),
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle orchestrate tool
-    async fn handle_orchestrate(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let objective = params.get("objective")
+    async fn handle_orchestrate(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let objective = params
+            .get("objective")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: objective"))?;
-        
-        let strategy_str = params.get("strategy")
+
+        let strategy_str = params
+            .get("strategy")
             .and_then(|v| v.as_str())
             .unwrap_or("development");
-        
+
         let strategy = match strategy_str {
             "research" => SwarmStrategy::Research,
             "development" => SwarmStrategy::Development,
@@ -190,11 +203,12 @@ impl RequestHandler {
             "maintenance" => SwarmStrategy::Maintenance,
             _ => SwarmStrategy::Development,
         };
-        
-        let mode_str = params.get("mode")
+
+        let mode_str = params
+            .get("mode")
             .and_then(|v| v.as_str())
             .unwrap_or("hierarchical");
-        
+
         let mode = match mode_str {
             "centralized" => CoordinationMode::Centralized,
             "distributed" => CoordinationMode::Distributed,
@@ -203,15 +217,17 @@ impl RequestHandler {
             "hybrid" => CoordinationMode::Hybrid,
             _ => CoordinationMode::Hierarchical,
         };
-        
-        let max_agents = params.get("max_agents")
+
+        let max_agents = params
+            .get("max_agents")
             .and_then(|v| v.as_u64())
             .unwrap_or(5) as usize;
-        
-        let parallel = params.get("parallel")
+
+        let parallel = params
+            .get("parallel")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
-        
+
         // Create orchestrator config
         let config = OrchestratorConfig {
             strategy,
@@ -220,15 +236,18 @@ impl RequestHandler {
             parallel,
             timeout: Duration::from_secs(300),
         };
-        
+
         // Start orchestration
         let task_id = Uuid::new_v4();
         let orchestrator = self.orchestrator.clone();
         let objective_str = objective.to_string();
-        
+
         // Spawn async task
         tokio::spawn(async move {
-            match orchestrator.orchestrate_task(&task_id, &objective_str, config).await {
+            match orchestrator
+                .orchestrate_task(&task_id, &objective_str, config)
+                .await
+            {
                 Ok(result) => {
                     info!("Orchestration completed: {:?}", result);
                 }
@@ -237,7 +256,7 @@ impl RequestHandler {
                 }
             }
         });
-        
+
         let result = json!({
             "task_id": task_id,
             "objective": objective,
@@ -246,37 +265,43 @@ impl RequestHandler {
             "status": "started",
             "started_at": chrono::Utc::now(),
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle query tool
     async fn handle_query(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
         let _filter = params.get("filter").cloned();
-        let include_metrics = params.get("include_metrics")
+        let include_metrics = params
+            .get("include_metrics")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
-        
+
         let state = self.orchestrator.get_swarm_state().await?;
-        
+
         let mut result = json!({
             "agents": state.agents,
             "active_tasks": state.active_tasks,
             "completed_tasks": state.completed_tasks,
             "total_agents": state.total_agents,
         });
-        
+
         if include_metrics {
             let metrics = self.orchestrator.get_metrics().await?;
             result["metrics"] = json!(metrics);
         }
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle monitor tool
-    async fn handle_monitor(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let event_types = params.get("event_types")
+    async fn handle_monitor(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let event_types = params
+            .get("event_types")
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
@@ -284,20 +309,21 @@ impl RequestHandler {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_else(|| vec!["all".to_string()]);
-        
-        let duration_secs = params.get("duration_secs")
+
+        let duration_secs = params
+            .get("duration_secs")
             .and_then(|v| v.as_u64())
             .unwrap_or(60);
-        
+
         // Subscribe to events
         let mut event_rx = self.orchestrator.subscribe_events().await?;
         let tx = self.tx.clone();
-        
+
         // Spawn monitoring task
         tokio::spawn(async move {
             let start = tokio::time::Instant::now();
             let duration = Duration::from_secs(duration_secs);
-            
+
             while start.elapsed() < duration {
                 tokio::select! {
                     Some(event) = event_rx.recv() => {
@@ -308,7 +334,7 @@ impl RequestHandler {
                                 "timestamp": chrono::Utc::now(),
                             }
                         });
-                        
+
                         if let Ok(json) = serde_json::to_string(&notification) {
                             let _ = tx.send(axum::extract::ws::Message::Text(json)).await;
                         }
@@ -317,114 +343,137 @@ impl RequestHandler {
                 }
             }
         });
-        
+
         let result = json!({
             "status": "monitoring",
             "duration_secs": duration_secs,
             "event_types": event_types,
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle optimize tool
-    async fn handle_optimize(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let target_metric = params.get("target_metric")
+    async fn handle_optimize(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let target_metric = params
+            .get("target_metric")
             .and_then(|v| v.as_str())
             .unwrap_or("throughput");
-        
-        let auto_apply = params.get("auto_apply")
+
+        let auto_apply = params
+            .get("auto_apply")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
-        
+
         // Get optimization recommendations
         let recommendations = self.orchestrator.analyze_performance().await?;
-        
+
         if auto_apply {
             // Apply optimizations
             for rec in &recommendations {
                 self.orchestrator.apply_optimization(rec).await?;
             }
         }
-        
+
         let result = json!({
             "target_metric": target_metric,
             "recommendations": recommendations,
             "applied": auto_apply,
             "timestamp": chrono::Utc::now(),
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle memory store
-    async fn handle_memory_store(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let key = params.get("key")
+    async fn handle_memory_store(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let key = params
+            .get("key")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: key"))?;
-        
-        let value = params.get("value")
+
+        let value = params
+            .get("value")
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: value"))?;
-        
-        let ttl_secs = params.get("ttl_secs")
-            .and_then(|v| v.as_u64());
-        
+
+        let ttl_secs = params.get("ttl_secs").and_then(|v| v.as_u64());
+
         // Store in session metadata with TTL support
         self.session.metadata.insert(key.to_string(), value.clone());
-        
+
         // If TTL is specified, schedule cleanup
         if let Some(ttl) = ttl_secs {
             let _session_id = self.session.id;
             let key_copy = key.to_string();
             let session_meta = self.session.metadata.clone();
-            
+
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(ttl)).await;
                 session_meta.remove(&key_copy);
             });
         }
-        
+
         let result = json!({
             "key": key,
             "stored": true,
             "timestamp": chrono::Utc::now(),
             "ttl_secs": ttl_secs,
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle memory get
-    async fn handle_memory_get(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let key = params.get("key")
+    async fn handle_memory_get(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let key = params
+            .get("key")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: key"))?;
-        
+
         let value = self.session.metadata.get(key).map(|v| v.clone());
-        
+
         let result = json!({
             "key": key,
             "value": value,
             "found": value.is_some(),
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle task create
-    async fn handle_task_create(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let task_type = params.get("task_type")
+    async fn handle_task_create(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let task_type = params
+            .get("task_type")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: task_type"))?;
-        
-        let description = params.get("description")
+
+        let description = params
+            .get("description")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: description"))?;
-        
-        let priority_str = params.get("priority")
+
+        let priority_str = params
+            .get("priority")
             .and_then(|v| v.as_str())
             .unwrap_or("medium");
-        
+
         let priority = match priority_str {
             "low" => TaskPriority::Low,
             "medium" => TaskPriority::Medium,
@@ -432,19 +481,23 @@ impl RequestHandler {
             "critical" => TaskPriority::Critical,
             _ => TaskPriority::Medium,
         };
-        
-        let assigned_agent = params.get("assigned_agent")
+
+        let assigned_agent = params
+            .get("assigned_agent")
             .and_then(|v| v.as_str())
             .and_then(|s| Uuid::parse_str(s).ok());
-        
+
         // Create task
-        let task_id = self.orchestrator.create_task(
-            task_type.to_string(),
-            description.to_string(),
-            priority,
-            assigned_agent,
-        ).await?;
-        
+        let task_id = self
+            .orchestrator
+            .create_task(
+                task_type.to_string(),
+                description.to_string(),
+                priority,
+                assigned_agent,
+            )
+            .await?;
+
         let result = json!({
             "task_id": task_id,
             "task_type": task_type,
@@ -453,31 +506,40 @@ impl RequestHandler {
             "status": "pending",
             "created_at": chrono::Utc::now(),
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle workflow execute
-    async fn handle_workflow_execute(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let workflow_path = params.get("workflow_path")
+    async fn handle_workflow_execute(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let workflow_path = params
+            .get("workflow_path")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing required parameter: workflow_path"))?;
-        
+
         let parameters = params.get("parameters").cloned().unwrap_or(json!({}));
-        
-        let async_execution = params.get("async_execution")
+
+        let async_execution = params
+            .get("async_execution")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
-        
+
         let workflow_id = Uuid::new_v4();
-        
+
         if async_execution {
             // Execute asynchronously
             let orchestrator = self.orchestrator.clone();
             let workflow_path = workflow_path.to_string();
-            
+
             tokio::spawn(async move {
-                match orchestrator.execute_workflow(&workflow_id, &workflow_path, parameters).await {
+                match orchestrator
+                    .execute_workflow(&workflow_id, &workflow_path, parameters)
+                    .await
+                {
                     Ok(result) => {
                         info!("Workflow completed: {:?}", result);
                     }
@@ -486,58 +548,76 @@ impl RequestHandler {
                     }
                 }
             });
-            
+
             let result = json!({
                 "workflow_id": workflow_id,
                 "status": "started",
                 "async": true,
             });
-            
+
             Ok(McpResponse::success(id, result))
         } else {
             // Execute synchronously
-            let result = self.orchestrator.execute_workflow(&workflow_id, workflow_path, parameters).await?;
-            
-            Ok(McpResponse::success(id, json!({
-                "workflow_id": workflow_id,
-                "status": "completed",
-                "result": result,
-            })))
+            let result = self
+                .orchestrator
+                .execute_workflow(&workflow_id, workflow_path, parameters)
+                .await?;
+
+            Ok(McpResponse::success(
+                id,
+                json!({
+                    "workflow_id": workflow_id,
+                    "status": "completed",
+                    "result": result,
+                }),
+            ))
         }
     }
-    
+
     /// Handle agent list
-    async fn handle_agent_list(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let include_inactive = params.get("include_inactive")
+    async fn handle_agent_list(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let include_inactive = params
+            .get("include_inactive")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
-        
-        let sort_by = params.get("sort_by")
+
+        let sort_by = params
+            .get("sort_by")
             .and_then(|v| v.as_str())
             .unwrap_or("created_at");
-        
+
         let agents = self.orchestrator.list_agents(include_inactive).await?;
-        
+
         let result = json!({
             "agents": agents,
             "count": agents.len(),
             "include_inactive": include_inactive,
             "sorted_by": sort_by,
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle agent metrics
-    async fn handle_agent_metrics(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
-        let agent_id = params.get("agent_id")
+    async fn handle_agent_metrics(
+        &self,
+        id: Option<Value>,
+        params: &Value,
+    ) -> anyhow::Result<McpResponse> {
+        let agent_id = params
+            .get("agent_id")
             .and_then(|v| v.as_str())
             .and_then(|s| Uuid::parse_str(s).ok());
-        
-        let metric_type = params.get("metric")
+
+        let metric_type = params
+            .get("metric")
             .and_then(|v| v.as_str())
             .unwrap_or("all");
-        
+
         let metrics = if let Some(agent_id) = agent_id {
             // Get metrics for specific agent
             self.orchestrator.get_agent_metrics(&agent_id).await?
@@ -545,7 +625,7 @@ impl RequestHandler {
             // Get metrics for all agents
             self.orchestrator.get_all_agent_metrics().await?
         };
-        
+
         let filtered_metrics = match metric_type {
             "cpu" => json!({
                 "cpu_usage": metrics.get("cpu_usage").unwrap_or(&json!({})),
@@ -568,39 +648,45 @@ impl RequestHandler {
             }),
             "all" | _ => metrics,
         };
-        
+
         let result = json!({
             "agent_id": agent_id.map(|id| id.to_string()),
             "metric_type": metric_type,
             "metrics": filtered_metrics,
             "timestamp": chrono::Utc::now(),
         });
-        
+
         Ok(McpResponse::success(id, result))
     }
-    
+
     /// Handle subscribe
     async fn handle_subscribe(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         // Implementation would handle event subscriptions
-        Ok(McpResponse::success(request.id, json!({
-            "subscribed": true,
-        })))
+        Ok(McpResponse::success(
+            request.id,
+            json!({
+                "subscribed": true,
+            }),
+        ))
     }
-    
+
     /// Handle unsubscribe
     async fn handle_unsubscribe(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         // Implementation would handle event unsubscriptions
-        Ok(McpResponse::success(request.id, json!({
-            "unsubscribed": true,
-        })))
+        Ok(McpResponse::success(
+            request.id,
+            json!({
+                "unsubscribed": true,
+            }),
+        ))
     }
-    
+
     /// Handle swarm status
     async fn handle_swarm_status(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         let status = self.orchestrator.get_status().await?;
         Ok(McpResponse::success(request.id, json!(status)))
     }
-    
+
     /// Handle swarm metrics
     async fn handle_swarm_metrics(&self, request: McpRequest) -> anyhow::Result<McpResponse> {
         let metrics = self.orchestrator.get_metrics().await?;
