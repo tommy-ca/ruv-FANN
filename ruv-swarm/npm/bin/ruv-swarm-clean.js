@@ -7,8 +7,8 @@
 import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
+import { MCPBenchmarks } from '../src/mcp-tools-benchmarks.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
-import { EnhancedMCPTools as mcpToolsEnhanced } from '../src/mcp-tools-enhanced.js';
 
 // Input validation constants and functions
 const VALID_TOPOLOGIES = ['mesh', 'hierarchical', 'ring', 'star'];
@@ -148,6 +148,9 @@ async function initializeSystem() {
         // Pass the already initialized RuvSwarm instance to avoid duplicate initialization
         globalMCPTools = new EnhancedMCPTools(globalRuvSwarm);
         await globalMCPTools.initialize(globalRuvSwarm);
+        
+        // Initialize benchmark tools
+        globalMCPTools.benchmarks = new MCPBenchmarks(globalRuvSwarm, globalMCPTools.persistence);
         
         // Initialize DAA MCP tools with the same instance
         daaMcpTools.mcpTools = globalMCPTools;
@@ -1208,7 +1211,29 @@ async function handleMcpRequest(request, mcpTools) {
                             }
                         },
                         // Add DAA tools
-                        ...daaMcpTools.getToolDefinitions()
+                        ...daaMcpTools.getToolDefinitions(),
+                        
+                        // Add benchmark tools from MCPBenchmarks
+                        {
+                            name: 'benchmark_memory',
+                            description: 'Run enhanced memory benchmarks',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    iterations: { type: 'number', minimum: 1, maximum: 100, default: 10, description: 'Number of iterations' }
+                                }
+                            }
+                        },
+                        {
+                            name: 'benchmark_profiling',
+                            description: 'Run performance profiling benchmarks',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    iterations: { type: 'number', minimum: 1, maximum: 100, default: 10, description: 'Number of iterations' }
+                                }
+                            }
+                        }
                     ]
                 };
                 break;
@@ -1220,10 +1245,10 @@ async function handleMcpRequest(request, mcpTools) {
                 let result = null;
                 let toolFound = false;
                 
-                // Try regular MCP tools first (use mcpToolsEnhanced instance)
-                if (typeof mcpToolsEnhanced[toolName] === 'function') {
+                // Try regular MCP tools first (use mcpTools instance)
+                if (typeof mcpTools[toolName] === 'function') {
                     try {
-                        result = await mcpToolsEnhanced[toolName](toolArgs);
+                        result = await mcpTools[toolName](toolArgs);
                         toolFound = true;
                     } catch (error) {
                         response.error = {
@@ -1248,6 +1273,33 @@ async function handleMcpRequest(request, mcpTools) {
                         break;
                     }
                 }
+                // Try benchmark tools if not found in DAA tools
+                else if (toolName === 'benchmark_memory' && mcpTools.benchmarks) {
+                    try {
+                        result = await mcpTools.benchmarks.runBenchmarks('memory', toolArgs.iterations || 10);
+                        toolFound = true;
+                    } catch (error) {
+                        response.error = {
+                            code: -32603,
+                            message: `Benchmark tool error: ${error.message}`,
+                            data: { tool: toolName, error: error.message }
+                        };
+                        break;
+                    }
+                }
+                else if (toolName === 'benchmark_profiling' && mcpTools.benchmarks) {
+                    try {
+                        result = await mcpTools.benchmarks.runBenchmarks('profiling', toolArgs.iterations || 10);
+                        toolFound = true;
+                    } catch (error) {
+                        response.error = {
+                            code: -32603,
+                            message: `Benchmark tool error: ${error.message}`,
+                            data: { tool: toolName, error: error.message }
+                        };
+                        break;
+                    }
+                }
                 
                 if (toolFound) {
                     // Format response with content array as required by Claude Code
@@ -1257,6 +1309,7 @@ async function handleMcpRequest(request, mcpTools) {
                             text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
                         }]
                     };
+                } else {
                     response.error = {
                         code: -32601,
                         message: 'Method not found',

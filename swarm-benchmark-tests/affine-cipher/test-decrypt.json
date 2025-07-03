@@ -1,0 +1,26 @@
+[
+  {
+    "description": "Basic decryption",
+    "function": "decrypt",
+    "input": {"text": "ybty", "a": 5, "b": 7},
+    "expected": "test"
+  },
+  {
+    "description": "Decryption with spaces",
+    "function": "decrypt",
+    "input": {"text": "dahhk hsk", "a": 5, "b": 7},
+    "expected": "hello world"
+  },
+  {
+    "description": "All letters",
+    "function": "decrypt",
+    "input": {"text": "swxtj npvyk lruol iejdc blaxk swxmh qzglf", "a": 17, "b": 33},
+    "expected": "thequickbrownfoxjumpsoverthelazydog"
+  },
+  {
+    "description": "Error: a not coprime with 26",
+    "function": "decrypt",
+    "input": {"text": "test", "a": 13, "b": 5},
+    "error": "a and m must be coprime."
+  }
+]

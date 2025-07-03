@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-03T05:48:33.820Z",
+    "version": "0.2.0",
+    "testType": "memory",
+    "iterations": 10,
+    "system": {
+      "platform": "linux",
+      "arch": "x64",
+      "nodeVersion": "v22.3.0"
+    }
+  },
+  "benchmarks": {
+    "wasmLoading": {
+      "time": 51,
+      "target": 100,
+      "status": "PASS"
+    },
+    "swarmInit": {
+      "times": [
+        6,
+        5,
+        5,
+        6,
+        5,
+        4,
+        6,
+        5,
+        5,
+        6
+      ],
+      "average": 5.3,
+      "min": 4,
+      "max": 6,
+      "target": 10,
+      "status": "PASS"
+    },
+    "agentSpawn": {
+      "times": [
+        3,
+        3,
+        4,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4
+      ],
+      "average": 3.2,
+      "target": 5,
+      "status": "PASS"
+    },
+    "memory": {
+      "heapUsed": 8104144,
+      "heapTotal": 12156928,
+      "external": 21599564,
+      "rss": 63438848,
+      "efficiency": "66.7"
+    }
+  },
+  "overallScore": 75
+}

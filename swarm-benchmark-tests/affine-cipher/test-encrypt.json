@@ -1,0 +1,26 @@
+[
+  {
+    "description": "Basic encryption",
+    "function": "encrypt",
+    "input": {"text": "test", "a": 5, "b": 7},
+    "expected": "ybty"
+  },
+  {
+    "description": "Encryption with spaces",
+    "function": "encrypt",
+    "input": {"text": "Hello, World!", "a": 5, "b": 7},
+    "expected": "dahhk hsk"
+  },
+  {
+    "description": "All letters",
+    "function": "encrypt",
+    "input": {"text": "The quick brown fox jumps over the lazy dog", "a": 17, "b": 33},
+    "expected": "swxtj npvyk lruol iejdc blaxk swxmh qzglf"
+  },
+  {
+    "description": "Error: a not coprime with 26",
+    "function": "encrypt",
+    "input": {"text": "test", "a": 6, "b": 7},
+    "error": "a and m must be coprime."
+  }
+]
