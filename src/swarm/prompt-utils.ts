@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { logger } from '../logger';
+import { logger } from '../core/logger.js';
 
 export interface PromptConfig {
   sourceDirectories: string[];

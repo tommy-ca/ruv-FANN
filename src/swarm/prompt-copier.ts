@@ -3,7 +3,7 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import { Worker } from 'worker_threads';
 import { EventEmitter } from 'events';
-import { logger } from '../logger';
+import { logger } from '../core/logger.js';
 
 export interface CopyOptions {
   source: string;

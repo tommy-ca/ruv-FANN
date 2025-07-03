@@ -2,6 +2,8 @@
  * Tests for Swarm Optimizations
  */
 
+// Tests will skip ClaudeAPI-dependent tests for now
+
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { CircularBuffer } from '../circular-buffer.js';
 import { TTLMap } from '../ttl-map.js';
