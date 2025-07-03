@@ -678,14 +678,107 @@ Agent Activity:
 5. **Train Patterns**: Let neural agents learn from successful coordinations
 6. **Enable Hooks**: Use the pre-configured hooks for automation
 
+## 🐙 GitHub Integration Commands
+
+Claude-flow now includes comprehensive GitHub workflow integration with ruv-swarm coordination:
+
+### Available GitHub Modes
+
+#### GitHub Workflow Coordination
+- **`/github gh-coordinator`** - GitHub workflow orchestration and coordination
+- **`/github pr-manager`** - Pull request management and review coordination  
+- **`/github issue-tracker`** - Issue management and project coordination
+- **`/github release-manager`** - Release coordination and deployment
+- **`/github repo-architect`** - Repository structure optimization
+- **`/github sync-coordinator`** - Multi-package synchronization
+
+#### Usage Examples
+
+**Create coordinated pull request workflow:**
+```bash
+/github pr-manager "Review and merge feature/github-integration branch with automated testing and multi-reviewer coordination"
+```
+
+**Manage cross-package synchronization:**
+```bash
+/github sync-coordinator "Synchronize claude-code-flow and ruv-swarm packages, align versions, and update cross-dependencies"
+```
+
+**Coordinate issue tracking:**
+```bash
+/github issue-tracker "Create and manage integration issues with automated progress tracking and swarm coordination"
+```
+
+### GitHub + Swarm Integration Pattern
+
+**Complete GitHub workflow with swarm coordination:**
+```javascript
+[Single Message with BatchTool]:
+  // Initialize GitHub coordination swarm
+  mcp__ruv-swarm__swarm_init { topology: "hierarchical", maxAgents: 5 }
+  mcp__ruv-swarm__agent_spawn { type: "coordinator", name: "GitHub Coordinator" }
+  mcp__ruv-swarm__agent_spawn { type: "reviewer", name: "Code Reviewer" }
+  mcp__ruv-swarm__agent_spawn { type: "tester", name: "QA Engineer" }
+  
+  // Execute GitHub operations in parallel
+  mcp__github__create_issue { title: "Feature A", body: "..." }
+  mcp__github__create_pull_request { title: "PR for Feature A", head: "feature-a", base: "main" }
+  mcp__github__create_pull_request_review { pull_number: 54, event: "APPROVE" }
+  
+  // Coordinate with memory and tracking
+  TodoWrite { todos: [github_todo1, github_todo2, github_todo3] }
+  mcp__ruv-swarm__memory_usage { action: "store", key: "github/workflow/status" }
+```
+
+### GitHub Command Documentation
+
+Each GitHub mode includes comprehensive documentation in `.claude/commands/github/`:
+
+- **`github-modes.md`** - Overview of all GitHub integration modes
+- **`pr-manager.md`** - Pull request management with swarm coordination
+- **`issue-tracker.md`** - Intelligent issue management and tracking
+- **`sync-coordinator.md`** - Multi-package synchronization workflows
+- **`release-manager.md`** - Automated release coordination
+- **`repo-architect.md`** - Repository structure optimization
+
+## 🔗 Claude Code Hooks Integration
+
+ruv-swarm includes powerful hooks that automate coordination with GitHub:
+
+### GitHub-Specific Hooks
+- **Auto-create issues** for complex tasks requiring tracking
+- **Auto-update PRs** with swarm progress and validation results
+- **Auto-coordinate releases** across multiple packages
+- **Auto-sync repositories** with dependency changes
+- **Auto-generate documentation** for GitHub integration
+
+### GitHub Workflow Hooks
+- **Pre-PR creation** - Validate code quality and run tests
+- **Post-PR merge** - Update related issues and trigger deployments
+- **Pre-release** - Comprehensive validation and testing
+- **Post-release** - Documentation updates and notifications
+
+### Configuration Example
+```json
+{
+  "hooks": {
+    "pre_github_pr": "npx ruv-swarm hook github-validate --pr-checks",
+    "post_github_merge": "npx ruv-swarm hook github-notify --update-issues",
+    "pre_github_release": "npx ruv-swarm hook github-validate --release-checks",
+    "github_issue_created": "npx ruv-swarm hook github-coordinate --auto-assign"
+  }
+}
+```
+
 ## Support
 
 - Documentation: https://github.com/ruvnet/ruv-FANN/tree/main/ruv-swarm
 - Issues: https://github.com/ruvnet/ruv-FANN/issues
 - Examples: https://github.com/ruvnet/ruv-FANN/tree/main/ruv-swarm/examples
+- GitHub Commands: https://github.com/ruvnet/ruv-FANN/tree/main/claude-code-flow/claude-code-flow/.claude/commands/github
 
 ---
 
-Remember: **ruv-swarm coordinates, Claude Code creates!** Start with `mcp__ruv-swarm__swarm_init` to enhance your development workflow.
+Remember: **ruv-swarm coordinates, Claude Code creates!** Start with `mcp__ruv-swarm__swarm_init` to enhance your development workflow. Use GitHub integration commands for comprehensive workflow automation.
 
 This configuration ensures optimal use of Claude Code's batch tools for swarm orchestration and parallel task execution with full Claude-Flow capabilities.
