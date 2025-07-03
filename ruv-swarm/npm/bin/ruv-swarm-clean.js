@@ -8,7 +8,7 @@ import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-int
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
-import mcpToolsEnhanced from '../src/mcp-tools-enhanced.js';
+import { EnhancedMCPTools as mcpToolsEnhanced } from '../src/mcp-tools-enhanced.js';
 
 // Input validation constants and functions
 const VALID_TOPOLOGIES = ['mesh', 'hierarchical', 'ring', 'star'];
