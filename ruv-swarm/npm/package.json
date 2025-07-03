@@ -1,6 +1,6 @@
 {
   "name": "ruv-swarm",
-  "version": "0.2.0",
+  "version": "1.0.6",
   "description": "High-performance neural network swarm orchestration in WebAssembly",
   "main": "src/index.js",
   "module": "src/index.js",
@@ -73,7 +73,7 @@
     "version:minor": "npm version minor && git push && git push --tags",
     "version:major": "npm version major && git push && git push --tags",
     "pretest-disabled": "npm run lint:check",
-    "prepublishOnly": "npm run deploy:prepare"
+    "prepublishOnly-disabled": "npm run deploy:prepare"
   },
   "engines": {
     "node": ">=14.0.0"

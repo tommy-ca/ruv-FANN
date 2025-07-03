@@ -1,6 +1,6 @@
 [package]
 name = "ruv-swarm-wasm-unified"
-version = "0.2.0"
+version = "1.0.5"
 edition = "2021"
 authors = ["The ruv-swarm Contributors"]
 description = "Unified WASM module exposing all ruv-FANN ecosystem capabilities"

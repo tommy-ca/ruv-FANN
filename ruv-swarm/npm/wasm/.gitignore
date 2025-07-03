@@ -1,0 +1,11 @@
+# Ignore everything first
+*
+
+# But allow essential WASM files for npm package
+!ruv_swarm_wasm_bg.wasm
+!ruv_swarm_wasm.js
+!ruv_swarm_wasm.d.ts
+!ruv_swarm_wasm_bg.wasm.d.ts
+!wasm-bindings-loader.mjs
+!package.json
+!README.md

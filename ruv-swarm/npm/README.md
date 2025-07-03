@@ -17,13 +17,15 @@ ruv-swarm is the **industry-leading distributed agent orchestration platform** t
 🚀 **Blazing Fast WASM Performance** - **2.8-4.4x speed boost** with SIMD optimization  
 💰 **Cost Optimization** - **32.3% token reduction** with maintained accuracy  
 🧠 **Cognitive Diversity Engine** - **27+ neural models** with specialized agent types  
-🔗 **Claude Code Integration** - Native MCP protocol with **16 production tools**  
+🔗 **Claude Code Integration** - Native MCP protocol with **20+ production tools**  
 🪝 **Claude Code Hooks** - Automated pre/post operation hooks for seamless coordination  
 🌐 **Flexible Topologies** - Mesh, hierarchical, clustered, pipeline, and custom architectures  
 💾 **Enterprise Persistence** - SQLite-backed memory with cross-session continuity  
 🔄 **Git Integration** - Automatic commits with detailed agent reports  
 ⚡ **Parallel Agent Execution** - Concurrent task processing for maximum efficiency  
 📊 **Real-time Monitoring** - Advanced metrics and performance analytics  
+🤖 **DAA Integration** - Decentralized Autonomous Agents with adaptive learning  
+🔧 **Enhanced Error Handling** - Robust resilience and recovery mechanisms  
 
 ---
 
@@ -131,7 +133,7 @@ cargo install ruv-swarm-cli
 
 # Add to Cargo.toml
 [dependencies]
-ruv-swarm = "0.2.0"
+ruv-swarm = "1.0.5"
 ```
 
 ### Docker

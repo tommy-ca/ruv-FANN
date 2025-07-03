@@ -5,6 +5,7 @@
 
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import { existsSync, accessSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { webcrypto as nodeCrypto } from 'node:crypto';
 
@@ -152,27 +153,25 @@ class WasmModuleLoader {
   }
 
   async #loadCoreBindings() {
-    /* Use our enhanced WASM bindings loader */
+    /* Enhanced WASM loader with context-aware path resolution */
     try {
-      // Use dynamic import with URL for ES module compatibility
-      const loaderURL = pathToFileURL(
-        path.join(this.baseDir, '..', 'wasm', 'wasm-bindings-loader.mjs'),
-      ).href;
-
-      // Import the loader module
-      const loaderModule = await import(loaderURL);
-      const bindingsLoader = loaderModule.default;
-
-      // Initialize the loader
-      await bindingsLoader.initialize();
-
-      return {
-        instance: { exports: bindingsLoader },
-        module: null,
-        exports: bindingsLoader,
-        memory: bindingsLoader.memory,
-        getTotalMemoryUsage: () => bindingsLoader.getTotalMemoryUsage(),
-      };
+      // Try multiple path resolution strategies
+      const pathCandidates = this.#getWasmPathCandidates();
+      
+      for (const pathCandidate of pathCandidates) {
+        try {
+          const result = await this.#tryLoadFromPath(pathCandidate);
+          if (result && !result.isPlaceholder) {
+            console.log(`✅ Successfully loaded WASM from: ${pathCandidate.description}`);
+            return result;
+          }
+        } catch (pathError) {
+          console.debug(`❌ Failed to load from ${pathCandidate.description}:`, pathError.message);
+          continue;
+        }
+      }
+      
+      throw new Error('All WASM loading strategies failed');
     } catch (error) {
       console.error('Failed to load core module via bindings loader:', error);
       console.warn('⚠️ Falling back to placeholder WASM functionality');
@@ -247,6 +246,289 @@ class WasmModuleLoader {
       });
     }
     return proxyBag;
+  }
+
+  #resolvePackageWasmDir() {
+    try {
+      // Try different approaches to find the package root
+      const approaches = [
+        // Current working directory approach
+        () => {
+          const cwd = process.cwd();
+          const potentialPaths = [
+            path.join(cwd, 'node_modules', 'ruv-swarm', 'wasm'),
+            path.join(cwd, '..', 'wasm'),
+            path.join(cwd, 'wasm')
+          ];
+          return potentialPaths.find(p => {
+            try {
+              accessSync(p);
+              return true;
+            } catch {
+              return false;
+            }
+          });
+        },
+        
+        // Module resolution approach
+        () => {
+          try {
+            // For ES modules, use import.meta.resolve when available
+            const moduleDir = path.dirname(path.dirname(__filename));
+            return path.join(moduleDir, 'wasm');
+          } catch {
+            return null;
+          }
+        },
+        
+        // Environment variable approach
+        () => process.env.RUV_SWARM_WASM_PATH
+      ];
+      
+      for (const approach of approaches) {
+        try {
+          const result = approach();
+          if (result) {
+            return result;
+          }
+        } catch {
+          continue;
+        }
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  #getWasmPathCandidates() {
+    return [
+      {
+        description: 'Local development (relative to src/)',
+        wasmDir: path.join(this.baseDir, '..', 'wasm'),
+        loaderPath: path.join(this.baseDir, '..', 'wasm', 'wasm-bindings-loader.mjs'),
+        wasmBinary: path.join(this.baseDir, '..', 'wasm', 'ruv_swarm_wasm_bg.wasm'),
+        jsBindings: path.join(this.baseDir, '..', 'wasm', 'ruv_swarm_wasm.js')
+      },
+      {
+        description: 'NPM package installation (adjacent to src/)',
+        wasmDir: path.join(this.baseDir, '..', '..', 'wasm'),
+        loaderPath: path.join(this.baseDir, '..', '..', 'wasm', 'wasm-bindings-loader.mjs'),
+        wasmBinary: path.join(this.baseDir, '..', '..', 'wasm', 'ruv_swarm_wasm_bg.wasm'),
+        jsBindings: path.join(this.baseDir, '..', '..', 'wasm', 'ruv_swarm_wasm.js')
+      },
+      {
+        description: 'Global npm installation',
+        wasmDir: this.#resolvePackageWasmDir(),
+        get loaderPath() { return this.wasmDir ? path.join(this.wasmDir, 'wasm-bindings-loader.mjs') : null; },
+        get wasmBinary() { return this.wasmDir ? path.join(this.wasmDir, 'ruv_swarm_wasm_bg.wasm') : null; },
+        get jsBindings() { return this.wasmDir ? path.join(this.wasmDir, 'ruv_swarm_wasm.js') : null; }
+      },
+      {
+        description: 'Bundled WASM (inline)',
+        wasmDir: null,
+        loaderPath: null,
+        wasmBinary: null,
+        jsBindings: null,
+        inline: true
+      }
+    ].filter(candidate => {
+      if (candidate.inline) return true;
+      try {
+        // Check if the wasm directory exists using sync fs access
+        try {
+          accessSync(candidate.wasmDir);
+          return true;
+        } catch {
+          return false;
+        }
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  async #tryLoadFromPath(pathCandidate) {
+    if (pathCandidate.inline) {
+      // Use inline/bundled WASM approach
+      return this.#loadInlineWasm();
+    }
+    
+    // Check if required files exist
+    await fs.access(pathCandidate.wasmBinary);
+    
+    // Try to load the wasm-bindings-loader if it exists
+    if (pathCandidate.loaderPath) {
+      try {
+        await fs.access(pathCandidate.loaderPath);
+        
+        const loaderURL = pathToFileURL(pathCandidate.loaderPath).href;
+        const loaderModule = await import(loaderURL);
+        const bindingsLoader = loaderModule.default;
+        const initialized = await bindingsLoader.initialize();
+        
+        // Check if it's using placeholder
+        if (initialized.isPlaceholder) {
+          console.debug('Bindings loader returned placeholder');
+          throw new Error('Bindings loader using placeholder');
+        }
+        
+        this.loadedBindings = initialized;
+        
+        // Return a properly structured module object
+        return {
+          instance: { exports: initialized },
+          module: initialized,
+          exports: initialized,
+          memory: initialized.memory || new WebAssembly.Memory({ initial: 256, maximum: 4096 }),
+          getTotalMemoryUsage: initialized.getTotalMemoryUsage || (() => {
+            if (initialized.memory && initialized.memory.buffer) {
+              return initialized.memory.buffer.byteLength;
+            }
+            return 256 * 65536;
+          }),
+          isPlaceholder: false
+        };
+      } catch (loaderError) {
+        console.debug('Loader error:', loaderError.message);
+        console.debug('Falling back to direct WASM loading');
+      }
+    }
+    
+    // Fallback to direct WASM loading
+    return this.#loadDirectWasm(pathCandidate.wasmBinary);
+  }
+
+  async #loadInlineWasm() {
+    // Placeholder for inline WASM - could be base64 encoded or bundled
+    console.log('Using inline WASM placeholder');
+    throw new Error('Inline WASM not implemented yet');
+  }
+
+  async #loadDirectWasm(wasmPath) {
+    // For wasm-bindgen generated WASM, we need to use the JS bindings
+    const jsBindingsPath = wasmPath.replace('_bg.wasm', '.js');
+    
+    try {
+      // Check if the JS bindings file exists
+      await fs.access(jsBindingsPath);
+      
+      // Import the wasm-bindgen generated module
+      const bindingsURL = pathToFileURL(jsBindingsPath).href;
+      const wasmModule = await import(bindingsURL);
+      
+      // Initialize the wasm module (wasm-bindgen handles the instantiation)
+      if (typeof wasmModule.default === 'function') {
+        // Call default export with the path to the WASM file
+        const wasmUrl = pathToFileURL(wasmPath).href;
+        await wasmModule.default(wasmUrl);
+      } else if (typeof wasmModule.init === 'function') {
+        // Some wasm-bindgen versions export an init function
+        const wasmUrl = pathToFileURL(wasmPath).href;
+        await wasmModule.init(wasmUrl);
+      } else if (typeof wasmModule.initSync === 'function') {
+        // Sync initialization variant
+        const wasmBuffer = await fs.readFile(wasmPath);
+        wasmModule.initSync(wasmBuffer);
+      }
+      
+      // Store the loaded module
+      this.loadedWasm = wasmModule;
+      
+      // Return a structure that matches our expected format
+      return {
+        instance: { exports: wasmModule },
+        module: wasmModule,
+        exports: wasmModule
+      };
+    } catch (error) {
+      console.error('Failed to load wasm-bindgen module:', error);
+      // Fallback to direct WASM loading (won't work for wasm-bindgen but we try)
+      const wasmBuffer = await fs.readFile(wasmPath);
+      const imports = this.#importsFor('core');
+      const { instance, module } = await WebAssembly.instantiate(wasmBuffer, imports);
+      this.loadedWasm = { instance, module };
+      return { instance, module, exports: instance.exports };
+    }
+  }
+
+  #createBindingsApi() {
+    // If we have loaded bindings, return them directly
+    if (this.loadedBindings) {
+      return this.loadedBindings;
+    }
+    
+    // If we have the actual wasm-bindgen module loaded, use it directly
+    if (this.loadedWasm && !this.loadedWasm.instance) {
+      // This is a wasm-bindgen module, return it directly
+      return this.loadedWasm;
+    }
+    
+    // Create a minimal API that matches what the bindings would provide
+    const api = {
+      memory: new WebAssembly.Memory({ initial: 256, maximum: 4096 }),
+      
+      // Neural network functions
+      create_neural_network: (layers, neurons_per_layer) => {
+        console.log(`Creating neural network with ${layers} layers and ${neurons_per_layer} neurons per layer`);
+        return 1;
+      },
+      
+      train_network: (network_id, data, epochs) => {
+        console.log(`Training network ${network_id} for ${epochs} epochs`);
+        return true;
+      },
+      
+      forward_pass: (network_id, input) => {
+        console.log(`Forward pass on network ${network_id}`);
+        return new Float32Array([0.5, 0.5, 0.5]);
+      },
+      
+      // Forecasting functions
+      create_forecasting_model: (type) => {
+        console.log(`Creating forecasting model of type ${type}`);
+        return 1;
+      },
+      
+      forecast: (model_id, data, horizon) => {
+        console.log(`Forecasting with model ${model_id} for horizon ${horizon}`);
+        return new Float32Array([0.1, 0.2, 0.3]);
+      },
+      
+      // Swarm functions
+      create_swarm: (topology, max_agents) => {
+        console.log(`Creating swarm with ${topology} topology and ${max_agents} max agents`);
+        return 1;
+      },
+      
+      spawn_agent: (swarm_id, agent_type) => {
+        console.log(`Spawning ${agent_type} agent in swarm ${swarm_id}`);
+        return 1;
+      },
+      
+      // Memory management
+      getTotalMemoryUsage: () => {
+        return 256 * 65536; // 256 pages * 64KB
+      },
+      
+      isPlaceholder: true
+    };
+    
+    // If we have actual WASM loaded, proxy to it
+    if (this.loadedWasm && this.loadedWasm.exports) {
+      const target = this.loadedWasm.exports;
+      return new Proxy(api, {
+        get(obj, prop) {
+          if (target && typeof target[prop] !== 'undefined') {
+            return target[prop];
+          }
+          return obj[prop];
+        }
+      });
+    }
+    
+    return api;
   }
 
   #fmt(b) {

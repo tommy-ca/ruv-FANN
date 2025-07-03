@@ -463,7 +463,7 @@ async function startMcpServer(args) {
                 params: {
                     serverInfo: {
                         name: 'ruv-swarm',
-                        version: '0.2.0',
+                        version: '1.0.5',
                         capabilities: {
                             tools: true,
                             prompts: false,
@@ -1032,7 +1032,7 @@ async function handleMcpRequest(request, mcpTools) {
                     },
                     serverInfo: {
                         name: 'ruv-swarm',
-                        version: '0.2.0'
+                        version: '1.0.5'
                     }
                 };
                 break;
@@ -1551,9 +1551,22 @@ async function main() {
                 await handlePerformance(args.slice(1));
                 break;
             case 'version':
-                console.log('ruv-swarm v' + (RuvSwarm.getVersion ? RuvSwarm.getVersion() : '0.2.0'));
+                try {
+                    // Try to read version from package.json
+                    const fs = await import('fs');
+                    const path = await import('path');
+                    const { fileURLToPath } = await import('url');
+                    const __filename = fileURLToPath(import.meta.url);
+                    const __dirname = path.dirname(__filename);
+                    const packagePath = path.join(__dirname, '..', 'package.json');
+                    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+                    console.log('ruv-swarm v' + packageJson.version);
+                } catch (error) {
+                    console.log('ruv-swarm v1.0.5');
+                }
                 console.log('Enhanced WASM-powered neural swarm orchestration');
                 console.log('Modular Claude Code integration with remote execution support');
+                console.log('DAA (Decentralized Autonomous Agents) Integration');
                 break;
             case 'help':
             default:

@@ -679,7 +679,7 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "claude-parser"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4081,23 +4081,14 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-agents"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "ruv-swarm-agents"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5eb4abfbbeca7d7816f91761ef8c881ee103ae13eab5211b35ed933444e9a4ea"
-dependencies = [
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ruv-swarm-core",
 ]
 
 [[package]]
 name = "ruv-swarm-benchmarking"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4112,7 +4103,7 @@ dependencies = [
  "ndarray",
  "pin-project",
  "pretty_assertions",
- "ruv-swarm-core 0.2.0",
+ "ruv-swarm-core",
  "ruv-swarm-persistence",
  "serde",
  "serde_json",
@@ -4131,7 +4122,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-cli"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -4148,8 +4139,8 @@ dependencies = [
  "mockall 0.13.1",
  "predicates",
  "reqwest",
- "ruv-swarm-agents 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ruv-swarm-agents",
+ "ruv-swarm-core",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -4164,7 +4155,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-core"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4187,29 +4178,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ruv-swarm-core"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fc6895c5481b5bd9553d8c92eeaa2c3f4ea19de8f373423ff857c9d50a4f615"
-dependencies = [
- "anyhow",
- "async-trait",
- "dashmap 6.1.0",
- "futures",
- "getrandom 0.2.16",
- "parking_lot",
- "pin-project",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "ruv-swarm-daa"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4227,7 +4197,7 @@ dependencies = [
  "parking_lot",
  "rand 0.8.5",
  "rayon",
- "ruv-swarm-core 0.2.0",
+ "ruv-swarm-core",
  "serde",
  "serde_json",
  "tch",
@@ -4243,7 +4213,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-mcp"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4255,7 +4225,7 @@ dependencies = [
  "futures",
  "jsonschema",
  "proptest",
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ruv-swarm-core",
  "schemars",
  "serde",
  "serde_json",
@@ -4273,26 +4243,11 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-ml"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "getrandom 0.2.16",
  "js-sys",
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "ruv-swarm-ml"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6b49e609c67aaa3bdf111b057fc55e5c2fb2a6f48a716ce3c7bf329ef47826b"
-dependencies = [
- "js-sys",
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ruv-swarm-core",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -4302,7 +4257,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-ml-training"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "criterion",
@@ -4321,7 +4276,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-persistence"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4350,7 +4305,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-transport"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4386,7 +4341,7 @@ dependencies = [
 
 [[package]]
 name = "ruv-swarm-wasm"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "bincode",
  "console_error_panic_hook",
@@ -4394,8 +4349,8 @@ dependencies = [
  "js-sys",
  "num-traits",
  "ruv-fann",
- "ruv-swarm-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ruv-swarm-ml 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ruv-swarm-core",
+ "ruv-swarm-ml",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -5108,7 +5063,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "swe-bench-adapter"
-version = "0.2.0"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5122,8 +5077,8 @@ dependencies = [
  "pretty_assertions",
  "regex",
  "reqwest",
- "ruv-swarm-agents 0.2.0",
- "ruv-swarm-core 0.2.0",
+ "ruv-swarm-agents",
+ "ruv-swarm-core",
  "ruv-swarm-persistence",
  "serde",
  "serde_json",
