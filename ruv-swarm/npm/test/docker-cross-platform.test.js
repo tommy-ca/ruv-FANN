@@ -111,27 +111,27 @@ async function testWASMCompatibility() {
     addTestResult('WASM File Access', 'passed', `WASM file accessible: ${stats.size} bytes`);
 
     // Try to initialize RuvSwarm and create a swarm
-    const ruvSwarm = await RuvSwarm.initialize({ 
+    const ruvSwarm = await RuvSwarm.initialize({
       maxAgents: 2,
       enableNeuralNetworks: false,
       enableForecasting: false,
-      loadingStrategy: 'progressive'
+      loadingStrategy: 'progressive',
     });
     addTestResult('WASM Module Loading', 'passed', `WASM loaded successfully on ${process.platform}`);
 
     // Test basic WASM operation with correct API
     try {
-      const swarm = await ruvSwarm.createSwarm({ 
+      const swarm = await ruvSwarm.createSwarm({
         topology: 'mesh',
         maxAgents: 2,
-        strategy: 'adaptive'
+        strategy: 'adaptive',
       });
-      
-      const agent = await swarm.spawn({ 
+
+      const agent = await swarm.spawn({
         type: 'researcher',
-        name: 'test-agent'
+        name: 'test-agent',
       });
-      
+
       if (agent) {
         addTestResult('WASM Functionality', 'passed', 'WASM operations working');
       } else {
@@ -176,18 +176,18 @@ async function testMemoryAllocation() {
   console.log('============================');
 
   try {
-    const ruvSwarm = await RuvSwarm.initialize({ 
+    const ruvSwarm = await RuvSwarm.initialize({
       maxAgents: 32,
       enableNeuralNetworks: false,
       enableForecasting: false,
-      loadingStrategy: 'progressive'
+      loadingStrategy: 'progressive',
     });
-    
+
     try {
-      const swarm = await ruvSwarm.createSwarm({ 
+      const swarm = await ruvSwarm.createSwarm({
         topology: 'mesh',
         maxAgents: 32,
-        strategy: 'adaptive'
+        strategy: 'adaptive',
       });
 
       // Test memory operations if available
@@ -275,26 +275,26 @@ async function testConcurrency() {
   console.log('================================');
 
   try {
-    const ruvSwarm = await RuvSwarm.initialize({ 
+    const ruvSwarm = await RuvSwarm.initialize({
       maxAgents: 16,
       enableNeuralNetworks: false,
       enableForecasting: false,
-      loadingStrategy: 'progressive'
+      loadingStrategy: 'progressive',
     });
-    
+
     try {
-      const swarm = await ruvSwarm.createSwarm({ 
+      const swarm = await ruvSwarm.createSwarm({
         topology: 'mesh',
         maxAgents: 16,
-        strategy: 'adaptive'
+        strategy: 'adaptive',
       });
 
       // Spawn multiple agents concurrently with correct API
       const promises = [];
       for (let i = 0; i < 10; i++) {
-        promises.push(swarm.spawn({ 
+        promises.push(swarm.spawn({
           type: 'researcher',
-          name: `agent-${i}`
+          name: `agent-${i}`,
         }));
       }
 
@@ -312,10 +312,10 @@ async function testConcurrency() {
       // Test concurrent task execution with correct API
       if (validAgents.length > 0) {
         const taskPromises = validAgents.map(agent =>
-          agent.execute({ 
+          agent.execute({
             task: 'Test concurrent execution',
-            data: { type: 'test', data: 'concurrent' }
-          })
+            data: { type: 'test', data: 'concurrent' },
+          }),
         );
 
         await Promise.all(taskPromises);
