@@ -39,7 +39,7 @@ class EnhancedMCPTools {
     // Initialize logger
     this.logger = new Logger({
       name: 'mcp-tools',
-      enableStderr: true,
+      enableStderr: process.env.MCP_MODE === 'stdio',
       level: process.env.LOG_LEVEL || 'INFO',
       metadata: {
         component: 'mcp-tools-enhanced'
@@ -540,7 +540,7 @@ class EnhancedMCPTools {
 
       // Store agent in database
       try {
-        this.persistence.createAgent({
+        await this.persistence.createAgent({
           id: agent.id,
           swarmId: swarm.id,
           name: agent.name,
@@ -549,7 +549,34 @@ class EnhancedMCPTools {
           neuralConfig: agent.neuralConfig || {},
         });
       } catch (error) {
-        if (!error.message.includes('UNIQUE constraint failed')) {
+        if (error.message.includes('UNIQUE constraint failed')) {
+          this.logger.warn('Agent already exists in database, updating existing record', {
+            agentId: agent.id,
+            swarmId: swarm.id,
+            error: error.message,
+          });
+          // Optionally update the existing agent record
+          try {
+            await this.persistence.updateAgent(agent.id, {
+              swarmId: swarm.id,
+              name: agent.name,
+              type: agent.type,
+              capabilities: agent.capabilities || [],
+              neuralConfig: agent.neuralConfig || {},
+              updatedAt: new Date().toISOString(),
+            });
+          } catch (updateError) {
+            this.logger.error('Failed to update existing agent record', {
+              agentId: agent.id,
+              error: updateError.message,
+            });
+          }
+        } else {
+          this.logger.error('Failed to persist agent', {
+            agentId: agent.id,
+            swarmId: swarm.id,
+            error: error.message,
+          });
           throw error;
         }
       }
@@ -626,6 +653,30 @@ class EnhancedMCPTools {
         estimatedDuration,
         requiredCapabilities: requiredCapabilities || [],
       });
+
+      // Persist task to database
+      try {
+        await this.persistence.createTask({
+          id: taskInstance.id,
+          swarmId: swarm.id,
+          description: task,
+          status: 'orchestrated',
+          priority: priority || 'medium',
+          strategy: strategy || 'adaptive',
+          assignedAgents: JSON.stringify(taskInstance.assignedAgents),
+          metadata: JSON.stringify({
+            requiredCapabilities: requiredCapabilities || [],
+            estimatedDuration: estimatedDuration || 30000,
+            startTime: startTime,
+          }),
+        });
+      } catch (persistError) {
+        this.logger.warn('Failed to persist task', {
+          taskId: taskInstance.id,
+          error: persistError.message,
+        });
+        // Continue execution even if persistence fails
+      }
 
       const result = {
         taskId: taskInstance.id,
@@ -1253,6 +1304,31 @@ class EnhancedMCPTools {
         available_mb: (jsMemory?.limit || 0) / (1024 * 1024),
       };
 
+      // Persist memory usage snapshot
+      try {
+        await this.persistence.recordMetric('system', 'memory', 'total_mb', summary.total_mb);
+        await this.persistence.recordMetric('system', 'memory', 'wasm_mb', summary.wasm_mb);
+        await this.persistence.recordMetric('system', 'memory', 'javascript_mb', summary.javascript_mb);
+        await this.persistence.recordMetric('system', 'memory', 'available_mb', summary.available_mb);
+        
+        // Store detailed memory snapshot if heap info available
+        if (jsMemory?.heapUsed) {
+          await this.persistence.recordMetric('system', 'memory', 'heap_used_mb', jsMemory.heapUsed / (1024 * 1024));
+          await this.persistence.recordMetric('system', 'memory', 'heap_total_mb', jsMemory.heapTotal / (1024 * 1024));
+          await this.persistence.recordMetric('system', 'memory', 'external_mb', (jsMemory.external || 0) / (1024 * 1024));
+        }
+
+        this.logger.debug('Memory usage snapshot persisted', {
+          totalMb: summary.total_mb,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        this.logger.warn('Failed to persist memory usage metrics', {
+          error: error.message,
+        });
+        // Continue execution even if persistence fails
+      }
+
       if (detail === 'detailed') {
         const detailed = {
           ...summary,
@@ -1480,22 +1556,55 @@ class EnhancedMCPTools {
         last_trained: new Date().toISOString(),
       };
 
-      // Try to update neural network, but don't fail if it doesn't work
+      // Persist neural network state after training
       try {
-        this.persistence.updateNeuralNetwork(neuralNetwork.id, {
+        await this.persistence.updateNeuralNetwork(neuralNetwork.id, {
           performance_metrics: performanceMetrics,
-          weights: { trained: true, iterations },
+          weights: { 
+            trained: true, 
+            iterations,
+            timestamp: new Date().toISOString(),
+            // Store actual weight values if available from WASM
+            values: this.ruvSwarm.wasmLoader.modules.get('core')?.get_neural_weights?.(neuralNetwork.id) || {}
+          },
+          training_history: trainingResults,
+        });
+        
+        this.logger.info('Neural network state persisted successfully', {
+          networkId: neuralNetwork.id,
+          agentId: agentId,
+          iterations: iterations,
+          finalAccuracy: currentAccuracy,
         });
       } catch (error) {
-        console.warn('Failed to update neural network in database:', error.message);
+        this.logger.error('Failed to persist neural network state', {
+          networkId: neuralNetwork.id,
+          agentId: agentId,
+          error: error.message,
+        });
+        // Continue execution but warn about persistence failure
       }
 
-      // Record training metrics
+      // Record training metrics with proper error handling
       try {
-        this.persistence.recordMetric('agent', agentId, 'neural_training_loss', currentLoss);
-        this.persistence.recordMetric('agent', agentId, 'neural_training_accuracy', currentAccuracy);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_loss', currentLoss);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_accuracy', currentAccuracy);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_iterations', iterations);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_time_ms', performance.now() - startTime);
+        
+        this.logger.debug('Training metrics recorded', {
+          agentId: agentId,
+          metrics: {
+            loss: currentLoss,
+            accuracy: currentAccuracy,
+            iterations: iterations,
+          },
+        });
       } catch (error) {
-        console.warn('Failed to record training metrics:', error.message);
+        this.logger.warn('Failed to record training metrics', {
+          agentId: agentId,
+          error: error.message,
+        });
       }
 
       const result = {
