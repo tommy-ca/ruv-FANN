@@ -344,24 +344,24 @@ async function generateFallbackSummary(error) {
 `;
 
   await fs.writeFile(path.join(__dirname, 'VALIDATION_SUMMARY.md'), fallbackSummary);
-  
+
   // Also generate fallback GitHub outputs
   const fallbackOutputs = `deployment_ready=false
 overall_status=FAILED
 validation_score=0`;
-  
+
   await fs.writeFile(path.join(__dirname, 'github-outputs.txt'), fallbackOutputs);
 }
 
 async function generateGitHubOutputs(finalReport, validationScore) {
-  const deploymentReady = finalReport.status === 'PASSED' && 
-                         finalReport.cicdReadiness && 
+  const deploymentReady = finalReport.status === 'PASSED' &&
+                         finalReport.cicdReadiness &&
                          validationScore >= 70;
-  
+
   const githubOutputs = `deployment_ready=${deploymentReady}
 overall_status=${finalReport.status}
 validation_score=${validationScore.toFixed(1)}`;
-  
+
   await fs.writeFile(path.join(__dirname, 'github-outputs.txt'), githubOutputs);
 }
 
