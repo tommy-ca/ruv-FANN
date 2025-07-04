@@ -20,6 +20,7 @@ import {
 } from './errors.js';
 import { ValidationUtils } from './schemas.js';
 import { DAA_MCPTools } from './mcp-daa-tools.js';
+import { Logger } from './logger.js';
 
 /**
  * Enhanced MCP Tools with comprehensive error handling and logging
@@ -34,6 +35,16 @@ class EnhancedMCPTools {
     this.errorContext = new ErrorContext();
     this.errorLog = [];
     this.maxErrorLogSize = 1000;
+    
+    // Initialize logger
+    this.logger = new Logger({
+      name: 'mcp-tools',
+      enableStderr: true,
+      level: process.env.LOG_LEVEL || 'INFO',
+      metadata: {
+        component: 'mcp-tools-enhanced'
+      }
+    });
 
     // Initialize DAA tools integration
     this.daaTools = new DAA_MCPTools(this);
@@ -108,15 +119,15 @@ class EnhancedMCPTools {
       this.errorLog.shift();
     }
 
-    // Log to console with appropriate level
+    // Log to logger with appropriate level
     if (errorLog.severity === 'critical') {
-      console.error('🚨 CRITICAL MCP Error:', errorLog);
+      this.logger.fatal('CRITICAL MCP Error', errorLog);
     } else if (errorLog.severity === 'high') {
-      console.error('❌ MCP Error:', errorLog);
+      this.logger.error('MCP Error', errorLog);
     } else if (errorLog.severity === 'medium') {
-      console.warn('⚠️ MCP Warning:', errorLog);
+      this.logger.warn('MCP Warning', errorLog);
     } else {
-      console.log('ℹ️ MCP Info:', errorLog);
+      this.logger.info('MCP Info', errorLog);
     }
 
     // Clear context for next operation
@@ -308,10 +319,14 @@ class EnhancedMCPTools {
   async swarm_init(params) {
     const startTime = performance.now();
     const toolName = 'swarm_init';
+    const operationId = this.logger.startOperation('swarm_init', { params });
 
     try {
+      this.logger.info('Initializing swarm', { params });
+      
       // Validate and sanitize input parameters
       const validatedParams = this.validateToolParams(params, toolName);
+      this.logger.debug('Parameters validated', { validatedParams });
 
       // Add operation context
       this.errorContext.set('operation', 'swarm_initialization');
@@ -320,8 +335,11 @@ class EnhancedMCPTools {
       // Ensure we have a RuvSwarm instance (but don't re-initialize)
       if (!this.ruvSwarm) {
         try {
+          this.logger.debug('RuvSwarm not initialized, initializing now');
           await this.initialize();
+          this.logger.debug('RuvSwarm initialized successfully');
         } catch (error) {
+          this.logger.error('Failed to initialize RuvSwarm', { error });
           throw ErrorFactory.createError('wasm',
             'Failed to initialize RuvSwarm WASM module',
             { operation: 'initialization', originalError: error },
@@ -338,6 +356,14 @@ class EnhancedMCPTools {
         enableForecasting,
       } = validatedParams;
 
+      this.logger.debug('Creating swarm instance', {
+        topology,
+        strategy,
+        maxAgents,
+        enableCognitiveDiversity,
+        enableNeuralAgents
+      });
+      
       const swarm = await this.ruvSwarm.createSwarm({
         name: `${topology}-swarm-${Date.now()}`,
         topology,
@@ -346,6 +372,8 @@ class EnhancedMCPTools {
         enableCognitiveDiversity,
         enableNeuralAgents,
       });
+      
+      this.logger.info('Swarm created successfully', { swarmId: swarm.id });
 
       // Enable forecasting if requested and available
       if (enableForecasting && this.ruvSwarm.features.forecasting) {
@@ -373,6 +401,7 @@ class EnhancedMCPTools {
 
       // Store in both memory and persistent database
       this.activeSwarms.set(swarm.id, swarm);
+      this.logger.debug('Swarm stored in memory', { swarmId: swarm.id, activeSwarms: this.activeSwarms.size });
 
       // Only create in DB if it doesn't exist
       try {
@@ -384,16 +413,23 @@ class EnhancedMCPTools {
           strategy,
           metadata: { features: result.features, performance: result.performance },
         });
+        this.logger.debug('Swarm persisted to database', { swarmId: swarm.id });
       } catch (error) {
         if (!error.message.includes('UNIQUE constraint failed')) {
+          this.logger.error('Failed to persist swarm', { error, swarmId: swarm.id });
           throw error;
+        } else {
+          this.logger.debug('Swarm already exists in database', { swarmId: swarm.id });
         }
       }
       this.recordToolMetrics('swarm_init', startTime, 'success');
+      this.logger.endOperation(operationId, true, { swarmId: swarm.id });
 
       return result;
     } catch (error) {
       this.recordToolMetrics('swarm_init', startTime, 'error', error.message);
+      this.logger.endOperation(operationId, false, { error });
+      this.logger.error('Swarm initialization failed', { error, params });
 
       // Enhanced error handling with specific error types
       let handledError = error;
@@ -428,10 +464,14 @@ class EnhancedMCPTools {
   async agent_spawn(params) {
     const startTime = performance.now();
     const toolName = 'agent_spawn';
+    const operationId = this.logger.startOperation('agent_spawn', { params });
 
     try {
+      this.logger.info('Spawning agent', { params });
+      
       // Validate and sanitize input parameters
       const validatedParams = this.validateToolParams(params, toolName);
+      this.logger.debug('Agent parameters validated', { validatedParams });
 
       // Add operation context
       this.errorContext.set('operation', 'agent_spawning');

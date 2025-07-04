@@ -9,6 +9,7 @@ import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
 import mcpToolsEnhanced from '../src/mcp-tools-enhanced.js';
+import { Logger } from '../src/logger.js';
 
 // Input validation constants and functions
 const VALID_TOPOLOGIES = ['mesh', 'hierarchical', 'ring', 'star'];
@@ -130,6 +131,38 @@ function logValidationError(error, command) {
 
 let globalRuvSwarm = null;
 let globalMCPTools = null;
+let globalLogger = null;
+
+// Initialize logger based on environment
+function initializeLogger() {
+    if (!globalLogger) {
+        globalLogger = new Logger({
+            name: 'ruv-swarm-mcp',
+            level: process.env.LOG_LEVEL || (process.argv.includes('--debug') ? 'DEBUG' : 'INFO'),
+            enableStderr: true, // Always use stderr in MCP mode
+            enableFile: process.env.LOG_TO_FILE === 'true',
+            formatJson: process.env.LOG_FORMAT === 'json',
+            logDir: process.env.LOG_DIR || './logs',
+            metadata: {
+                pid: process.pid,
+                version: '1.0.11',
+                mode: 'mcp-stdio'
+            }
+        });
+        
+        // Set up global error handlers
+        process.on('uncaughtException', (error) => {
+            globalLogger.fatal('Uncaught exception', { error });
+            process.exit(1);
+        });
+        
+        process.on('unhandledRejection', (reason, promise) => {
+            globalLogger.fatal('Unhandled rejection', { reason, promise });
+            process.exit(1);
+        });
+    }
+    return globalLogger;
+}
 
 async function initializeSystem() {
     if (!globalRuvSwarm) {
@@ -414,19 +447,41 @@ async function startMcpServer(args) {
     const port = args.find(arg => arg.startsWith('--port='))?.split('=')[1] || '3000';
     const host = args.find(arg => arg.startsWith('--host='))?.split('=')[1] || 'localhost';
     
+    // Initialize logger first
+    const logger = initializeLogger();
+    const sessionId = logger.setCorrelationId();
+    
     try {
         if (protocol === 'stdio') {
             // In stdio mode, only JSON-RPC messages should go to stdout
-            console.error('🚀 ruv-swarm MCP server starting in stdio mode...');
+            logger.info('ruv-swarm MCP server starting in stdio mode', {
+                protocol,
+                sessionId,
+                nodeVersion: process.version,
+                platform: process.platform,
+                arch: process.arch
+            });
+            
+            // Log connection establishment
+            logger.logConnection('established', sessionId, {
+                protocol: 'stdio',
+                transport: 'stdin/stdout',
+                timestamp: new Date().toISOString()
+            });
             
             // Initialize WASM if needed
+            const initOpId = logger.startOperation('initialize-system');
             const { ruvSwarm, mcpTools } = await initializeSystem();
+            logger.endOperation(initOpId, true, { modulesLoaded: true });
             
             // Start stdio MCP server loop
             process.stdin.setEncoding('utf8');
             
             let buffer = '';
+            let messageCount = 0;
+            
             process.stdin.on('data', (chunk) => {
+                logger.trace('Received stdin data', { bytes: chunk.length });
                 buffer += chunk;
                 
                 // Process complete JSON messages
@@ -435,12 +490,64 @@ async function startMcpServer(args) {
                 
                 for (const line of lines) {
                     if (line.trim()) {
+                        messageCount++;
+                        const messageId = `msg-${sessionId}-${messageCount}`;
+                        
                         try {
                             const request = JSON.parse(line);
-                            handleMcpRequest(request, mcpTools).then(response => {
-                                process.stdout.write(JSON.stringify(response) + '\n');
+                            logger.logMcp('in', request.method || 'unknown', {
+                                method: request.method,
+                                id: request.id,
+                                params: request.params,
+                                messageId
+                            });
+                            
+                            const opId = logger.startOperation(`mcp-${request.method}`, {
+                                requestId: request.id,
+                                messageId
+                            });
+                            
+                            handleMcpRequest(request, mcpTools, logger).then(response => {
+                                logger.endOperation(opId, !response.error, {
+                                    hasError: !!response.error
+                                });
+                                
+                                logger.logMcp('out', request.method || 'response', {
+                                    method: request.method,
+                                    id: response.id,
+                                    result: response.result,
+                                    error: response.error,
+                                    messageId
+                                });
+                                
+                                try {
+                                    process.stdout.write(JSON.stringify(response) + '\n');
+                                } catch (writeError) {
+                                    logger.error('Failed to write response to stdout', { writeError, response });
+                                    process.exit(1);
+                                }
+                            }).catch(error => {
+                                logger.endOperation(opId, false, { error });
+                                logger.error('Request handler error', { error, request });
+                                
+                                const errorResponse = {
+                                    jsonrpc: '2.0',
+                                    error: {
+                                        code: -32603,
+                                        message: 'Internal error',
+                                        data: error.message
+                                    },
+                                    id: request.id
+                                };
+                                process.stdout.write(JSON.stringify(errorResponse) + '\n');
                             });
                         } catch (error) {
+                            logger.error('JSON parse error', { 
+                                error, 
+                                line: line.substring(0, 100),
+                                messageId 
+                            });
+                            
                             const errorResponse = {
                                 jsonrpc: '2.0',
                                 error: {
@@ -454,6 +561,43 @@ async function startMcpServer(args) {
                         }
                     }
                 }
+            });
+            
+            // Set up connection monitoring
+            const monitorInterval = setInterval(() => {
+                logger.logMemoryUsage('mcp-server');
+                logger.debug('Connection metrics', logger.getConnectionMetrics());
+            }, 60000); // Every minute
+            
+            // Handle stdin close
+            process.stdin.on('end', () => {
+                logger.logConnection('closed', sessionId, {
+                    messagesProcessed: messageCount,
+                    uptime: process.uptime()
+                });
+                logger.info('MCP: stdin closed, shutting down...');
+                clearInterval(monitorInterval);
+                process.exit(0);
+            });
+            
+            process.stdin.on('error', (error) => {
+                logger.logConnection('failed', sessionId, { error });
+                logger.error('MCP: stdin error, shutting down...', { error });
+                clearInterval(monitorInterval);
+                process.exit(1);
+            });
+            
+            // Handle process termination signals
+            process.on('SIGTERM', () => {
+                logger.info('MCP: Received SIGTERM, shutting down gracefully...');
+                clearInterval(monitorInterval);
+                process.exit(0);
+            });
+            
+            process.on('SIGINT', () => {
+                logger.info('MCP: Received SIGINT, shutting down gracefully...');
+                clearInterval(monitorInterval);
+                process.exit(0);
             });
             
             // Send initialization message
@@ -474,11 +618,47 @@ async function startMcpServer(args) {
             };
             process.stdout.write(JSON.stringify(initMessage) + '\n');
             
+            // Implement heartbeat mechanism
+            let lastActivity = Date.now();
+            const heartbeatInterval = 30000; // 30 seconds
+            const heartbeatTimeout = 90000; // 90 seconds
+            
+            // Update activity on any received message
+            const originalOnData = process.stdin._events.data;
+            process.stdin.on('data', () => {
+                lastActivity = Date.now();
+            });
+            
+            // Check for connection health
+            const heartbeatChecker = setInterval(() => {
+                const timeSinceLastActivity = Date.now() - lastActivity;
+                
+                if (timeSinceLastActivity > heartbeatTimeout) {
+                    logger.error('MCP: Connection timeout - no activity for', timeSinceLastActivity, 'ms');
+                    logger.logConnection('timeout', sessionId, {
+                        lastActivity: new Date(lastActivity).toISOString(),
+                        timeout: heartbeatTimeout
+                    });
+                    clearInterval(monitorInterval);
+                    clearInterval(heartbeatChecker);
+                    process.exit(1);
+                } else if (timeSinceLastActivity > heartbeatInterval) {
+                    logger.debug('MCP: Connection idle for', timeSinceLastActivity, 'ms');
+                }
+            }, 5000); // Check every 5 seconds
+            
+            // Clean up heartbeat on exit
+            process.on('exit', () => {
+                clearInterval(heartbeatChecker);
+            });
+            
         } else {
+            logger.error('WebSocket protocol not yet implemented', { protocol });
             console.log('❌ WebSocket protocol not yet implemented in clean version');
             console.log('Use stdio mode for Claude Code integration');
         }
     } catch (error) {
+        logger.fatal('Failed to start MCP server', { error, protocol });
         console.error('❌ Failed to start MCP server:', error.message);
         process.exit(1);
     }
@@ -1012,13 +1192,24 @@ For complex tasks, combine multiple cognitive patterns:
     return resource;
 }
 
-async function handleMcpRequest(request, mcpTools) {
+async function handleMcpRequest(request, mcpTools, logger = null) {
     const response = {
         jsonrpc: '2.0',
         id: request.id
     };
     
+    // Use default logger if not provided
+    if (!logger) {
+        logger = initializeLogger();
+    }
+    
     try {
+        logger.debug('Processing MCP request', { 
+            method: request.method, 
+            hasParams: !!request.params,
+            requestId: request.id 
+        });
+        
         switch (request.method) {
             case 'initialize':
                 response.result = {
@@ -1217,15 +1408,33 @@ async function handleMcpRequest(request, mcpTools) {
                 const toolName = request.params.name;
                 const toolArgs = request.params.arguments || {};
                 
+                logger.info('Tool call requested', { 
+                    tool: toolName, 
+                    hasArgs: Object.keys(toolArgs).length > 0,
+                    requestId: request.id
+                });
+                
                 let result = null;
                 let toolFound = false;
+                const toolOpId = logger.startOperation(`tool-${toolName}`, {
+                    tool: toolName,
+                    requestId: request.id
+                });
                 
-                // Try regular MCP tools first (use mcpToolsEnhanced instance)
-                if (typeof mcpToolsEnhanced[toolName] === 'function') {
+                // Try regular MCP tools first (use mcpToolsEnhanced.tools)
+                if (mcpToolsEnhanced.tools && typeof mcpToolsEnhanced.tools[toolName] === 'function') {
                     try {
-                        result = await mcpToolsEnhanced[toolName](toolArgs);
+                        logger.debug('Executing MCP tool', { tool: toolName, args: toolArgs });
+                        result = await mcpToolsEnhanced.tools[toolName](toolArgs);
                         toolFound = true;
+                        logger.endOperation(toolOpId, true, { resultType: typeof result });
                     } catch (error) {
+                        logger.endOperation(toolOpId, false, { error });
+                        logger.error('MCP tool execution failed', { 
+                            tool: toolName, 
+                            error,
+                            args: toolArgs 
+                        });
                         response.error = {
                             code: -32603,
                             message: `MCP tool error: ${error.message}`,
@@ -1237,9 +1446,17 @@ async function handleMcpRequest(request, mcpTools) {
                 // Try DAA tools if not found in regular tools
                 else if (typeof daaMcpTools[toolName] === 'function') {
                     try {
+                        logger.debug('Executing DAA tool', { tool: toolName, args: toolArgs });
                         result = await daaMcpTools[toolName](toolArgs);
                         toolFound = true;
+                        logger.endOperation(toolOpId, true, { resultType: typeof result });
                     } catch (error) {
+                        logger.endOperation(toolOpId, false, { error });
+                        logger.error('DAA tool execution failed', { 
+                            tool: toolName, 
+                            error,
+                            args: toolArgs 
+                        });
                         response.error = {
                             code: -32603,
                             message: `DAA tool error: ${error.message}`,
@@ -1460,6 +1677,11 @@ Examples:
     }
 }
 
+async function handleDiagnose(args) {
+    const { diagnosticsCLI } = await import('../src/cli-diagnostics.js');
+    return diagnosticsCLI(args);
+}
+
 function showHelp() {
     console.log(`
 🐝 ruv-swarm - Enhanced WASM-powered neural swarm orchestration
@@ -1478,6 +1700,7 @@ Commands:
   neural <subcommand>             Neural network training and analysis
   benchmark <subcommand>          Performance benchmarking tools
   performance <subcommand>        Performance analysis and optimization
+  diagnose <subcommand>           Run diagnostics and analyze logs
   version                         Show version information
   help                            Show this help message
 
@@ -1568,6 +1791,9 @@ async function main() {
                 break;
             case 'performance':
                 await handlePerformance(args.slice(1));
+                break;
+            case 'diagnose':
+                await handleDiagnose(args.slice(1));
                 break;
             case 'version':
                 try {

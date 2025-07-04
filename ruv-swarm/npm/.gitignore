@@ -78,3 +78,6 @@ test-reports/
 # Archive
 archive/
 bin/archive/
+
+# Database
+*.db
