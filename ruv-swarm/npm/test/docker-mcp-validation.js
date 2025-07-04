@@ -73,7 +73,7 @@ async function startMCPServer() {
       const output = data.toString();
       console.log('  Server stdout:', output.trim());
     });
-    
+
     mcpProcess.stderr.on('data', (data) => {
       const output = data.toString();
       console.log('  Server stderr:', output.trim());

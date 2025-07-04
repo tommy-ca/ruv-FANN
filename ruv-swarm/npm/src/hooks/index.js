@@ -25,7 +25,7 @@ class RuvSwarmHooks {
         patternsImproved: 0,
       },
     };
-    
+
     // Initialize persistence layer for cross-agent memory
     this.persistence = null;
     this.initializePersistence();
@@ -1753,14 +1753,13 @@ ${this.sessionData.learnings.slice(-5).map(l =>
       // Store as agent memory with special hook prefix
       const agentId = notification.agentId || 'hook-system';
       const memoryKey = `notifications/${notification.type}/${Date.now()}`;
-      
       await this.persistence.storeAgentMemory(agentId, memoryKey, {
         type: notification.type,
         message: notification.message,
         context: notification.context,
         timestamp: notification.timestamp,
         source: 'hook-system',
-        sessionId: this.getSessionId()
+        sessionId: this.getSessionId(),
       });
 
       console.log(`📝 Notification stored in database: ${memoryKey}`);
@@ -1780,7 +1779,6 @@ ${this.sessionData.learnings.slice(-5).map(l =>
     try {
       const targetAgentId = agentId || 'hook-system';
       const memories = await this.persistence.getAllMemory(targetAgentId);
-      
       return memories
         .filter(memory => memory.key.startsWith('notifications/'))
         .filter(memory => !type || memory.value.type === type)
@@ -1793,7 +1791,7 @@ ${this.sessionData.learnings.slice(-5).map(l =>
   }
 
   /**
-   * 🔧 CRITICAL FIX: Enhanced agent completion with database coordination  
+   * 🔧 CRITICAL FIX: Enhanced agent completion with database coordination
    */
   async agentCompleteHook(args) {
     const { agentId, taskId, results, learnings } = args;
@@ -1806,12 +1804,11 @@ ${this.sessionData.learnings.slice(-5).map(l =>
           results,
           learnings,
           completedAt: Date.now(),
-          source: 'agent-completion'
+          source: 'agent-completion',
         });
 
         // Update agent status in database
         await this.persistence.updateAgentStatus(agentId, 'completed');
-        
         console.log(`✅ Agent ${agentId} completion stored in database`);
       } catch (error) {
         console.error('❌ Failed to store agent completion:', error.message);
@@ -1853,13 +1850,13 @@ ${this.sessionData.learnings.slice(-5).map(l =>
   async getSharedMemory(key, agentId = null) {
     // Check runtime memory first
     const runtimeValue = this.sessionData[key];
-    
+
     // Check database for persistent cross-agent memory
     if (this.persistence) {
       try {
         const targetAgentId = agentId || 'shared-memory';
         const memory = await this.persistence.getAgentMemory(targetAgentId, key);
-        
+
         if (memory) {
           console.log(`📖 Retrieved shared memory from database: ${key}`);
           return memory.value;
@@ -1868,7 +1865,7 @@ ${this.sessionData.learnings.slice(-5).map(l =>
         console.error('❌ Failed to retrieve shared memory:', error.message);
       }
     }
-    
+
     return runtimeValue;
   }
 
@@ -1878,7 +1875,7 @@ ${this.sessionData.learnings.slice(-5).map(l =>
   async setSharedMemory(key, value, agentId = null) {
     // Store in runtime memory
     this.sessionData[key] = value;
-    
+
     // Store in database for cross-agent access
     if (this.persistence) {
       try {

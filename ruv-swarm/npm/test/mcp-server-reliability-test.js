@@ -65,8 +65,8 @@ async function testServerStartup() {
 
   const startTime = Date.now();
   let serverReady = false;
-  let initializationLogs = [];
-  
+  const initializationLogs = [];
+
   return new Promise((resolve, reject) => {
     mcpProcess = spawn('node', ['bin/ruv-swarm-clean.js', 'mcp', 'start'], {
       env: { ...process.env, MCP_TEST_MODE: 'true', LOG_LEVEL: 'DEBUG' },
@@ -85,8 +85,8 @@ async function testServerStartup() {
       console.log('  📥 stderr:', output.trim());
 
       // Enhanced readiness detection
-      if (output.includes('MCP server ready') || 
-          output.includes('Listening on') || 
+      if (output.includes('MCP server ready') ||
+          output.includes('Listening on') ||
           output.includes('stdin/stdout') ||
           output.includes('stdio mode')) {
         const duration = Date.now() - startTime;
@@ -140,7 +140,7 @@ async function testStdioCommunication() {
       jsonrpc: '2.0',
       id: 1,
       method: 'ruv-swarm/swarm_status',
-      params: {}
+      params: {},
     };
 
     let responseReceived = false;
@@ -172,7 +172,7 @@ async function testStdioCommunication() {
 
     // Send test request
     try {
-      mcpProcess.stdin.write(JSON.stringify(testRequest) + '\n');
+      mcpProcess.stdin.write(`${JSON.stringify(testRequest) }\n`);
     } catch (error) {
       addTestResult('Stdio Communication', 'failed', 'Failed to write to stdin', error.message);
       resolve();
@@ -195,7 +195,7 @@ async function testServerStability() {
     { method: 'ruv-swarm/memory_usage', params: { action: 'status' } },
     { method: 'ruv-swarm/features_detect', params: {} },
     { method: 'ruv-swarm/neural_status', params: {} },
-    { method: 'ruv-swarm/benchmark_run', params: { type: 'quick' } }
+    { method: 'ruv-swarm/benchmark_run', params: { type: 'quick' } },
   ];
 
   let responsesReceived = 0;
@@ -233,10 +233,10 @@ async function testServerStability() {
         jsonrpc: '2.0',
         id: index + 10,
         method: req.method,
-        params: req.params
+        params: req.params,
       };
-      
-      mcpProcess.stdin.write(JSON.stringify(request) + '\n');
+
+      mcpProcess.stdin.write(`${JSON.stringify(request)}\n`);
     });
 
     setTimeout(() => {
@@ -278,7 +278,7 @@ async function testGracefulShutdown() {
     // Attempt graceful shutdown
     try {
       mcpProcess.stdin.end();
-      
+
       setTimeout(() => {
         if (!shutdownCompleted) {
           mcpProcess.kill('SIGTERM');
@@ -306,7 +306,7 @@ async function generateReport() {
 
   const resultsDir = path.join(__dirname, '..', 'docker', 'test-results', 'mcp-reliability');
   const resultsPath = path.join(resultsDir, 'mcp-server-reliability.json');
-  
+
   await fs.mkdir(resultsDir, { recursive: true });
   await fs.writeFile(resultsPath, JSON.stringify(results, null, 2));
 
@@ -319,7 +319,7 @@ async function generateReport() {
   console.log(`Pass Rate: ${results.summary.passRate}%`);
   console.log('');
   console.log(`Results saved to: ${resultsPath}`);
-  
+
   // Determine overall status
   if (results.summary.failed === 0) {
     console.log('🎉 All tests passed! MCP server is reliable.');
@@ -361,7 +361,7 @@ async function runReliabilityTests() {
 }
 
 // Handle interrupts
-process.on('SIGINT', async () => {
+process.on('SIGINT', async() => {
   console.log('\nInterrupted, cleaning up...');
   await cleanup();
   process.exit(1);

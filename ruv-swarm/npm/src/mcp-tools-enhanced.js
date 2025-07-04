@@ -249,16 +249,16 @@ class EnhancedMCPTools {
     try {
       // Get all notifications from hook runtime memory
       const runtimeNotifications = hookInstance.sessionData.notifications || [];
-      
+
       // Store each notification in persistent database
       for (const notification of runtimeNotifications) {
         const agentId = notification.agentId || 'hook-system';
         const memoryKey = `notifications/${notification.type}/${notification.timestamp}`;
-        
+
         await this.persistence.storeAgentMemory(agentId, memoryKey, {
           ...notification,
           source: 'hook-integration',
-          integratedAt: Date.now()
+          integratedAt: Date.now(),
         });
       }
 
@@ -280,13 +280,13 @@ class EnhancedMCPTools {
 
     try {
       const allAgents = agentId ? [agentId] : await this.getActiveAgentIds();
-      console.log(`🔍 Debug: Target agents for notification retrieval:`, allAgents);
+      console.log('🔍 Debug: Target agents for notification retrieval:', allAgents);
       const notifications = [];
 
       for (const agent of allAgents) {
         const memories = await this.persistence.getAllMemory(agent);
         console.log(`🔍 Debug: Agent ${agent} has ${memories.length} memories`);
-        
+
         const agentNotifications = memories
           .filter(memory => {
             const isNotification = memory.key.startsWith('notifications/');
@@ -298,7 +298,7 @@ class EnhancedMCPTools {
           .map(memory => ({
             ...memory.value,
             agentId: agent,
-            memoryKey: memory.key
+            memoryKey: memory.key,
           }));
 
         console.log(`🔍 Debug: Agent ${agent} has ${agentNotifications.length} notification memories`);
@@ -329,7 +329,7 @@ class EnhancedMCPTools {
       }
 
       const uniqueAgentIds = [...new Set(agentIds)]; // Remove duplicates
-      console.log(`🔍 Debug: Total unique active agent IDs:`, uniqueAgentIds);
+      console.log('🔍 Debug: Total unique active agent IDs:', uniqueAgentIds);
       return uniqueAgentIds;
     } catch (error) {
       console.error('❌ Failed to get active agent IDs:', error.message);
