@@ -139,6 +139,9 @@ class SessionAuthority {
   }
 }
 
+// Global memory store for cross-session sharing
+const globalMemoryStore = new Map();
+
 /**
  * Memory Namespace Manager
  * Handles memory isolation based on scope configuration
@@ -190,7 +193,12 @@ class MemoryNamespaceManager {
       data.encrypted = true;
     }
 
-    this.scopedMemory.set(scopedKey, data);
+    // Store in appropriate memory store based on scope type
+    if (scope.type === 'global') {
+      globalMemoryStore.set(scopedKey, data);
+    } else {
+      this.scopedMemory.set(scopedKey, data);
+    }
     return scopedKey;
   }
 
@@ -201,7 +209,10 @@ class MemoryNamespaceManager {
     this.validateScopeAccess(scope);
     
     const scopedKey = this.generateScopedKey(scope, key);
-    const data = this.scopedMemory.get(scopedKey);
+    // Retrieve from appropriate memory store based on scope type
+    const data = scope.type === 'global' ? 
+      globalMemoryStore.get(scopedKey) : 
+      this.scopedMemory.get(scopedKey);
     
     if (!data) {
       return null;
@@ -399,12 +410,15 @@ class NeuralIsolationManager {
     // Reuse logic from MemoryNamespaceManager
     switch (scope.type) {
       case 'local':
-        if (!this.sessionAuthority.validateSession(
-          scope.boundaries.session,
-          this.sessionAuthority.authority
-        )) {
+        if (scope.boundaries.session && 
+            scope.boundaries.session !== this.sessionAuthority.sessionId) {
           throw new RuvSwarmError('Invalid session authority for local scope');
         }
+        break;
+      case 'project':
+      case 'team':
+      case 'global':
+        // Global, project and team scopes allow broader access
         break;
     }
   }
@@ -547,12 +561,15 @@ class CommunicationBoundaryManager {
   validateScopeAccess(scope) {
     switch (scope.type) {
       case 'local':
-        if (!this.sessionAuthority.validateSession(
-          scope.boundaries.session,
-          this.sessionAuthority.authority
-        )) {
+        if (scope.boundaries.session && 
+            scope.boundaries.session !== this.sessionAuthority.sessionId) {
           throw new RuvSwarmError('Invalid session authority for local scope');
         }
+        break;
+      case 'project':
+      case 'team':
+      case 'global':
+        // Global, project and team scopes allow broader access
         break;
     }
   }
