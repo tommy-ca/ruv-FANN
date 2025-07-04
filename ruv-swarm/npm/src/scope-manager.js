@@ -204,9 +204,8 @@ class MemoryNamespaceManager {
     }
 
     // Validate authority for local scopes
-    if (scope.type === 'local' && !this.sessionAuthority.validateSession(
-      data.authority.sessionId, data.authority
-    )) {
+    if (scope.type === 'local' && 
+        data.authority.sessionId !== this.sessionAuthority.sessionId) {
       throw new RuvSwarmError('Unauthorized access to local scope memory');
     }
 
@@ -246,10 +245,9 @@ class MemoryNamespaceManager {
   validateScopeAccess(scope) {
     switch (scope.type) {
       case 'local':
-        if (!this.sessionAuthority.validateSession(
-          scope.boundaries.session, 
-          this.sessionAuthority.authority
-        )) {
+        // For local scopes, check if this session has access
+        if (scope.boundaries.session && 
+            scope.boundaries.session !== this.sessionAuthority.sessionId) {
           throw new RuvSwarmError('Invalid session authority for local scope');
         }
         break;
@@ -267,10 +265,10 @@ class MemoryNamespaceManager {
    * Simple encryption for sensitive data
    */
   encryptData(data) {
-    const algorithm = 'aes-256-gcm';
+    const algorithm = 'aes-256-cbc';
     const key = crypto.scryptSync('ruv-swarm-secret', 'salt', 32);
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(algorithm, key);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
     
     let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -287,7 +285,8 @@ class MemoryNamespaceManager {
    */
   decryptData(encryptedData) {
     const key = crypto.scryptSync('ruv-swarm-secret', 'salt', 32);
-    const decipher = crypto.createDecipher(encryptedData.algorithm, key);
+    const iv = Buffer.from(encryptedData.iv, 'hex');
+    const decipher = crypto.createDecipheriv(encryptedData.algorithm, key, iv);
     
     let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
