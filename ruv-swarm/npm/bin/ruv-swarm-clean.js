@@ -8,6 +8,7 @@ import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-int
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
+import { MCPScopeTools } from '../src/mcp-scope-tools.js';
 import mcpToolsEnhanced from '../src/mcp-tools-enhanced.js';
 
 // Input validation constants and functions
@@ -130,6 +131,7 @@ function logValidationError(error, command) {
 
 let globalRuvSwarm = null;
 let globalMCPTools = null;
+let globalScopeTools = null;
 
 async function initializeSystem() {
     if (!globalRuvSwarm) {
@@ -163,6 +165,31 @@ async function initializeSystem() {
         for (const toolName of daaToolNames) {
             if (typeof daaMcpTools[toolName] === 'function') {
                 globalMCPTools[toolName] = daaMcpTools[toolName].bind(daaMcpTools);
+            }
+        }
+    }
+    
+    if (!globalScopeTools) {
+        // Initialize MCP Scope Tools with the RuvSwarm instance
+        globalScopeTools = new MCPScopeTools(globalRuvSwarm);
+        await globalScopeTools.initialize();
+        
+        // Add scope tool methods to the MCP tools object
+        const scopeToolMethods = globalScopeTools.getTools();
+        for (const [toolName, toolMethod] of Object.entries(scopeToolMethods)) {
+            globalMCPTools[`scope_${toolName}`] = toolMethod;
+        }
+        
+        // Also add with the standard prefix for consistency
+        const scopeToolNames = [
+            'scope_configure', 'scope_status', 'scope_share_knowledge',
+            'scope_export', 'scope_import', 'scope_cleanup'
+        ];
+        
+        for (const toolName of scopeToolNames) {
+            const methodName = toolName.replace('scope_', '');
+            if (typeof globalScopeTools[methodName] === 'function') {
+                globalMCPTools[toolName] = globalScopeTools[methodName].bind(globalScopeTools);
             }
         }
     }
@@ -1208,7 +1235,94 @@ async function handleMcpRequest(request, mcpTools) {
                             }
                         },
                         // Add DAA tools
-                        ...daaMcpTools.getToolDefinitions()
+                        ...daaMcpTools.getToolDefinitions(),
+                        // Add Scope Management tools
+                        {
+                            name: 'scope_configure',
+                            description: 'Configure scope settings for swarm isolation',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    swarmId: { type: 'string', description: 'Swarm ID to configure' },
+                                    scope: {
+                                        type: 'object',
+                                        properties: {
+                                            type: { type: 'string', enum: ['global', 'local', 'project', 'team'], description: 'Scope type' },
+                                            isolation: { type: 'string', enum: ['strict', 'permissive', 'hybrid'], description: 'Isolation level' },
+                                            sharing: {
+                                                type: 'object',
+                                                properties: {
+                                                    memory: { type: 'boolean', description: 'Allow memory sharing' },
+                                                    neural: { type: 'boolean', description: 'Allow neural pattern sharing' },
+                                                    communication: { type: 'boolean', description: 'Allow inter-swarm communication' }
+                                                }
+                                            }
+                                        },
+                                        required: ['type']
+                                    }
+                                },
+                                required: ['scope']
+                            }
+                        },
+                        {
+                            name: 'scope_status',
+                            description: 'Get current scope status and configuration',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    scopeId: { type: 'string', description: 'Specific scope ID (optional)' },
+                                    detailed: { type: 'boolean', default: false, description: 'Include detailed information' }
+                                }
+                            }
+                        },
+                        {
+                            name: 'scope_share_knowledge',
+                            description: 'Share knowledge between different scopes',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    sourceScope: { type: 'string', description: 'Source scope ID' },
+                                    targetScope: { type: 'string', description: 'Target scope ID' },
+                                    knowledgeType: { type: 'string', enum: ['neural-pattern', 'memory'], description: 'Type of knowledge to share' },
+                                    data: { type: 'object', description: 'Knowledge data to share' },
+                                    explicit: { type: 'boolean', default: true, description: 'Require explicit permission' }
+                                },
+                                required: ['sourceScope', 'targetScope', 'knowledgeType', 'data']
+                            }
+                        },
+                        {
+                            name: 'scope_export',
+                            description: 'Export scope configuration and data',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    scopeId: { type: 'string', description: 'Specific scope ID (optional)' },
+                                    includeData: { type: 'boolean', default: false, description: 'Include memory and neural data' }
+                                }
+                            }
+                        },
+                        {
+                            name: 'scope_import',
+                            description: 'Import scope configuration from exported data',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    config: { type: 'object', description: 'Configuration data to import' }
+                                },
+                                required: ['config']
+                            }
+                        },
+                        {
+                            name: 'scope_cleanup',
+                            description: 'Clean up scope resources and data',
+                            inputSchema: {
+                                type: 'object',
+                                properties: {
+                                    scopeId: { type: 'string', description: 'Specific scope ID (optional)' },
+                                    type: { type: 'string', enum: ['all', 'local', 'project', 'team', 'global'], default: 'all', description: 'Type of scopes to cleanup' }
+                                }
+                            }
+                        }
                     ]
                 };
                 break;
@@ -1246,6 +1360,37 @@ async function handleMcpRequest(request, mcpTools) {
                             data: { tool: toolName, error: error.message }
                         };
                         break;
+                    }
+                }
+                // Try Scope tools if not found in other tools
+                else if (globalScopeTools && typeof globalScopeTools[toolName] === 'function') {
+                    try {
+                        result = await globalScopeTools[toolName](toolArgs);
+                        toolFound = true;
+                    } catch (error) {
+                        response.error = {
+                            code: -32603,
+                            message: `Scope tool error: ${error.message}`,
+                            data: { tool: toolName, error: error.message }
+                        };
+                        break;
+                    }
+                }
+                // Try Scope tools with scope_ prefix removed
+                else if (globalScopeTools && toolName.startsWith('scope_')) {
+                    const scopeMethodName = toolName.replace('scope_', '');
+                    if (typeof globalScopeTools[scopeMethodName] === 'function') {
+                        try {
+                            result = await globalScopeTools[scopeMethodName](toolArgs);
+                            toolFound = true;
+                        } catch (error) {
+                            response.error = {
+                                code: -32603,
+                                message: `Scope tool error: ${error.message}`,
+                                data: { tool: toolName, error: error.message }
+                            };
+                            break;
+                        }
                     }
                 }
                 
