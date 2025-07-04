@@ -5,10 +5,14 @@
  * Automated CI/CD integration with performance regression detection
  */
 
-const { RuvSwarm } = require('../src/index-enhanced');
-const fs = require('fs').promises;
-const path = require('path');
-const { spawn } = require('child_process');
+import { RuvSwarm } from '../src/index-enhanced.js';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class RegressionTestingPipeline {
   constructor() {
@@ -460,7 +464,8 @@ class RegressionTestingPipeline {
 
       // Test SQLite support
       try {
-        const { PersistenceManager } = require('/workspaces/ruv-FANN/ruv-swarm/npm/src/persistence');
+        const module = await import('/workspaces/ruv-FANN/ruv-swarm/npm/src/persistence.js');
+        const { PersistenceManager } = module;
         const pm = new PersistenceManager(':memory:');
         await pm.initialize();
         platformResult.data.sqliteSupport = true;

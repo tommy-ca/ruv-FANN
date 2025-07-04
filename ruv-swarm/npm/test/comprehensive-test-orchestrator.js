@@ -159,7 +159,8 @@ class ComprehensiveTestOrchestrator {
     // Test 1: MCP Tools Integration
     await this.runClaudeFlowTest(claudeFlowTests, 'MCP Tools Integration', async() => {
       try {
-        const { mcp } = require('../src/mcp-tools-enhanced');
+        const module = await import('../src/mcp-tools-enhanced.js');
+        const { mcp } = module;
 
         // Test swarm initialization
         await mcp.swarm_init({ topology: 'mesh', maxAgents: 3 });
@@ -182,7 +183,8 @@ class ComprehensiveTestOrchestrator {
     // Test 2: Neural Network Integration
     await this.runClaudeFlowTest(claudeFlowTests, 'Neural Network Integration', async() => {
       try {
-        const { RuvSwarm } = require('../src/index-enhanced');
+        const module = await import('../src/index-enhanced.js');
+        const { RuvSwarm } = module;
 
         const ruvSwarm = await RuvSwarm.initialize({
           enableNeuralNetworks: true,
@@ -206,7 +208,8 @@ class ComprehensiveTestOrchestrator {
     // Test 3: Persistence Integration
     await this.runClaudeFlowTest(claudeFlowTests, 'Persistence Integration', async() => {
       try {
-        const { PersistenceManager } = require('../src/persistence');
+        const module = await import('../src/persistence.js');
+        const { PersistenceManager } = module;
 
         const pm = new PersistenceManager(':memory:');
         await pm.initialize();
@@ -233,7 +236,8 @@ class ComprehensiveTestOrchestrator {
     // Test 4: WASM Module Integration
     await this.runClaudeFlowTest(claudeFlowTests, 'WASM Module Integration', async() => {
       try {
-        const { RuvSwarm } = require('../src/index-enhanced');
+        const module = await import('../src/index-enhanced.js');
+        const { RuvSwarm } = module;
 
         const ruvSwarm = await RuvSwarm.initialize({ enableSIMD: true });
         const simdSupported = await ruvSwarm.detectSIMDSupport();
@@ -259,7 +263,8 @@ class ComprehensiveTestOrchestrator {
     // Test 5: Hook System Integration
     await this.runClaudeFlowTest(claudeFlowTests, 'Hook System Integration', async() => {
       try {
-        const { hooks } = require('../src/hooks');
+        const module = await import('../src/hooks.js');
+        const { hooks } = module;
 
         // Test pre-operation hooks
         const preResult = await hooks.preTask('claude-flow-test');
@@ -358,7 +363,8 @@ class ComprehensiveTestOrchestrator {
     };
 
     try {
-      const { RuvSwarm } = require('../src/index-enhanced');
+      const module = await import('../src/index-enhanced.js');
+      const { RuvSwarm } = module;
       const ruvSwarm = await RuvSwarm.initialize();
       const simdSupport = await ruvSwarm.detectSIMDSupport();
 
@@ -379,7 +385,8 @@ class ComprehensiveTestOrchestrator {
     };
 
     try {
-      const { PersistenceManager } = require('../src/persistence');
+      const module = await import('../src/persistence.js');
+      const { PersistenceManager } = module;
       const pm = new PersistenceManager(':memory:');
       await pm.initialize();
 
@@ -400,7 +407,7 @@ class ComprehensiveTestOrchestrator {
     };
 
     try {
-      const WebSocket = require('ws');
+      const WebSocket = (await import('ws')).default;
       const ws = new WebSocket.Server({ port: 0 });
 
       ws.on('listening', () => {
