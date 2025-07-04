@@ -35,15 +35,15 @@ class EnhancedMCPTools {
     this.errorContext = new ErrorContext();
     this.errorLog = [];
     this.maxErrorLogSize = 1000;
-    
+
     // Initialize logger
     this.logger = new Logger({
       name: 'mcp-tools',
       enableStderr: process.env.MCP_MODE === 'stdio',
       level: process.env.LOG_LEVEL || 'INFO',
       metadata: {
-        component: 'mcp-tools-enhanced'
-      }
+        component: 'mcp-tools-enhanced',
+      },
     });
 
     // Initialize DAA tools integration
@@ -323,7 +323,7 @@ class EnhancedMCPTools {
 
     try {
       this.logger.info('Initializing swarm', { params });
-      
+
       // Validate and sanitize input parameters
       const validatedParams = this.validateToolParams(params, toolName);
       this.logger.debug('Parameters validated', { validatedParams });
@@ -361,9 +361,9 @@ class EnhancedMCPTools {
         strategy,
         maxAgents,
         enableCognitiveDiversity,
-        enableNeuralAgents
+        enableNeuralAgents,
       });
-      
+
       const swarm = await this.ruvSwarm.createSwarm({
         name: `${topology}-swarm-${Date.now()}`,
         topology,
@@ -372,7 +372,7 @@ class EnhancedMCPTools {
         enableCognitiveDiversity,
         enableNeuralAgents,
       });
-      
+
       this.logger.info('Swarm created successfully', { swarmId: swarm.id });
 
       // Enable forecasting if requested and available
@@ -468,7 +468,7 @@ class EnhancedMCPTools {
 
     try {
       this.logger.info('Spawning agent', { params });
-      
+
       // Validate and sanitize input parameters
       const validatedParams = this.validateToolParams(params, toolName);
       this.logger.debug('Agent parameters validated', { validatedParams });
@@ -483,7 +483,7 @@ class EnhancedMCPTools {
         capabilities: rawCapabilities,
         swarmId,
       } = validatedParams;
-      
+
       // Convert capabilities to proper format if needed
       let capabilities = rawCapabilities;
       if (Array.isArray(rawCapabilities)) {
@@ -492,10 +492,10 @@ class EnhancedMCPTools {
           languages: ['javascript', 'python', 'rust'], // Default languages
           frameworks: rawCapabilities.filter(cap => cap.includes('framework')),
           tools: rawCapabilities.filter(cap => cap.includes('tool')),
-          specializations: rawCapabilities.filter(cap => 
-            !cap.includes('framework') && !cap.includes('tool')
+          specializations: rawCapabilities.filter(cap =>
+            !cap.includes('framework') && !cap.includes('tool'),
           ),
-          max_concurrent_tasks: 5
+          max_concurrent_tasks: 5,
         };
       } else if (!rawCapabilities) {
         // If no capabilities provided, use defaults
@@ -504,7 +504,7 @@ class EnhancedMCPTools {
           frameworks: [],
           tools: [],
           specializations: [],
-          max_concurrent_tasks: 5
+          max_concurrent_tasks: 5,
         };
       } else if (typeof rawCapabilities === 'object') {
         // Ensure all required fields are present
@@ -513,7 +513,7 @@ class EnhancedMCPTools {
           frameworks: rawCapabilities.frameworks || [],
           tools: rawCapabilities.tools || [],
           specializations: rawCapabilities.specializations || [],
-          max_concurrent_tasks: rawCapabilities.max_concurrent_tasks || 5
+          max_concurrent_tasks: rawCapabilities.max_concurrent_tasks || 5,
         };
       }
 
@@ -700,7 +700,7 @@ class EnhancedMCPTools {
           metadata: JSON.stringify({
             requiredCapabilities: requiredCapabilities || [],
             estimatedDuration: estimatedDuration || 30000,
-            startTime: startTime,
+            startTime,
           }),
         });
       } catch (persistError) {
@@ -1343,7 +1343,7 @@ class EnhancedMCPTools {
         await this.persistence.recordMetric('system', 'memory', 'wasm_mb', summary.wasm_mb);
         await this.persistence.recordMetric('system', 'memory', 'javascript_mb', summary.javascript_mb);
         await this.persistence.recordMetric('system', 'memory', 'available_mb', summary.available_mb);
-        
+
         // Store detailed memory snapshot if heap info available
         if (jsMemory?.heapUsed) {
           await this.persistence.recordMetric('system', 'memory', 'heap_used_mb', jsMemory.heapUsed / (1024 * 1024));
@@ -1593,26 +1593,26 @@ class EnhancedMCPTools {
       try {
         await this.persistence.updateNeuralNetwork(neuralNetwork.id, {
           performance_metrics: performanceMetrics,
-          weights: { 
-            trained: true, 
+          weights: {
+            trained: true,
             iterations,
             timestamp: new Date().toISOString(),
             // Store actual weight values if available from WASM
-            values: this.ruvSwarm.wasmLoader.modules.get('core')?.get_neural_weights?.(neuralNetwork.id) || {}
+            values: this.ruvSwarm.wasmLoader.modules.get('core')?.get_neural_weights?.(neuralNetwork.id) || {},
           },
           training_history: trainingResults,
         });
-        
+
         this.logger.info('Neural network state persisted successfully', {
           networkId: neuralNetwork.id,
-          agentId: agentId,
-          iterations: iterations,
+          agentId,
+          iterations,
           finalAccuracy: currentAccuracy,
         });
       } catch (error) {
         this.logger.error('Failed to persist neural network state', {
           networkId: neuralNetwork.id,
-          agentId: agentId,
+          agentId,
           error: error.message,
         });
         // Continue execution but warn about persistence failure
@@ -1624,18 +1624,18 @@ class EnhancedMCPTools {
         await this.persistence.recordMetric('agent', agentId, 'neural_training_accuracy', currentAccuracy);
         await this.persistence.recordMetric('agent', agentId, 'neural_training_iterations', iterations);
         await this.persistence.recordMetric('agent', agentId, 'neural_training_time_ms', performance.now() - startTime);
-        
+
         this.logger.debug('Training metrics recorded', {
-          agentId: agentId,
+          agentId,
           metrics: {
             loss: currentLoss,
             accuracy: currentAccuracy,
-            iterations: iterations,
+            iterations,
           },
         });
       } catch (error) {
         this.logger.warn('Failed to record training metrics', {
-          agentId: agentId,
+          agentId,
           error: error.message,
         });
       }

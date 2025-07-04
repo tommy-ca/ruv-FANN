@@ -27,12 +27,12 @@ const LOG_LEVEL_NAMES = Object.entries(LOG_LEVELS).reduce((acc, [name, value]) =
 
 // ANSI color codes for console output
 const COLORS = {
-  TRACE: '\x1b[90m',    // Gray
-  DEBUG: '\x1b[36m',    // Cyan
-  INFO: '\x1b[32m',     // Green
-  WARN: '\x1b[33m',     // Yellow
-  ERROR: '\x1b[31m',    // Red
-  FATAL: '\x1b[35m',    // Magenta
+  TRACE: '\x1b[90m', // Gray
+  DEBUG: '\x1b[36m', // Cyan
+  INFO: '\x1b[32m', // Green
+  WARN: '\x1b[33m', // Yellow
+  ERROR: '\x1b[31m', // Red
+  FATAL: '\x1b[35m', // Magenta
   RESET: '\x1b[0m',
   DIM: '\x1b[2m',
   BRIGHT: '\x1b[1m',
@@ -79,7 +79,7 @@ class LogRotation {
     this.maxFiles = options.maxFiles || 5;
     this.logDir = options.logDir || path.join(process.cwd(), 'logs');
     this.baseFilename = options.baseFilename || 'ruv-swarm';
-    
+
     // Ensure log directory exists
     if (!fs.existsSync(this.logDir)) {
       fs.mkdirSync(this.logDir, { recursive: true });
@@ -92,21 +92,25 @@ class LogRotation {
 
   shouldRotate() {
     const logPath = this.getCurrentLogPath();
-    if (!fs.existsSync(logPath)) return false;
-    
+    if (!fs.existsSync(logPath)) {
+      return false;
+    }
+
     const stats = fs.statSync(logPath);
     return stats.size >= this.maxFileSize;
   }
 
   rotate() {
     const currentPath = this.getCurrentLogPath();
-    if (!fs.existsSync(currentPath)) return;
+    if (!fs.existsSync(currentPath)) {
+      return;
+    }
 
     // Shift existing rotated files
     for (let i = this.maxFiles - 1; i > 0; i--) {
       const oldPath = path.join(this.logDir, `${this.baseFilename}.${i}.log`);
       const newPath = path.join(this.logDir, `${this.baseFilename}.${i + 1}.log`);
-      
+
       if (fs.existsSync(oldPath)) {
         if (i === this.maxFiles - 1) {
           fs.unlinkSync(oldPath); // Remove oldest
@@ -152,7 +156,9 @@ class PerformanceTracker {
 
   endOperation(id, success = true) {
     const operation = this.operations.get(id);
-    if (!operation) return null;
+    if (!operation) {
+      return null;
+    }
 
     const endTime = performance.now();
     const duration = endTime - operation.startTime;
@@ -188,7 +194,9 @@ class PerformanceTracker {
     stats.avgDuration = stats.totalDuration / stats.count;
     stats.minDuration = Math.min(stats.minDuration, duration);
     stats.maxDuration = Math.max(stats.maxDuration, duration);
-    if (!success) stats.failures++;
+    if (!success) {
+      stats.failures++;
+    }
 
     this.operations.delete(id);
     return metric;
@@ -224,7 +232,7 @@ export class Logger {
     // Initialize components
     this.correlationIdGenerator = new CorrelationIdGenerator();
     this.performanceTracker = new PerformanceTracker();
-    
+
     if (this.enableFile) {
       this.logRotation = new LogRotation({
         logDir: options.logDir,
@@ -274,7 +282,9 @@ export class Logger {
    * Core logging method
    */
   log(level, message, data = {}) {
-    if (level < this.level) return;
+    if (level < this.level) {
+      return;
+    }
 
     const timestamp = new Date().toISOString();
     const levelName = LOG_LEVEL_NAMES[level];
@@ -320,7 +330,7 @@ export class Logger {
     let output = `${COLORS.DIM}[${timestamp}]${COLORS.RESET} `;
     output += `${color}${icon} ${levelName.padEnd(5)}${COLORS.RESET} `;
     output += `${COLORS.BRIGHT}[${this.name}]${COLORS.RESET} `;
-    
+
     if (this.correlationId) {
       output += `${COLORS.DIM}(${this.correlationId})${COLORS.RESET} `;
     }
@@ -336,12 +346,12 @@ export class Logger {
     delete filteredData.correlationId;
 
     if (Object.keys(filteredData).length > 0) {
-      output += '\n' + inspect(filteredData, {
+      output += `\n${ inspect(filteredData, {
         depth: 3,
         colors: true,
         compact: false,
         sorted: true,
-      });
+      })}`;
     }
 
     return output;
@@ -353,7 +363,7 @@ export class Logger {
   output(formatted, level) {
     // In MCP stdio mode, use stderr for logs
     if (this.enableStderr || process.env.MCP_MODE === 'stdio') {
-      process.stderr.write(formatted + '\n');
+      process.stderr.write(`${formatted }\n`);
     } else if (this.enableConsole) {
       // Use appropriate console method
       if (level >= LOG_LEVELS.ERROR) {
@@ -367,17 +377,29 @@ export class Logger {
 
     // Write to file
     if (this.enableFile && this.logRotation) {
-      this.logRotation.write(formatted + '\n');
+      this.logRotation.write(`${formatted }\n`);
     }
   }
 
   // Convenience methods
-  trace(message, data) { this.log(LOG_LEVELS.TRACE, message, data); }
-  debug(message, data) { this.log(LOG_LEVELS.DEBUG, message, data); }
-  info(message, data) { this.log(LOG_LEVELS.INFO, message, data); }
-  warn(message, data) { this.log(LOG_LEVELS.WARN, message, data); }
-  error(message, data) { this.log(LOG_LEVELS.ERROR, message, data); }
-  fatal(message, data) { this.log(LOG_LEVELS.FATAL, message, data); }
+  trace(message, data) {
+    this.log(LOG_LEVELS.TRACE, message, data);
+  }
+  debug(message, data) {
+    this.log(LOG_LEVELS.DEBUG, message, data);
+  }
+  info(message, data) {
+    this.log(LOG_LEVELS.INFO, message, data);
+  }
+  warn(message, data) {
+    this.log(LOG_LEVELS.WARN, message, data);
+  }
+  error(message, data) {
+    this.log(LOG_LEVELS.ERROR, message, data);
+  }
+  fatal(message, data) {
+    this.log(LOG_LEVELS.FATAL, message, data);
+  }
 
   /**
    * Connection lifecycle logging
@@ -385,44 +407,44 @@ export class Logger {
   logConnection(event, connectionId, details = {}) {
     const icon = ICONS.CONNECTION;
     const message = `${icon} Connection ${event}: ${connectionId}`;
-    
+
     switch (event) {
-      case 'established':
-        this.connections.set(connectionId, {
-          id: connectionId,
-          startTime: Date.now(),
-          ...details,
-        });
-        this.connectionMetrics.total++;
-        this.connectionMetrics.active++;
-        this.info(message, { connection: details });
-        break;
+    case 'established':
+      this.connections.set(connectionId, {
+        id: connectionId,
+        startTime: Date.now(),
+        ...details,
+      });
+      this.connectionMetrics.total++;
+      this.connectionMetrics.active++;
+      this.info(message, { connection: details });
+      break;
 
-      case 'closed':
-        const conn = this.connections.get(connectionId);
-        if (conn) {
-          const duration = Date.now() - conn.startTime;
-          this.connectionMetrics.avgDuration = 
-            (this.connectionMetrics.avgDuration * (this.connectionMetrics.total - 1) + duration) / 
+    case 'closed':
+      const conn = this.connections.get(connectionId);
+      if (conn) {
+        const duration = Date.now() - conn.startTime;
+        this.connectionMetrics.avgDuration =
+            (this.connectionMetrics.avgDuration * (this.connectionMetrics.total - 1) + duration) /
             this.connectionMetrics.total;
-          this.connections.delete(connectionId);
-          this.connectionMetrics.active--;
-          this.info(message, { duration, connection: details });
-        }
-        break;
+        this.connections.delete(connectionId);
+        this.connectionMetrics.active--;
+        this.info(message, { duration, connection: details });
+      }
+      break;
 
-      case 'failed':
-        this.connectionMetrics.failed++;
-        this.connectionMetrics.active = Math.max(0, this.connectionMetrics.active - 1);
-        this.error(message, { connection: details, error: details.error });
-        break;
+    case 'failed':
+      this.connectionMetrics.failed++;
+      this.connectionMetrics.active = Math.max(0, this.connectionMetrics.active - 1);
+      this.error(message, { connection: details, error: details.error });
+      break;
 
-      case 'retry':
-        this.warn(message, { attempt: details.attempt, connection: details });
-        break;
+    case 'retry':
+      this.warn(message, { attempt: details.attempt, connection: details });
+      break;
 
-      default:
-        this.debug(message, { connection: details });
+    default:
+      this.debug(message, { connection: details });
     }
   }
 
@@ -433,7 +455,7 @@ export class Logger {
     const icon = ICONS.MCP;
     const arrow = direction === 'in' ? '←' : '→';
     const level = details.error ? LOG_LEVELS.ERROR : LOG_LEVELS.DEBUG;
-    
+
     this.log(level, `${icon} MCP ${arrow} ${message}`, {
       mcp: {
         direction,

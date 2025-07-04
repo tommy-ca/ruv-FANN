@@ -541,7 +541,7 @@ async function runTest(results, category, testName, testFunction) {
 function generateReport(results) {
   const summary = results.getSummary();
 
-  console.log('\\n' + '='.repeat(60));
+  console.log(`\\n${ '='.repeat(60)}`);
   console.log('🧪 ERROR HANDLING TEST RESULTS');
   console.log('='.repeat(60));
 
@@ -598,7 +598,7 @@ function generateReport(results) {
     console.log('   ✅ Test performance is good');
   }
 
-  console.log('\\n' + '='.repeat(60));
+  console.log(`\\n${ '='.repeat(60)}`);
 }
 
 // Run the tests

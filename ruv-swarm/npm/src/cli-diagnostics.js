@@ -18,30 +18,30 @@ async function main() {
 
   try {
     switch (command) {
-      case 'test':
-        await runDiagnosticTests(logger);
-        break;
+    case 'test':
+      await runDiagnosticTests(logger);
+      break;
 
-      case 'report':
-        await generateReport(args.slice(1), logger);
-        break;
+    case 'report':
+      await generateReport(args.slice(1), logger);
+      break;
 
-      case 'monitor':
-        await startMonitoring(args.slice(1), logger);
-        break;
+    case 'monitor':
+      await startMonitoring(args.slice(1), logger);
+      break;
 
-      case 'logs':
-        await analyzeLogs(args.slice(1), logger);
-        break;
+    case 'logs':
+      await analyzeLogs(args.slice(1), logger);
+      break;
 
-      case 'config':
-        showLoggingConfig(logger);
-        break;
+    case 'config':
+      showLoggingConfig(logger);
+      break;
 
-      case 'help':
-      default:
-        showHelp();
-        break;
+    case 'help':
+    default:
+      showHelp();
+      break;
     }
   } catch (error) {
     logger.error('Diagnostic command failed', { error, command });
@@ -51,12 +51,12 @@ async function main() {
 
 async function runDiagnosticTests(logger) {
   logger.info('Running diagnostic tests...');
-  
+
   const results = await diagnostics.runDiagnosticTests();
-  
+
   console.log('\n📋 Diagnostic Test Results:');
   console.log('═══════════════════════════\n');
-  
+
   results.tests.forEach(test => {
     const icon = test.success ? '✅' : '❌';
     console.log(`${icon} ${test.name}`);
@@ -68,12 +68,12 @@ async function runDiagnosticTests(logger) {
       console.log(`   Path: ${test.path}`);
     }
   });
-  
+
   console.log('\n📊 Summary:');
   console.log(`   Total Tests: ${results.summary.total}`);
   console.log(`   ✅ Passed: ${results.summary.passed}`);
   console.log(`   ❌ Failed: ${results.summary.failed}`);
-  
+
   if (results.summary.failed > 0) {
     process.exit(1);
   }
@@ -82,80 +82,80 @@ async function runDiagnosticTests(logger) {
 async function generateReport(args, logger) {
   const outputPath = args.find(arg => arg.startsWith('--output='))?.split('=')[1];
   const format = args.find(arg => arg.startsWith('--format='))?.split('=')[1] || 'json';
-  
+
   logger.info('Generating diagnostic report...');
-  
+
   // Enable diagnostics temporarily
   diagnostics.enableAll();
-  
+
   // Wait a bit to collect some samples
   await new Promise(resolve => setTimeout(resolve, 5000));
-  
+
   const report = await diagnostics.generateFullReport();
-  
+
   if (outputPath) {
     const reportPath = path.resolve(outputPath);
-    
+
     if (format === 'json') {
       fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
     } else if (format === 'markdown') {
       fs.writeFileSync(reportPath, formatReportAsMarkdown(report));
     }
-    
+
     console.log(`\n📄 Report saved to: ${reportPath}`);
   } else {
     console.log('\n📊 Diagnostic Report:');
     console.log('═══════════════════════');
     console.log(formatReportForConsole(report));
   }
-  
+
   // Disable diagnostics
   diagnostics.disableAll();
 }
 
 async function startMonitoring(args, logger) {
-  const duration = parseInt(args.find(arg => arg.startsWith('--duration='))?.split('=')[1] || '60');
-  const interval = parseInt(args.find(arg => arg.startsWith('--interval='))?.split('=')[1] || '1000');
-  
+  const duration = parseInt(args.find(arg => arg.startsWith('--duration='))?.split('=')[1] || '60', 10);
+  const interval = parseInt(args.find(arg => arg.startsWith('--interval='))?.split('=')[1] || '1000', 10);
+
   logger.info('Starting system monitoring...', { duration, interval });
-  
+
   console.log('\n🔍 System Monitoring');
   console.log('═══════════════════════');
   console.log(`Duration: ${duration} seconds`);
   console.log(`Interval: ${interval}ms`);
   console.log('\nPress Ctrl+C to stop\n');
-  
+
   diagnostics.enableAll();
   diagnostics.system.startMonitoring(interval);
-  
+
   // Update display periodically
   const displayInterval = setInterval(() => {
     const health = diagnostics.system.getSystemHealth();
     const connection = diagnostics.connection.getConnectionSummary();
-    
+
     console.clear();
     console.log('🔍 System Monitoring');
     console.log('═══════════════════════');
     console.log(`\n📊 System Health: ${health.status.toUpperCase()}`);
-    
+
     if (health.issues.length > 0) {
       console.log('\n⚠️  Issues:');
       health.issues.forEach(issue => console.log(`   - ${issue}`));
     }
-    
+
     console.log('\n💾 Metrics:');
     Object.entries(health.metrics).forEach(([key, value]) => {
       console.log(`   ${key}: ${value}`);
     });
-    
+
     console.log('\n🔌 Connections:');
     console.log(`   Active: ${connection.activeConnections}`);
     console.log(`   Total Events: ${connection.totalEvents}`);
     console.log(`   Failure Rate: ${(connection.failureRate * 100).toFixed(1)}%`);
-    
+
     console.log('\n\nPress Ctrl+C to stop');
   }, 2000);
-  
+
   // Set up timeout
   setTimeout(() => {
     clearInterval(displayInterval);
@@ -163,7 +163,7 @@ async function startMonitoring(args, logger) {
     console.log('\n✅ Monitoring completed');
     process.exit(0);
   }, duration * 1000);
-  
+
   // Handle Ctrl+C
   process.on('SIGINT', () => {
     clearInterval(displayInterval);
@@ -176,34 +176,34 @@ async function startMonitoring(args, logger) {
 async function analyzeLogs(args, logger) {
   const logDir = args.find(arg => arg.startsWith('--dir='))?.split('=')[1] || './logs';
   const pattern = args.find(arg => arg.startsWith('--pattern='))?.split('=')[1] || 'error';
-  
+
   logger.info('Analyzing logs...', { logDir, pattern });
-  
+
   if (!fs.existsSync(logDir)) {
     console.error(`❌ Log directory not found: ${logDir}`);
     process.exit(1);
   }
-  
+
   const logFiles = fs.readdirSync(logDir).filter(f => f.endsWith('.log'));
-  
+
   console.log(`\n📁 Found ${logFiles.length} log files in ${logDir}`);
-  
+
   const results = {
     totalLines: 0,
     matches: 0,
     files: {},
   };
-  
+
   const regex = new RegExp(pattern, 'i');
-  
+
   logFiles.forEach(file => {
     const content = fs.readFileSync(path.join(logDir, file), 'utf8');
     const lines = content.split('\n');
     const matches = lines.filter(line => regex.test(line));
-    
+
     results.totalLines += lines.length;
     results.matches += matches.length;
-    
+
     if (matches.length > 0) {
       results.files[file] = {
         matches: matches.length,
@@ -211,12 +211,12 @@ async function analyzeLogs(args, logger) {
       };
     }
   });
-  
+
   console.log('\n📊 Analysis Results:');
   console.log(`   Total Lines: ${results.totalLines}`);
   console.log(`   Matches: ${results.matches}`);
   console.log(`   Pattern: ${pattern}`);
-  
+
   if (results.matches > 0) {
     console.log('\n📄 Files with matches:');
     Object.entries(results.files).forEach(([file, data]) => {
@@ -231,12 +231,12 @@ async function analyzeLogs(args, logger) {
 function showLoggingConfig(logger) {
   console.log('\n⚙️  Logging Configuration');
   console.log('═══════════════════════════\n');
-  
+
   const config = loggingConfig.logConfiguration();
-  
+
   // Configuration is already logged to stderr by logConfiguration()
   // Just add usage instructions
-  
+
   console.log('\n📝 Environment Variables:');
   console.log('   LOG_LEVEL         - Global log level (TRACE|DEBUG|INFO|WARN|ERROR|FATAL)');
   console.log('   MCP_LOG_LEVEL     - MCP server log level');
@@ -247,7 +247,7 @@ function showLoggingConfig(logger) {
   console.log('   LOG_TO_FILE       - Enable file logging (true|false)');
   console.log('   LOG_FORMAT        - Log format (text|json)');
   console.log('   LOG_DIR           - Log directory path');
-  
+
   console.log('\n💡 Examples:');
   console.log('   LOG_LEVEL=DEBUG npx ruv-swarm mcp start');
   console.log('   MCP_LOG_LEVEL=TRACE TOOLS_LOG_LEVEL=DEBUG npx ruv-swarm mcp start');
@@ -256,13 +256,13 @@ function showLoggingConfig(logger) {
 
 function formatReportForConsole(report) {
   const output = [];
-  
+
   // Connection section
   output.push('🔌 Connection Diagnostics:');
   output.push(`   Active Connections: ${report.connection.connections.activeConnections}`);
   output.push(`   Failure Rate: ${(report.connection.connections.failureRate * 100).toFixed(1)}%`);
   output.push(`   Total Events: ${report.connection.connections.totalEvents}`);
-  
+
   if (report.connection.patterns.recommendations.length > 0) {
     output.push('\n⚠️  Recommendations:');
     report.connection.patterns.recommendations.forEach(rec => {
@@ -270,7 +270,7 @@ function formatReportForConsole(report) {
       output.push(`   → ${rec.suggestion}`);
     });
   }
-  
+
   // System section
   output.push('\n💻 System Health:');
   output.push(`   Status: ${report.system.status.toUpperCase()}`);
@@ -279,7 +279,7 @@ function formatReportForConsole(report) {
       output.push(`   ${key}: ${value}`);
     });
   }
-  
+
   return output.join('\n');
 }
 
@@ -296,7 +296,7 @@ function formatReportAsMarkdown(report) {
     `- **Total Events**: ${report.connection.connections.totalEvents}`,
     '',
   ];
-  
+
   if (report.connection.patterns.recommendations.length > 0) {
     lines.push('### Recommendations');
     lines.push('');
@@ -306,11 +306,11 @@ function formatReportAsMarkdown(report) {
     });
     lines.push('');
   }
-  
+
   lines.push('## System Health');
   lines.push('');
   lines.push(`- **Status**: ${report.system.status.toUpperCase()}`);
-  
+
   if (report.system.metrics) {
     lines.push('');
     lines.push('### Metrics');
@@ -319,7 +319,7 @@ function formatReportAsMarkdown(report) {
       lines.push(`- **${key}**: ${value}`);
     });
   }
-  
+
   return lines.join('\n');
 }
 

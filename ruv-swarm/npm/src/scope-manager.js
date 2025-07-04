@@ -26,10 +26,10 @@ class SessionAuthority {
    */
   generateSessionId() {
     const hostname = os.hostname();
-    const pid = process.pid;
+    const { pid } = process;
     const timestamp = Date.now();
     const salt = crypto.randomBytes(16).toString('hex');
-    
+
     this.sessionId = `session-${hostname}-${pid}-${timestamp}-${salt}`;
     this.authority = {
       sessionId: this.sessionId,
@@ -37,9 +37,9 @@ class SessionAuthority {
       pid,
       timestamp,
       salt,
-      fingerprint: this.generateFingerprint()
+      fingerprint: this.generateFingerprint(),
     };
-    
+
     return this.sessionId;
   }
 
@@ -54,9 +54,9 @@ class SessionAuthority {
       pid: process.pid,
       cwd: process.cwd(),
       nodeVersion: process.version,
-      sessionSalt: this.sessionId || 'default'
+      sessionSalt: this.sessionId || 'default',
     };
-    
+
     const hash = crypto.createHash('sha256');
     hash.update(JSON.stringify(metadata, Object.keys(metadata).sort()));
     return hash.digest('hex');
@@ -76,7 +76,7 @@ class SessionAuthority {
              authority.pid === process.pid &&
              authority.hostname === os.hostname();
     }
-    
+
     // For different sessions, return false (isolated)
     return false;
   }
@@ -86,12 +86,12 @@ class SessionAuthority {
    */
   async detectCentralAuthority() {
     const lockFile = path.join(os.tmpdir(), 'ruv-swarm-authority.lock');
-    
+
     try {
       // Try to read existing authority
       const authorityData = await fs.readFile(lockFile, 'utf8');
       this.centralAuthority = JSON.parse(authorityData);
-      
+
       // Validate if central authority is still active
       if (await this.validateCentralAuthority(this.centralAuthority)) {
         return this.centralAuthority;
@@ -113,7 +113,7 @@ class SessionAuthority {
       pid: process.pid,
       hostname: os.hostname(),
       timestamp: Date.now(),
-      sessions: new Map()
+      sessions: new Map(),
     };
 
     try {
@@ -158,16 +158,16 @@ class MemoryNamespaceManager {
    */
   generateScopedKey(scope, key) {
     switch (scope.type) {
-      case 'local':
-        return `local:${scope.boundaries.session}:${key}`;
-      case 'project':
-        return `project:${scope.boundaries.project}:${key}`;
-      case 'team':
-        return `team:${scope.boundaries.team}:${key}`;
-      case 'global':
-        return `global:${key}`;
-      default:
-        throw new ValidationError(`Invalid scope type: ${scope.type}`);
+    case 'local':
+      return `local:${scope.boundaries.session}:${key}`;
+    case 'project':
+      return `project:${scope.boundaries.project}:${key}`;
+    case 'team':
+      return `team:${scope.boundaries.team}:${key}`;
+    case 'global':
+      return `global:${key}`;
+    default:
+      throw new ValidationError(`Invalid scope type: ${scope.type}`);
     }
   }
 
@@ -177,14 +177,14 @@ class MemoryNamespaceManager {
   async store(scope, key, value, options = {}) {
     // Validate scope boundaries
     this.validateScopeAccess(scope);
-    
+
     const scopedKey = this.generateScopedKey(scope, key);
     const data = {
       value,
       timestamp: Date.now(),
-      scope: scope,
+      scope,
       authority: this.sessionAuthority.authority,
-      encrypted: options.encrypted || false
+      encrypted: options.encrypted || false,
     };
 
     // Encrypt if required
@@ -207,19 +207,19 @@ class MemoryNamespaceManager {
    */
   async retrieve(scope, key) {
     this.validateScopeAccess(scope);
-    
+
     const scopedKey = this.generateScopedKey(scope, key);
     // Retrieve from appropriate memory store based on scope type
-    const data = scope.type === 'global' ? 
-      globalMemoryStore.get(scopedKey) : 
+    const data = scope.type === 'global' ?
+      globalMemoryStore.get(scopedKey) :
       this.scopedMemory.get(scopedKey);
-    
+
     if (!data) {
       return null;
     }
 
     // Validate authority for local scopes
-    if (scope.type === 'local' && 
+    if (scope.type === 'local' &&
         data.authority.sessionId !== this.sessionAuthority.sessionId) {
       throw new RuvSwarmError('Unauthorized access to local scope memory');
     }
@@ -238,7 +238,7 @@ class MemoryNamespaceManager {
   listKeys(scope, pattern = '*') {
     const scopePrefix = this.generateScopedKey(scope, '').slice(0, -1); // Remove trailing ':'
     const keys = [];
-    
+
     for (const [key, data] of this.scopedMemory.entries()) {
       if (key.startsWith(scopePrefix)) {
         // Validate access
@@ -250,7 +250,7 @@ class MemoryNamespaceManager {
         }
       }
     }
-    
+
     return keys;
   }
 
@@ -259,20 +259,20 @@ class MemoryNamespaceManager {
    */
   validateScopeAccess(scope) {
     switch (scope.type) {
-      case 'local':
-        // For local scopes, check if this session has access
-        if (scope.boundaries.session && 
+    case 'local':
+      // For local scopes, check if this session has access
+      if (scope.boundaries.session &&
             scope.boundaries.session !== this.sessionAuthority.sessionId) {
-          throw new RuvSwarmError('Invalid session authority for local scope');
-        }
-        break;
-      case 'project':
-      case 'team':
-      case 'global':
-        // Additional validation logic can be added here
-        break;
-      default:
-        throw new ValidationError(`Invalid scope type: ${scope.type}`);
+        throw new RuvSwarmError('Invalid session authority for local scope');
+      }
+      break;
+    case 'project':
+    case 'team':
+    case 'global':
+      // Additional validation logic can be added here
+      break;
+    default:
+      throw new ValidationError(`Invalid scope type: ${scope.type}`);
     }
   }
 
@@ -284,14 +284,14 @@ class MemoryNamespaceManager {
     const key = crypto.scryptSync('ruv-swarm-secret', 'salt', 32);
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv(algorithm, key, iv);
-    
+
     let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
+
     return {
       encrypted,
       iv: iv.toString('hex'),
-      algorithm
+      algorithm,
     };
   }
 
@@ -302,10 +302,10 @@ class MemoryNamespaceManager {
     const key = crypto.scryptSync('ruv-swarm-secret', 'salt', 32);
     const iv = Buffer.from(encryptedData.iv, 'hex');
     const decipher = crypto.createDecipheriv(encryptedData.algorithm, key, iv);
-    
+
     let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return JSON.parse(decrypted);
   }
 }
@@ -326,7 +326,7 @@ class NeuralIsolationManager {
    */
   createScopedNetwork(scope, networkId, config) {
     this.validateScopeAccess(scope);
-    
+
     const scopedId = this.generateScopedNetworkId(scope, networkId);
     const network = {
       id: scopedId,
@@ -334,7 +334,7 @@ class NeuralIsolationManager {
       scope,
       patterns: new Map(),
       authority: this.sessionAuthority.authority,
-      created: Date.now()
+      created: Date.now(),
     };
 
     this.neuralModels.set(scopedId, network);
@@ -346,7 +346,7 @@ class NeuralIsolationManager {
    */
   getScopedNetwork(scope, networkId) {
     this.validateScopeAccess(scope);
-    
+
     const scopedId = this.generateScopedNetworkId(scope, networkId);
     return this.neuralModels.get(scopedId);
   }
@@ -372,7 +372,7 @@ class NeuralIsolationManager {
     this.patternRegistry.set(targetPatternId, {
       ...sourcePattern,
       sharedFrom: sourceScope,
-      sharedAt: Date.now()
+      sharedAt: Date.now(),
     });
 
     return targetPatternId;
@@ -383,16 +383,16 @@ class NeuralIsolationManager {
    */
   generateScopedNetworkId(scope, networkId) {
     switch (scope.type) {
-      case 'local':
-        return `local:${scope.boundaries.session}:neural:${networkId}`;
-      case 'project':
-        return `project:${scope.boundaries.project}:neural:${networkId}`;
-      case 'team':
-        return `team:${scope.boundaries.team}:neural:${networkId}`;
-      case 'global':
-        return `global:neural:${networkId}`;
-      default:
-        throw new ValidationError(`Invalid scope type: ${scope.type}`);
+    case 'local':
+      return `local:${scope.boundaries.session}:neural:${networkId}`;
+    case 'project':
+      return `project:${scope.boundaries.project}:neural:${networkId}`;
+    case 'team':
+      return `team:${scope.boundaries.team}:neural:${networkId}`;
+    case 'global':
+      return `global:neural:${networkId}`;
+    default:
+      throw new ValidationError(`Invalid scope type: ${scope.type}`);
     }
   }
 
@@ -409,17 +409,17 @@ class NeuralIsolationManager {
   validateScopeAccess(scope) {
     // Reuse logic from MemoryNamespaceManager
     switch (scope.type) {
-      case 'local':
-        if (scope.boundaries.session && 
+    case 'local':
+      if (scope.boundaries.session &&
             scope.boundaries.session !== this.sessionAuthority.sessionId) {
-          throw new RuvSwarmError('Invalid session authority for local scope');
-        }
-        break;
-      case 'project':
-      case 'team':
-      case 'global':
-        // Global, project and team scopes allow broader access
-        break;
+        throw new RuvSwarmError('Invalid session authority for local scope');
+      }
+      break;
+    case 'project':
+    case 'team':
+    case 'global':
+      // Global, project and team scopes allow broader access
+      break;
     }
   }
 
@@ -458,7 +458,7 @@ class CommunicationBoundaryManager {
    */
   createChannel(scope, channelId) {
     this.validateScopeAccess(scope);
-    
+
     const scopedChannelId = this.generateScopedChannelId(scope, channelId);
     const channel = {
       id: scopedChannelId,
@@ -466,7 +466,7 @@ class CommunicationBoundaryManager {
       participants: new Set(),
       messageHistory: [],
       authority: this.sessionAuthority.authority,
-      created: Date.now()
+      created: Date.now(),
     };
 
     this.communicationChannels.set(scopedChannelId, channel);
@@ -478,7 +478,7 @@ class CommunicationBoundaryManager {
    */
   sendMessage(scope, channelId, message, targetScope = null) {
     this.validateScopeAccess(scope);
-    
+
     const channel = this.getChannel(scope, channelId);
     if (!channel) {
       throw new RuvSwarmError(`Channel not found: ${channelId}`);
@@ -495,7 +495,7 @@ class CommunicationBoundaryManager {
       sender: scope,
       target: targetScope,
       timestamp: Date.now(),
-      authority: this.sessionAuthority.authority
+      authority: this.sessionAuthority.authority,
     };
 
     channel.messageHistory.push(messageData);
@@ -534,16 +534,16 @@ class CommunicationBoundaryManager {
    */
   generateScopedChannelId(scope, channelId) {
     switch (scope.type) {
-      case 'local':
-        return `local:${scope.boundaries.session}:comm:${channelId}`;
-      case 'project':
-        return `project:${scope.boundaries.project}:comm:${channelId}`;
-      case 'team':
-        return `team:${scope.boundaries.team}:comm:${channelId}`;
-      case 'global':
-        return `global:comm:${channelId}`;
-      default:
-        throw new ValidationError(`Invalid scope type: ${scope.type}`);
+    case 'local':
+      return `local:${scope.boundaries.session}:comm:${channelId}`;
+    case 'project':
+      return `project:${scope.boundaries.project}:comm:${channelId}`;
+    case 'team':
+      return `team:${scope.boundaries.team}:comm:${channelId}`;
+    case 'global':
+      return `global:comm:${channelId}`;
+    default:
+      throw new ValidationError(`Invalid scope type: ${scope.type}`);
     }
   }
 
@@ -560,17 +560,17 @@ class CommunicationBoundaryManager {
    */
   validateScopeAccess(scope) {
     switch (scope.type) {
-      case 'local':
-        if (scope.boundaries.session && 
+    case 'local':
+      if (scope.boundaries.session &&
             scope.boundaries.session !== this.sessionAuthority.sessionId) {
-          throw new RuvSwarmError('Invalid session authority for local scope');
-        }
-        break;
-      case 'project':
-      case 'team':
-      case 'global':
-        // Global, project and team scopes allow broader access
-        break;
+        throw new RuvSwarmError('Invalid session authority for local scope');
+      }
+      break;
+    case 'project':
+    case 'team':
+    case 'global':
+      // Global, project and team scopes allow broader access
+      break;
     }
   }
 }
@@ -585,7 +585,7 @@ export class ScopeManager {
     this.memoryManager = new MemoryNamespaceManager(this.sessionAuthority);
     this.neuralManager = new NeuralIsolationManager(this.sessionAuthority);
     this.communicationManager = new CommunicationBoundaryManager(this.sessionAuthority);
-    
+
     this.activeScopes = new Map();
     this.defaultScopeConfig = {
       type: 'local',
@@ -593,18 +593,18 @@ export class ScopeManager {
       authority: {
         sessionId: 'auto',
         central: true,
-        fallback: 'generate'
+        fallback: 'generate',
       },
       sharing: {
         memory: false,
         neural: false,
-        communication: false
+        communication: false,
       },
       boundaries: {},
       security: {
         encryption: true,
-        auditLog: true
-      }
+        auditLog: true,
+      },
     };
   }
 
@@ -614,14 +614,14 @@ export class ScopeManager {
   async initialize() {
     // Generate session ID
     this.sessionAuthority.generateSessionId();
-    
+
     // Detect or become central authority
     await this.sessionAuthority.detectCentralAuthority();
-    
+
     return {
       sessionId: this.sessionAuthority.sessionId,
       authority: this.sessionAuthority.authority,
-      centralAuthority: this.sessionAuthority.centralAuthority
+      centralAuthority: this.sessionAuthority.centralAuthority,
     };
   }
 
@@ -633,7 +633,7 @@ export class ScopeManager {
       ...this.defaultScopeConfig,
       ...config,
       id: crypto.randomUUID(),
-      created: Date.now()
+      created: Date.now(),
     };
 
     // Set session boundary for local scopes
@@ -708,15 +708,15 @@ export class ScopeManager {
       activeScopes: Array.from(this.activeScopes.values()),
       memory: {
         totalKeys: this.memoryManager.scopedMemory.size,
-        byScope: this.getMemoryStatsByScope()
+        byScope: this.getMemoryStatsByScope(),
       },
       neural: {
         totalNetworks: this.neuralManager.neuralModels.size,
-        totalPatterns: this.neuralManager.patternRegistry.size
+        totalPatterns: this.neuralManager.patternRegistry.size,
       },
       communication: {
-        totalChannels: this.communicationManager.communicationChannels.size
-      }
+        totalChannels: this.communicationManager.communicationChannels.size,
+      },
     };
   }
 
@@ -742,7 +742,7 @@ export class ScopeManager {
     return {
       sessionId: this.sessionAuthority.sessionId,
       scopes: Array.from(this.activeScopes.values()),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 

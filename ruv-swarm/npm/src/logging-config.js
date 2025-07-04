@@ -72,7 +72,7 @@ export class LoggingConfig {
     }
 
     const level = this.globalLevel || this.componentLevels[component] || 'INFO';
-    
+
     const logger = new Logger({
       name: component,
       level,
@@ -92,7 +92,7 @@ export class LoggingConfig {
    */
   setLogLevel(component, level) {
     this.componentLevels[component] = level.toUpperCase();
-    
+
     // Update existing logger if present
     if (this.loggers.has(component)) {
       const logger = this.loggers.get(component);
@@ -105,7 +105,7 @@ export class LoggingConfig {
    */
   setGlobalLogLevel(level) {
     this.globalLevel = level.toUpperCase();
-    
+
     // Update all existing loggers
     for (const logger of this.loggers.values()) {
       logger.level = logger.constructor.LOG_LEVELS[level.toUpperCase()];

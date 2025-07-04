@@ -43,13 +43,13 @@ export class MCPScopeTools {
       authority: {
         sessionId: 'auto',
         central: true,
-        fallback: 'generate'
+        fallback: 'generate',
       },
       sharing: {
         memory: false,
         neural: false,
-        communication: false
-      }
+        communication: false,
+      },
     };
 
     // Create scope
@@ -59,7 +59,7 @@ export class MCPScopeTools {
     const swarmParams = {
       ...params,
       scopeId: scope.id,
-      sessionId: this.scopeManager.sessionAuthority.sessionId
+      sessionId: this.scopeManager.sessionAuthority.sessionId,
     };
 
     // Call original swarm_init if available
@@ -70,10 +70,10 @@ export class MCPScopeTools {
       // Create minimal swarm result
       swarmResult = {
         id: `swarm-${Date.now()}`,
-        message: "Swarm initialized with scope support",
+        message: 'Swarm initialized with scope support',
         topology: params.topology || 'mesh',
         strategy: params.strategy || 'balanced',
-        maxAgents: params.maxAgents || 5
+        maxAgents: params.maxAgents || 5,
       };
     }
 
@@ -84,7 +84,7 @@ export class MCPScopeTools {
         type: scope.type,
         isolation: scope.isolation,
         sessionId: this.scopeManager.sessionAuthority.sessionId,
-        boundaries: scope.boundaries
+        boundaries: scope.boundaries,
       },
       features: {
         ...(swarmResult.features || {}),
@@ -92,8 +92,8 @@ export class MCPScopeTools {
         session_authority: true,
         neural_isolation: scope.sharing.neural === false,
         memory_namespacing: true,
-        communication_boundaries: scope.sharing.communication === false
-      }
+        communication_boundaries: scope.sharing.communication === false,
+      },
     };
   }
 
@@ -104,7 +104,7 @@ export class MCPScopeTools {
     await this.initialize();
 
     const { action, key, value, scope: scopeParams } = params;
-    
+
     // Get or create scope
     let scope;
     if (scopeParams && scopeParams.scopeId) {
@@ -113,7 +113,7 @@ export class MCPScopeTools {
       // Use default local scope
       scope = this.scopeManager.createScope({
         type: 'local',
-        isolation: 'strict'
+        isolation: 'strict',
       });
     }
 
@@ -122,53 +122,53 @@ export class MCPScopeTools {
     }
 
     switch (action) {
-      case 'store':
-        const scopedKey = await this.scopeManager.memoryManager.store(
-          scope, 
-          key, 
-          value, 
-          {
-            encrypted: scopeParams?.encryption || false,
-            persistence: scopeParams?.persistence || 'session'
-          }
-        );
-        return {
-          success: true,
-          key: scopedKey,
-          scope: scope.type,
-          sessionId: this.scopeManager.sessionAuthority.sessionId
-        };
+    case 'store':
+      const scopedKey = await this.scopeManager.memoryManager.store(
+        scope,
+        key,
+        value,
+        {
+          encrypted: scopeParams?.encryption || false,
+          persistence: scopeParams?.persistence || 'session',
+        },
+      );
+      return {
+        success: true,
+        key: scopedKey,
+        scope: scope.type,
+        sessionId: this.scopeManager.sessionAuthority.sessionId,
+      };
 
-      case 'retrieve':
-        const retrievedValue = await this.scopeManager.memoryManager.retrieve(scope, key);
-        return {
-          success: true,
-          value: retrievedValue,
-          scope: scope.type,
-          sessionId: this.scopeManager.sessionAuthority.sessionId
-        };
+    case 'retrieve':
+      const retrievedValue = await this.scopeManager.memoryManager.retrieve(scope, key);
+      return {
+        success: true,
+        value: retrievedValue,
+        scope: scope.type,
+        sessionId: this.scopeManager.sessionAuthority.sessionId,
+      };
 
-      case 'list':
-        const keys = this.scopeManager.memoryManager.listKeys(scope, params.pattern);
-        return {
-          success: true,
-          keys,
-          scope: scope.type,
-          sessionId: this.scopeManager.sessionAuthority.sessionId
-        };
+    case 'list':
+      const keys = this.scopeManager.memoryManager.listKeys(scope, params.pattern);
+      return {
+        success: true,
+        keys,
+        scope: scope.type,
+        sessionId: this.scopeManager.sessionAuthority.sessionId,
+      };
 
-      case 'delete':
-        // Implement delete logic
-        const scopedDeleteKey = this.scopeManager.memoryManager.generateScopedKey(scope, key);
-        this.scopeManager.memoryManager.scopedMemory.delete(scopedDeleteKey);
-        return {
-          success: true,
-          deleted: key,
-          scope: scope.type
-        };
+    case 'delete':
+      // Implement delete logic
+      const scopedDeleteKey = this.scopeManager.memoryManager.generateScopedKey(scope, key);
+      this.scopeManager.memoryManager.scopedMemory.delete(scopedDeleteKey);
+      return {
+        success: true,
+        deleted: key,
+        scope: scope.type,
+      };
 
-      default:
-        throw new ValidationError(`Invalid memory action: ${action}`);
+    default:
+      throw new ValidationError(`Invalid memory action: ${action}`);
     }
   }
 
@@ -186,7 +186,7 @@ export class MCPScopeTools {
       scope = this.scopeManager.getScope(scopeParams.scopeId);
     } else {
       scope = this.scopeManager.createScope({
-        type: scopeParams?.isolation || 'local'
+        type: scopeParams?.isolation || 'local',
       });
     }
 
@@ -199,8 +199,8 @@ export class MCPScopeTools {
         pattern,
         isolation: scopeParams?.isolation || 'local',
         sharing: scopeParams?.sharing || 'opt-in',
-        inheritance: scopeParams?.inheritance || false
-      }
+        inheritance: scopeParams?.inheritance || false,
+      },
     );
 
     return {
@@ -210,7 +210,7 @@ export class MCPScopeTools {
       scope: scope.type,
       isolation: scopeParams?.isolation || 'local',
       sessionId: this.scopeManager.sessionAuthority.sessionId,
-      message: `Neural network trained in ${scope.type} scope`
+      message: `Neural network trained in ${scope.type} scope`,
     };
   }
 
@@ -228,7 +228,7 @@ export class MCPScopeTools {
       scope = this.scopeManager.getScope(scopeParams.scopeId);
     } else {
       scope = this.scopeManager.createScope({
-        type: scopeParams?.type || 'local'
+        type: scopeParams?.type || 'local',
       });
     }
 
@@ -237,7 +237,7 @@ export class MCPScopeTools {
     if (this.ruvSwarm && this.ruvSwarm.tools && this.ruvSwarm.tools.agent_spawn) {
       agentResult = await this.ruvSwarm.tools.agent_spawn({
         ...params,
-        scopeId: scope.id
+        scopeId: scope.id,
       });
     } else {
       agentResult = {
@@ -246,8 +246,8 @@ export class MCPScopeTools {
           name: name || `${type}-agent`,
           type,
           capabilities: capabilities || [],
-          status: 'idle'
-        }
+          status: 'idle',
+        },
       };
     }
 
@@ -258,8 +258,8 @@ export class MCPScopeTools {
       {
         type: 'agent-neural',
         agentType: type,
-        capabilities: capabilities || []
-      }
+        capabilities: capabilities || [],
+      },
     );
 
     return {
@@ -270,11 +270,11 @@ export class MCPScopeTools {
         scope: {
           id: scope.id,
           type: scope.type,
-          sessionId: this.scopeManager.sessionAuthority.sessionId
-        }
+          sessionId: this.scopeManager.sessionAuthority.sessionId,
+        },
       },
       scope_isolation: true,
-      message: `${type} agent spawned in ${scope.type} scope`
+      message: `${type} agent spawned in ${scope.type} scope`,
     };
   }
 
@@ -298,7 +298,7 @@ export class MCPScopeTools {
       scopeId: scope.id,
       configuration: scope,
       sessionId: this.scopeManager.sessionAuthority.sessionId,
-      message: `Scope configured: ${scope.type} with ${scope.isolation} isolation`
+      message: `Scope configured: ${scope.type} with ${scope.isolation} isolation`,
     };
   }
 
@@ -319,13 +319,13 @@ export class MCPScopeTools {
       return {
         scope,
         status: 'active',
-        sessionId: this.scopeManager.sessionAuthority.sessionId
+        sessionId: this.scopeManager.sessionAuthority.sessionId,
       };
     }
 
     // Return system status
     const status = this.scopeManager.getStatus();
-    
+
     if (detailed) {
       return status;
     }
@@ -339,7 +339,7 @@ export class MCPScopeTools {
       }, {}),
       memory: status.memory,
       neural: status.neural,
-      communication: status.communication
+      communication: status.communication,
     };
   }
 
@@ -349,12 +349,12 @@ export class MCPScopeTools {
   async scope_share_knowledge(params) {
     await this.initialize();
 
-    const { 
-      sourceScope: sourceScopeId, 
-      targetScope: targetScopeId, 
-      knowledgeType, 
-      data, 
-      explicit = true 
+    const {
+      sourceScope: sourceScopeId,
+      targetScope: targetScopeId,
+      knowledgeType,
+      data,
+      explicit = true,
     } = params;
 
     const sourceScope = this.scopeManager.getScope(sourceScopeId);
@@ -365,30 +365,30 @@ export class MCPScopeTools {
     }
 
     switch (knowledgeType) {
-      case 'neural-pattern':
-        const sharedPatternId = this.scopeManager.neuralManager.sharePattern(
-          sourceScope,
-          targetScope,
-          data.patternId,
-          { explicit }
-        );
-        return {
-          success: true,
-          sharedPatternId,
-          message: 'Neural pattern shared successfully'
-        };
+    case 'neural-pattern':
+      const sharedPatternId = this.scopeManager.neuralManager.sharePattern(
+        sourceScope,
+        targetScope,
+        data.patternId,
+        { explicit },
+      );
+      return {
+        success: true,
+        sharedPatternId,
+        message: 'Neural pattern shared successfully',
+      };
 
-      case 'memory':
-        // Share memory data between scopes
-        const sourceValue = await this.scopeManager.memoryManager.retrieve(sourceScope, data.key);
-        await this.scopeManager.memoryManager.store(targetScope, data.key, sourceValue);
-        return {
-          success: true,
-          message: 'Memory data shared successfully'
-        };
+    case 'memory':
+      // Share memory data between scopes
+      const sourceValue = await this.scopeManager.memoryManager.retrieve(sourceScope, data.key);
+      await this.scopeManager.memoryManager.store(targetScope, data.key, sourceValue);
+      return {
+        success: true,
+        message: 'Memory data shared successfully',
+      };
 
-      default:
-        throw new ValidationError(`Invalid knowledge type: ${knowledgeType}`);
+    default:
+      throw new ValidationError(`Invalid knowledge type: ${knowledgeType}`);
     }
   }
 
@@ -407,7 +407,7 @@ export class MCPScopeTools {
       }
 
       const exportData = { scope };
-      
+
       if (includeData) {
         // Include memory data, neural patterns, etc.
         exportData.memory = this.scopeManager.memoryManager.listKeys(scope);
@@ -439,7 +439,7 @@ export class MCPScopeTools {
       success: true,
       imported: config.scopes?.length || 0,
       sessionId: this.scopeManager.sessionAuthority.sessionId,
-      message: 'Scope configuration imported successfully'
+      message: 'Scope configuration imported successfully',
     };
   }
 
@@ -455,7 +455,7 @@ export class MCPScopeTools {
       const deleted = this.scopeManager.deleteScope(scopeId);
       return {
         success: deleted,
-        message: `Scope ${scopeId} cleaned up`
+        message: `Scope ${scopeId} cleaned up`,
       };
     }
 
@@ -471,7 +471,7 @@ export class MCPScopeTools {
     return {
       success: true,
       cleaned: cleanedCount,
-      message: `Cleaned up ${cleanedCount} scopes`
+      message: `Cleaned up ${cleanedCount} scopes`,
     };
   }
 
@@ -485,7 +485,7 @@ export class MCPScopeTools {
       memory_usage: this.memory_usage.bind(this),
       neural_train: this.neural_train.bind(this),
       agent_spawn: this.agent_spawn.bind(this),
-      
+
       // New scope-specific tools
       scope_configure: this.scope_configure.bind(this),
       scope_status: this.scope_status.bind(this),

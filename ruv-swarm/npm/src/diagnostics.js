@@ -83,7 +83,7 @@ export class ConnectionDiagnostics {
    */
   analyzePatterns() {
     const failures = this.connectionHistory.filter(e => e.event === 'failed');
-    
+
     // Group failures by error type
     const errorTypes = failures.reduce((acc, failure) => {
       const error = failure.details.error?.message || 'Unknown';
@@ -135,9 +135,9 @@ export class ConnectionDiagnostics {
       recommendations: this.generateRecommendations(summary, patterns),
     };
 
-    this.logger.info('Diagnostic report generated', { 
+    this.logger.info('Diagnostic report generated', {
       failureRate: summary.failureRate,
-      activeConnections: summary.activeConnections 
+      activeConnections: summary.activeConnections,
     });
 
     return report;
@@ -216,7 +216,9 @@ export class PerformanceDiagnostics {
    */
   endOperation(id, success = true) {
     const operation = this.operations.get(id);
-    if (!operation) return null;
+    if (!operation) {
+      return null;
+    }
 
     const endTime = performance.now();
     const duration = endTime - operation.startTime;
@@ -252,10 +254,10 @@ export class PerformanceDiagnostics {
    */
   getSlowOperations(limit = 10) {
     const completed = [];
-    
+
     // Get completed operations from logger's performance tracker
     // This would need to be implemented to store historical data
-    
+
     return completed
       .filter(op => op.aboveThreshold)
       .sort((a, b) => b.duration - a.duration)
@@ -303,7 +305,7 @@ export class SystemDiagnostics {
 
     this.monitorInterval = setInterval(() => {
       const sample = this.collectSample();
-      
+
       // Check for anomalies
       if (sample.memory.heapUsed > 500 * 1024 * 1024) { // 500MB
         this.logger.warn('High memory usage detected', {
@@ -342,7 +344,7 @@ export class SystemDiagnostics {
 
     const latest = this.samples[this.samples.length - 1];
     const avgMemory = this.samples.reduce((sum, s) => sum + s.memory.heapUsed, 0) / this.samples.length;
-    
+
     let status = 'healthy';
     const issues = [];
 
@@ -467,7 +469,7 @@ export class DiagnosticsManager {
       const start = process.memoryUsage().heapUsed;
       const testArray = new Array(1000000).fill(0);
       const end = process.memoryUsage().heapUsed;
-      
+
       return {
         name: 'Memory Allocation',
         success: true,
@@ -488,7 +490,7 @@ export class DiagnosticsManager {
       fs.mkdirSync(path.dirname(testPath), { recursive: true });
       fs.writeFileSync(testPath, 'test');
       fs.unlinkSync(testPath);
-      
+
       return {
         name: 'File System Access',
         success: true,
@@ -508,7 +510,7 @@ export class DiagnosticsManager {
       // Test if WASM module can be loaded
       const wasmPath = path.join(process.cwd(), 'wasm', 'ruv_swarm_wasm_bg.wasm');
       const exists = fs.existsSync(wasmPath);
-      
+
       return {
         name: 'WASM Module Check',
         success: exists,

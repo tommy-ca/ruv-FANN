@@ -186,7 +186,7 @@ async function runTestSuite(suite, report) {
         if (line.includes('Failed:') || line.includes('Passed:') || line.includes('Total:')) {
           continue;
         }
-        
+
         // Count actual test assertions
         if (line.match(/^\s*✅\s+\w/) || line.match(/^\s*✓\s+\w/)) {
           suiteResult.passedTests++;
@@ -215,7 +215,7 @@ async function runTestSuite(suite, report) {
       if (suite.environmentIssues && code !== 0) {
         suiteResult.passed = false;
         suiteResult.environmentIssue = true;
-        suiteResult.reason = 'Environment issue: ' + suite.environmentIssues.join(', ');
+        suiteResult.reason = `Environment issue: ${ suite.environmentIssues.join(', ')}`;
       } else {
         // A suite passes if:
         // 1. Exit code is 0 (test file exited successfully) AND
