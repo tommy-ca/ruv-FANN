@@ -7,6 +7,7 @@ import { TaskDefinition, AgentState, TaskResult } from './types.js';
 import { Logger } from '../core/logger.js';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
+import { getClaudeFlowBin } from '../utils/paths.js';
 
 export interface ClaudeFlowExecutorConfig {
   logger?: Logger;
@@ -28,7 +29,7 @@ export class ClaudeFlowExecutor {
       { level: 'info', format: 'text', destination: 'console' },
       { component: 'ClaudeFlowExecutor' }
     );
-    this.claudeFlowPath = config.claudeFlowPath || '/workspaces/claude-code-flow/bin/claude-flow';
+    this.claudeFlowPath = config.claudeFlowPath || getClaudeFlowBin();
     this.enableSparc = config.enableSparc ?? true;
     this.verbose = config.verbose ?? false;
     this.timeoutMinutes = config.timeoutMinutes ?? 59;

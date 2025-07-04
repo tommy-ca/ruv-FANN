@@ -13,6 +13,7 @@ import {
   SWARM_CONSTANTS
 } from './types.js';
 import { AutoStrategy } from './strategies/auto.js';
+import { getClaudeFlowRoot, getClaudeFlowBin } from '../utils/paths.js';
 
 export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter {
   private logger: Logger;
@@ -1527,7 +1528,7 @@ export class SwarmCoordinator extends EventEmitter implements SwarmEventEmitter 
     // Extract target directory from objective
     const targetDirMatch = objective.description.match(/(?:in|to|at)\s+([^\s]+\/[^\s]+)|([^\s]+\/[^\s]+)$/);
     const targetDir = targetDirMatch ? targetDirMatch[1] || targetDirMatch[2] : null;
-    const targetPath = targetDir ? (targetDir.startsWith('/') ? targetDir : `/workspaces/claude-code-flow/${targetDir}`) : null;
+    const targetPath = targetDir ? (targetDir.startsWith('/') ? targetDir : `${getClaudeFlowRoot()}/${targetDir}`) : null;
     
     // Check if objective requests "each agent" or "each agent type" for parallel execution
     const eachAgentPattern = /\beach\s+agent(?:\s+type)?\b/i;
@@ -2167,7 +2168,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
       const { ClaudeFlowExecutor } = await import('./claude-flow-executor.ts');
       const executor = new ClaudeFlowExecutor({ 
         logger: this.logger,
-        claudeFlowPath: '/workspaces/claude-code-flow/bin/claude-flow',
+        claudeFlowPath: getClaudeFlowBin(),
         enableSparc: true,
         verbose: this.config.logging?.level === 'debug',
         timeoutMinutes: this.config.taskTimeoutMinutes
@@ -2270,7 +2271,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
       targetDir = targetDir.replace(/\s+.*$/, '');
       // Resolve relative to current directory
       if (!targetDir.startsWith('/')) {
-        targetDir = `/workspaces/claude-code-flow/${targetDir}`;
+        targetDir = `${getClaudeFlowRoot()}/${targetDir}`;
       }
     }
     
@@ -2463,7 +2464,7 @@ Ensure your implementation is complete, well-structured, and follows best practi
       // Clean up the target directory (remove trailing words if needed)
       targetDir = targetDir.replace(/\s+.*$/, '');
       // Use absolute path or resolve relative to current directory
-      workDir = targetDir.startsWith('/') ? targetDir : `/workspaces/claude-code-flow/${targetDir}`;
+      workDir = targetDir.startsWith('/') ? targetDir : `${getClaudeFlowRoot()}/${targetDir}`;
       
       this.logger.debug('Extracted target directory', { 
         original: task.description,
