@@ -8,10 +8,10 @@
 
 import { configManager, ConfigManager } from './config-manager.js';
 import { getRuvSwarmConfigManager, RuvSwarmConfigManager } from './ruv-swarm-config.js';
-import { createLogger } from '../core/logger.js';
+// import { createLogger } from '../core/logger.js';
 
 // Create logger for integration
-const logger = createLogger('ruv-swarm-integration');
+// const logger = createLogger('ruv-swarm-integration');
 
 /**
  * Integration manager that synchronizes configurations
@@ -56,7 +56,7 @@ export class RuvSwarmIntegration {
       });
     }
 
-    logger.debug('Configuration synchronized between main and ruv-swarm configs');
+    // logger.debug('Configuration synchronized between main and ruv-swarm configs');
   }
 
   /**
@@ -116,7 +116,7 @@ export class RuvSwarmIntegration {
         };
       }
 
-      logger.info('ruv-swarm integration initialized successfully');
+      // logger.info('ruv-swarm integration initialized successfully');
       
       return {
         success: true,
@@ -125,7 +125,7 @@ export class RuvSwarmIntegration {
 
     } catch (error) {
       const message = `Failed to initialize ruv-swarm integration: ${(error as Error).message}`;
-      logger.error(message, { error });
+      // logger.error(message, { error });
       
       return {
         success: false,
@@ -262,7 +262,7 @@ export class RuvSwarmConfigHelpers {
       }
     });
 
-    logger.info('Development configuration applied');
+    // logger.info('Development configuration applied');
   }
 
   /**
@@ -284,7 +284,7 @@ export class RuvSwarmConfigHelpers {
       }
     });
 
-    logger.info('Research configuration applied');
+    // logger.info('Research configuration applied');
   }
 
   /**
@@ -306,7 +306,7 @@ export class RuvSwarmConfigHelpers {
       }
     });
 
-    logger.info('Production configuration applied');
+    // logger.info('Production configuration applied');
   }
 
   /**
