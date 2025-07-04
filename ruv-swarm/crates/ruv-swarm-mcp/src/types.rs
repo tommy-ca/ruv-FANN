@@ -15,13 +15,25 @@ pub enum AgentType {
 }
 
 /// Agent capabilities for MCP
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCapabilities {
     pub languages: Vec<String>,
     pub frameworks: Vec<String>,
     pub tools: Vec<String>,
     pub specializations: Vec<String>,
     pub max_concurrent_tasks: usize,
+}
+
+impl Default for AgentCapabilities {
+    fn default() -> Self {
+        Self {
+            languages: vec!["rust".to_string(), "python".to_string(), "javascript".to_string()],
+            frameworks: vec!["tokio".to_string(), "actix".to_string()],
+            tools: vec!["cargo".to_string(), "rustc".to_string()],
+            specializations: vec!["general".to_string()],
+            max_concurrent_tasks: 5,
+        }
+    }
 }
 
 /// Task priority

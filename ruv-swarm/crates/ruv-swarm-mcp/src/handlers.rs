@@ -316,7 +316,45 @@ impl RequestHandler {
             .map(|s| s.to_string());
 
         let capabilities = if let Some(cap_value) = params.get("capabilities") {
-            serde_json::from_value(cap_value.clone())?
+            // Try to deserialize, but if it fails or is missing fields, use defaults
+            match serde_json::from_value::<AgentCapabilities>(cap_value.clone()) {
+                Ok(caps) => caps,
+                Err(e) => {
+                    // Log the error but use defaults
+                    debug!("Failed to parse capabilities, using defaults: {}", e);
+                    
+                    // Try to extract partial capabilities
+                    let mut caps = AgentCapabilities::default();
+                    
+                    if let Some(obj) = cap_value.as_object() {
+                        if let Some(langs) = obj.get("languages").and_then(|v| v.as_array()) {
+                            caps.languages = langs.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect();
+                        }
+                        if let Some(frameworks) = obj.get("frameworks").and_then(|v| v.as_array()) {
+                            caps.frameworks = frameworks.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect();
+                        }
+                        if let Some(tools) = obj.get("tools").and_then(|v| v.as_array()) {
+                            caps.tools = tools.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect();
+                        }
+                        if let Some(specs) = obj.get("specializations").and_then(|v| v.as_array()) {
+                            caps.specializations = specs.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect();
+                        }
+                        if let Some(max_tasks) = obj.get("max_concurrent_tasks").and_then(|v| v.as_u64()) {
+                            caps.max_concurrent_tasks = max_tasks as usize;
+                        }
+                    }
+                    
+                    caps
+                }
+            }
         } else {
             AgentCapabilities::default()
         };

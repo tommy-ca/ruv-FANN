@@ -440,9 +440,42 @@ class EnhancedMCPTools {
       const {
         type,
         name,
-        capabilities,
+        capabilities: rawCapabilities,
         swarmId,
       } = validatedParams;
+      
+      // Convert capabilities to proper format if needed
+      let capabilities = rawCapabilities;
+      if (Array.isArray(rawCapabilities)) {
+        // If capabilities is an array of strings, convert to proper AgentCapabilities format
+        capabilities = {
+          languages: ['javascript', 'python', 'rust'], // Default languages
+          frameworks: rawCapabilities.filter(cap => cap.includes('framework')),
+          tools: rawCapabilities.filter(cap => cap.includes('tool')),
+          specializations: rawCapabilities.filter(cap => 
+            !cap.includes('framework') && !cap.includes('tool')
+          ),
+          max_concurrent_tasks: 5
+        };
+      } else if (!rawCapabilities) {
+        // If no capabilities provided, use defaults
+        capabilities = {
+          languages: ['javascript', 'python', 'rust'],
+          frameworks: [],
+          tools: [],
+          specializations: [],
+          max_concurrent_tasks: 5
+        };
+      } else if (typeof rawCapabilities === 'object') {
+        // Ensure all required fields are present
+        capabilities = {
+          languages: rawCapabilities.languages || ['javascript', 'python', 'rust'],
+          frameworks: rawCapabilities.frameworks || [],
+          tools: rawCapabilities.tools || [],
+          specializations: rawCapabilities.specializations || [],
+          max_concurrent_tasks: rawCapabilities.max_concurrent_tasks || 5
+        };
+      }
 
       // Auto-select swarm if not specified
       const swarm = swarmId ?
