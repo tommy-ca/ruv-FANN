@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-07-04T17:53:17.584Z",
+  "timestamp": "2025-07-04T22:00:00.748Z",
   "securityTests": [
     {
       "category": "Input Validation",
@@ -66,14 +66,14 @@
         }
       ],
       "passed": false,
-      "startTime": 1751651597588,
-      "duration": 163
+      "startTime": 1751666400749,
+      "duration": 101
     },
     {
       "category": "SQL Injection Prevention",
       "tests": [],
       "passed": false,
-      "startTime": 1751651597752,
+      "startTime": 1751666400850,
       "error": "persistence.initialize is not a function",
       "duration": 1
     },
@@ -92,15 +92,15 @@
         }
       ],
       "passed": true,
-      "startTime": 1751651599991,
-      "duration": 12
+      "startTime": 1751666403075,
+      "duration": 11
     },
     {
       "category": "Network Security",
       "tests": [
         {
           "name": "WebSocket Security",
-          "passed": false,
+          "passed": true,
           "details": [
             {
               "check": "Rate limiting protection",
@@ -112,7 +112,7 @@
             },
             {
               "check": "Connection authentication",
-              "passed": false
+              "passed": true
             },
             {
               "check": "Message encryption readiness",
@@ -121,8 +121,8 @@
           ]
         }
       ],
-      "passed": false,
-      "startTime": 1751651600004,
+      "passed": true,
+      "startTime": 1751666403086,
       "duration": 0
     },
     {
@@ -158,8 +158,8 @@
         }
       ],
       "passed": true,
-      "startTime": 1751651600004,
-      "duration": 12
+      "startTime": 1751666403086,
+      "duration": 10
     },
     {
       "category": "Access Control",
@@ -178,8 +178,8 @@
         }
       ],
       "passed": false,
-      "startTime": 1751651600017,
-      "duration": 28
+      "startTime": 1751666403096,
+      "duration": 21
     },
     {
       "category": "Cryptographic Security",
@@ -201,8 +201,8 @@
         }
       ],
       "passed": true,
-      "startTime": 1751651600045,
-      "duration": 2
+      "startTime": 1751666403118,
+      "duration": 1
     },
     {
       "category": "Buffer Overflow Protection",
@@ -210,7 +210,7 @@
         {
           "name": "Large String Input",
           "inputSize": 100000,
-          "executionTime": 0,
+          "executionTime": 1,
           "passed": true,
           "protected": true
         },
@@ -230,8 +230,8 @@
         }
       ],
       "passed": true,
-      "startTime": 1751651601878,
-      "duration": 22
+      "startTime": 1751666404805,
+      "duration": 26
     }
   ],
   "vulnerabilities": [],
@@ -241,24 +241,24 @@
       "tests": [
         {
           "name": "Memory Growth Test",
-          "initialMemory": 9083416,
-          "peakMemory": 9156920,
-          "growth": 73504,
+          "initialMemory": 11053920,
+          "peakMemory": 11122912,
+          "growth": 68992,
           "passed": true
         },
         {
           "name": "Garbage Collection Test",
-          "initialMemory": 9161024,
-          "peakMemory": 15668400,
-          "finalMemory": 15683064,
-          "recovered": -14664,
-          "passed": false
+          "initialMemory": 11127128,
+          "peakMemory": 17155832,
+          "finalMemory": 8937600,
+          "recovered": 8218232,
+          "passed": true
         },
         {
           "name": "Circular Reference Test",
-          "initialMemory": 15688744,
-          "peakMemory": 15929536,
-          "finalMemory": 15931616,
+          "initialMemory": 8942680,
+          "peakMemory": 9188624,
+          "finalMemory": 9190616,
           "passed": true
         },
         {
@@ -267,17 +267,17 @@
           "passed": true
         }
       ],
-      "passed": false,
-      "startTime": 1751651597754,
-      "duration": 2236
+      "passed": true,
+      "startTime": 1751666400852,
+      "duration": 2223
     },
     {
       "category": "Memory Leak Detection",
       "iterations": 100,
-      "memoryGrowth": 2154776,
+      "memoryGrowth": 2017616,
       "passed": true,
-      "startTime": 1751651600047,
-      "duration": 1831
+      "startTime": 1751666403120,
+      "duration": 1684
     }
   ],
   "recommendations": [
@@ -292,7 +292,7 @@
     "Regular dependency vulnerability scanning"
   ],
   "overallSecurity": {
-    "score": 0,
+    "score": 15,
     "level": "CRITICAL",
     "riskAssessment": []
   }
