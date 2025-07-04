@@ -769,9 +769,14 @@ class LoadTestingSuite extends EventEmitter {
       },
     };
 
-    // Save detailed report
+    // Ensure reports directory exists
+    await fs.mkdir(path.join(__dirname, 'reports'), { recursive: true });
+    
+    // Save detailed report to both locations for CI/CD compatibility
     const reportPath = path.join(__dirname, 'reports', 'load-test-report.json');
+    const ciReportPath = path.join(__dirname, 'load-test-report.json');
     await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+    await fs.writeFile(ciReportPath, JSON.stringify(report, null, 2));
 
     // Console summary
     console.log('\n🎯 LOAD TEST SUMMARY');

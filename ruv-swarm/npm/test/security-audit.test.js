@@ -1030,9 +1030,14 @@ class SecurityAuditor {
     // Generate recommendations
     this.generateSecurityRecommendations();
 
-    // Save report
+    // Ensure reports directory exists
+    await fs.mkdir(path.join(__dirname, 'reports'), { recursive: true });
+    
+    // Save report to both locations for CI/CD compatibility
     const reportPath = path.join(__dirname, 'reports', 'security-audit-report.json');
+    const ciReportPath = path.join(__dirname, 'security-audit-report.json');
     await fs.writeFile(reportPath, JSON.stringify(this.auditResults, null, 2));
+    await fs.writeFile(ciReportPath, JSON.stringify(this.auditResults, null, 2));
 
     // Console summary
     console.log('\n🔒 SECURITY AUDIT SUMMARY');

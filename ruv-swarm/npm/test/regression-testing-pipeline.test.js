@@ -313,7 +313,7 @@ class RegressionTestingPipeline {
 
       // Load performance results
       try {
-        const resultsFile = '/workspaces/ruv-FANN/ruv-swarm/npm/test/validation-report.json';
+        const resultsFile = path.join(__dirname, 'reports', 'validation-report.json');
         const results = JSON.parse(await fs.readFile(resultsFile, 'utf8'));
 
         perfResult.data = {
@@ -362,7 +362,7 @@ class RegressionTestingPipeline {
 
       // Load test results
       try {
-        const resultsFile = '/workspaces/ruv-FANN/ruv-swarm/npm/test/load-test-report.json';
+        const resultsFile = path.join(__dirname, 'reports', 'load-test-report.json');
         const results = JSON.parse(await fs.readFile(resultsFile, 'utf8'));
 
         loadResult.data = {
@@ -410,7 +410,7 @@ class RegressionTestingPipeline {
 
       // Load security results
       try {
-        const resultsFile = '/workspaces/ruv-FANN/ruv-swarm/npm/test/security-audit-report.json';
+        const resultsFile = path.join(__dirname, 'reports', 'security-audit-report.json');
         const results = JSON.parse(await fs.readFile(resultsFile, 'utf8'));
 
         securityResult.data = {

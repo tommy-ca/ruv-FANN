@@ -235,7 +235,7 @@ jobs:
       
       - name: Test WASM compatibility
         working-directory: ruv-swarm/npm
-        run: node -e "const { RuvSwarm } = require('./src/index-enhanced'); RuvSwarm.initialize().then(rs => rs.detectSIMDSupport()).then(console.log)"
+        run: node --input-type=module -e "import { RuvSwarm } from './src/index-enhanced.js'; RuvSwarm.initialize().then(rs => rs.detectSIMDSupport()).then(console.log).catch(err => { console.error(err); process.exit(1); })"
 
   regression-analysis:
     needs: [unit-tests, performance-tests, load-testing, security-audit]
