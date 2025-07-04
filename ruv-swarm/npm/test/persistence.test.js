@@ -4,8 +4,7 @@
  */
 
 import assert from 'assert';
-import sqlite3 from 'sqlite3';
-const sqlite3Verbose = sqlite3.verbose();
+import Database from 'better-sqlite3';
 import path from 'path';
 import { promises as fs } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,31 +25,18 @@ class SwarmPersistence {
   }
 
   async connect() {
-    return new Promise((resolve, reject) => {
-      this.db = new sqlite3Verbose.Database(this.dbPath, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+    try {
+      this.db = new Database(this.dbPath);
+      this.db.pragma('journal_mode = WAL');
+    } catch (err) {
+      throw err;
+    }
   }
 
   async close() {
-    return new Promise((resolve, reject) => {
-      if (this.db) {
-        this.db.close((err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      } else {
-        resolve();
-      }
-    });
+    if (this.db) {
+      this.db.close();
+    }
   }
 
   async initSchema() {
@@ -136,15 +122,11 @@ class SwarmPersistence {
             CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
         `;
 
-    return new Promise((resolve, reject) => {
-      this.db.exec(schema, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+    try {
+      this.db.exec(schema);
+    } catch (err) {
+      throw err;
+    }
   }
 
   // Agent operations
@@ -307,40 +289,32 @@ class SwarmPersistence {
   }
 
   // Helper methods
-  run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, params, function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ lastID: this.lastID, changes: this.changes });
-        }
-      });
-    });
+  async run(sql, params = []) {
+    try {
+      const stmt = this.db.prepare(sql);
+      const result = stmt.run(...params);
+      return { lastID: result.lastInsertRowid, changes: result.changes };
+    } catch (err) {
+      throw err;
+    }
   }
 
-  get(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.get(sql, params, (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row);
-        }
-      });
-    });
+  async get(sql, params = []) {
+    try {
+      const stmt = this.db.prepare(sql);
+      return stmt.get(...params);
+    } catch (err) {
+      throw err;
+    }
   }
 
-  all(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.all(sql, params, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+  async all(sql, params = []) {
+    try {
+      const stmt = this.db.prepare(sql);
+      return stmt.all(...params);
+    } catch (err) {
+      throw err;
+    }
   }
 }
 

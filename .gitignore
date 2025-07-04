@@ -24,3 +24,13 @@ polyglot-benchmark/
 
 # Ignore temporary files and development artifacts
 ignore/
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+data/ruv-swarm.db*
+
+# Test artifacts
+test-report-*.json
+.jest-cache/
