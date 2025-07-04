@@ -1,60 +1,60 @@
 {
-  "timestamp": "2025-07-04T21:59:14.510Z",
+  "timestamp": "2025-07-04T22:21:48.083Z",
   "tests": [
     {
       "test": "SIMD Performance",
       "target": "6-10x improvement",
-      "startTime": 1751666354573,
+      "startTime": 1751667708142,
       "passed": false,
       "metrics": {
-        "noSIMDTime": 21,
+        "noSIMDTime": 19,
         "simdTime": 20,
-        "improvement": "1.05x"
+        "improvement": "0.95x"
       },
-      "duration": 41
+      "duration": 39
     },
     {
       "test": "Speed Optimizations",
       "target": "2.8-4.4x improvement",
-      "startTime": 1751666354614,
+      "startTime": 1751667708182,
       "passed": false,
       "metrics": {
-        "baselineTime": 8,
-        "optimizedTime": 27,
-        "speedup": "0.30x"
+        "baselineTime": 7,
+        "optimizedTime": 29,
+        "speedup": "0.24x"
       },
       "duration": 36
     },
     {
       "test": "Load Testing",
       "target": "50+ concurrent agents",
-      "startTime": 1751666354651,
+      "startTime": 1751667708218,
       "passed": true,
       "metrics": {
         "agentsSpawned": 55,
-        "executionTime": 224,
-        "memoryUsage": "8.8MB",
+        "executionTime": 223,
+        "memoryUsage": "8.7MB",
         "avgTimePerAgent": "4.1ms"
       },
-      "duration": 228
+      "duration": 226
     },
     {
       "test": "Memory Efficiency",
       "target": "<500MB @ 50 agents",
-      "startTime": 1751666354880,
+      "startTime": 1751667708444,
       "passed": true,
       "metrics": {
-        "initialMemory": "8.9MB",
-        "peakMemory": "9.0MB",
+        "initialMemory": "8.8MB",
+        "peakMemory": "8.9MB",
         "memoryIncrease": "0.2MB",
         "memoryPerAgent": "0.0MB"
       },
-      "duration": 214
+      "duration": 206
     },
     {
       "test": "DAA Integration",
       "target": "seamless integration",
-      "startTime": 1751666355094,
+      "startTime": 1751667708650,
       "passed": true,
       "metrics": {
         "daaRepositoryExists": true,
@@ -67,12 +67,12 @@
           "WASM bindings"
         ]
       },
-      "duration": 23
+      "duration": 32
     },
     {
       "test": "Cross-Platform Compatibility",
       "target": "Linux, macOS, Windows support",
-      "startTime": 1751666355118,
+      "startTime": 1751667708683,
       "passed": false,
       "metrics": {
         "platform": "linux",
@@ -82,18 +82,18 @@
         "sqliteCompatible": false,
         "nodeCompatible": true
       },
-      "duration": 2
+      "duration": 1
     }
   ],
   "performance": {
     "simd": {
       "target": "6-10x",
-      "actual": "1.05x",
+      "actual": "0.95x",
       "passed": false
     },
     "speed": {
       "target": "2.8-4.4x",
-      "actual": "0.30x",
+      "actual": "0.24x",
       "passed": false
     },
     "loadTesting": {
@@ -103,7 +103,7 @@
     },
     "memoryEfficiency": {
       "target": "<500MB@50agents",
-      "actual": "9.0MB",
+      "actual": "8.9MB",
       "passed": true
     },
     "daaIntegration": {
