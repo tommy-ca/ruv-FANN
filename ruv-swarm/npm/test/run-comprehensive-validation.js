@@ -144,14 +144,14 @@ async function main() {
 
   } catch (error) {
     console.error('💥 Comprehensive validation failed:', error);
-    
+
     // Always generate fallback summary even on failure
     try {
       await generateFallbackSummary(error);
     } catch (fallbackError) {
       console.error('Failed to generate fallback summary:', fallbackError);
     }
-    
+
     process.exit(1);
   }
 }

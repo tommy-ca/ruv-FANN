@@ -416,10 +416,10 @@ class LoadTestingSuite extends EventEmitter {
           const remaining = endTime - Date.now();
           console.log(`     Progress: ${Math.round(elapsed / 1000)}s elapsed, ${Math.round(remaining / 1000)}s remaining`);
           console.log(`     Tasks completed: ${scenario.metrics.tasksCompleted}, Errors: ${scenario.metrics.errors.length}`);
-          
+
           // Early exit if too many errors
           if (scenario.metrics.errors.length > 20) {
-            console.log(`     Stopping early due to high error rate`);
+            console.log('     Stopping early due to high error rate');
             break;
           }
         }
@@ -434,7 +434,7 @@ class LoadTestingSuite extends EventEmitter {
       // Adjust targets based on environment
       const minTasks = process.env.CI ? 100 : 500;
       const maxErrors = process.env.CI ? 20 : 50;
-      
+
       scenario.passed = scenario.metrics.tasksCompleted >= minTasks &&
                              scenario.metrics.errors.length < maxErrors &&
                              scenario.metrics.memoryGrowth < 300 * 1024 * 1024; // Less than 300MB growth
