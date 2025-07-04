@@ -634,7 +634,8 @@ class PerformanceValidator {
   async testMCPIntegration() {
     try {
       // Test basic MCP functionality
-      const { mcp } = require('../src/mcp-tools-enhanced');
+      const module = await import('../src/mcp-tools-enhanced.js');
+      const { mcp } = module;
       return { success: true };
     } catch {
       return { success: false };
@@ -652,7 +653,8 @@ class PerformanceValidator {
 
   async testSQLiteCompatibility() {
     try {
-      const { PersistenceManager } = require('../src/persistence');
+      const module = await import('../src/persistence.js');
+      const { SwarmPersistence: PersistenceManager } = module;
       const pm = new PersistenceManager(':memory:');
       await pm.initialize();
       return true;
