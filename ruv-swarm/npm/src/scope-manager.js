@@ -54,7 +54,7 @@ class SessionAuthority {
       pid: process.pid,
       cwd: process.cwd(),
       nodeVersion: process.version,
-      uptime: os.uptime()
+      sessionSalt: this.sessionId || 'default'
     };
     
     const hash = crypto.createHash('sha256');
@@ -70,11 +70,15 @@ class SessionAuthority {
       return false;
     }
 
-    // Verify fingerprint
-    const currentFingerprint = this.generateFingerprint();
-    return authority.fingerprint === currentFingerprint &&
-           authority.sessionId === sessionId &&
-           authority.pid === process.pid;
+    // For same session, check if the authority matches current session
+    if (authority.sessionId === this.sessionId) {
+      return authority.sessionId === sessionId &&
+             authority.pid === process.pid &&
+             authority.hostname === os.hostname();
+    }
+    
+    // For different sessions, return false (isolated)
+    return false;
   }
 
   /**

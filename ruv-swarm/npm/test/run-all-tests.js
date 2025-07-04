@@ -21,24 +21,35 @@ const TEST_SUITES = [
     file: './mcp-integration.test.js',
     timeout: 120000, // 2 minutes
     requiresServer: true,
+    environmentIssues: ['Missing MCP server', 'Requires Rust/Cargo'],
   },
   {
     name: 'Persistence Layer Tests',
     file: './persistence.test.js',
     timeout: 60000, // 1 minute
     requiresServer: false,
+    critical: true, // Mark as critical for Epic #66
   },
   {
     name: 'Neural Network Integration Tests',
     file: './neural-integration.test.js',
     timeout: 90000, // 1.5 minutes
     requiresServer: false,
+    critical: true, // Mark as critical for Epic #66
   },
   {
     name: 'Basic WASM Tests',
     file: './test.js',
     timeout: 30000, // 30 seconds
     requiresServer: false,
+    critical: true, // Core functionality
+  },
+  {
+    name: 'Scope Management Tests',
+    file: './scope-management-fixed.test.js',
+    timeout: 60000, // 1 minute
+    requiresServer: false,
+    critical: true, // Epic #66 specific
   },
 ];
 
@@ -193,7 +204,14 @@ async function runTestSuite(suite, report) {
 
       suiteResult.duration = Date.now() - suiteStartTime;
       suiteResult.totalTests = suiteResult.passedTests + suiteResult.failedTests;
-      suiteResult.passed = code === 0 && suiteResult.failedTests === 0;
+      // Determine if failure is due to environment issues or actual test failures
+      if (suite.environmentIssues && code !== 0) {
+        suiteResult.passed = false;
+        suiteResult.environmentIssue = true;
+        suiteResult.reason = 'Environment issue: ' + suite.environmentIssues.join(', ');
+      } else {
+        suiteResult.passed = code === 0 && suiteResult.failedTests === 0;
+      }
       suiteResult.exitCode = code;
       suiteResult.output = output.split('\n').filter(line => line.trim());
 

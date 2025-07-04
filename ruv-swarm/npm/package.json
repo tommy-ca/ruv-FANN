@@ -59,7 +59,7 @@
     "lint:report": "eslint src/ test/ --ext .js,.ts,.mjs,.cjs --format json --output-file eslint-report.json",
     "quality:check": "npm run lint:check && npm run test:all",
     "quality:fix": "npm run lint:fix && npm run test:all",
-    "mcp:server": "cd ../crates/ruv-swarm-mcp && cargo run",
+    "mcp:server": "bash scripts/start-mcp-server.sh",
     "mcp:server:dev": "cd ../crates/ruv-swarm-mcp && cargo watch -x run",
     "examples": "node examples/mcp-workflows.js",
     "examples:webapp": "node examples/mcp-workflows.js webapp",
