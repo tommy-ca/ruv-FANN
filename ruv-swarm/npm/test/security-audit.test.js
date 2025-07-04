@@ -1032,7 +1032,7 @@ class SecurityAuditor {
 
     // Ensure reports directory exists
     await fs.mkdir(path.join(__dirname, 'reports'), { recursive: true });
-    
+
     // Save report to both locations for CI/CD compatibility
     const reportPath = path.join(__dirname, 'reports', 'security-audit-report.json');
     const ciReportPath = path.join(__dirname, 'security-audit-report.json');

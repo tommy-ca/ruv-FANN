@@ -521,7 +521,7 @@ class PerformanceValidator {
     // Save detailed report
     // Ensure reports directory exists
     await fs.mkdir(path.join(__dirname, 'reports'), { recursive: true });
-    
+
     // Write to both locations for CI/CD compatibility
     const reportPath = path.join(__dirname, 'reports', 'validation-report.json');
     const ciReportPath = path.join(__dirname, 'validation-report.json');
@@ -593,22 +593,22 @@ class PerformanceValidator {
   async runCommand(command) {
     return new Promise((resolve) => {
       const [cmd, ...args] = command.split(' ');
-      
+
       try {
         const process = spawn(cmd, args, { stdio: 'pipe' });
 
         let output = '';
         let errorOccurred = false;
-        
+
         process.on('error', (error) => {
           errorOccurred = true;
           resolve({ success: false, output: error.message, error: error.code });
         });
-        
+
         process.stdout.on('data', (data) => {
           output += data.toString();
         });
-        
+
         process.stderr.on('data', (data) => {
           output += data.toString();
         });
