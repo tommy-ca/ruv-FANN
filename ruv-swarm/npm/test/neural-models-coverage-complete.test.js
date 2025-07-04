@@ -9,11 +9,9 @@
  * Target: 1,500+ test assertions for neural models
  */
 
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, test, expect } from '@jest/globals';
 import {
-  createNeuralModel,
   MODEL_PRESETS,
-  getModelPreset,
   NeuralModel,
   TransformerModel,
   CNNModel,
@@ -24,7 +22,6 @@ import {
   VAEModel,
   LSTMModel,
 } from '../src/neural-models/index.js';
-import { COMPLETE_NEURAL_PRESETS } from '../src/neural-models/neural-presets-complete.js';
 
 describe('🧠 Complete Neural Models Coverage', () => {
 

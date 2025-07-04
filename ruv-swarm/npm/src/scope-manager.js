@@ -96,7 +96,7 @@ class SessionAuthority {
       if (await this.validateCentralAuthority(this.centralAuthority)) {
         return this.centralAuthority;
       }
-    } catch (error) {
+    } catch (_error) {
       // No existing authority or invalid
     }
 
@@ -133,7 +133,7 @@ class SessionAuthority {
       // Check if process still exists
       process.kill(authority.pid, 0);
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -235,17 +235,17 @@ class MemoryNamespaceManager {
   /**
    * List keys by scope pattern
    */
-  listKeys(scope, pattern = '*') {
+  listKeys(scope, _pattern = '*') {
     const scopePrefix = this.generateScopedKey(scope, '').slice(0, -1); // Remove trailing ':'
     const keys = [];
 
-    for (const [key, data] of this.scopedMemory.entries()) {
+    for (const [key, _data] of this.scopedMemory.entries()) {
       if (key.startsWith(scopePrefix)) {
         // Validate access
         try {
           this.validateScopeAccess(scope);
           keys.push(key.substring(scopePrefix.length + 1));
-        } catch (error) {
+        } catch (_error) {
           // Skip inaccessible keys
         }
       }
@@ -580,7 +580,7 @@ class CommunicationBoundaryManager {
  * Orchestrates all scope-related functionality
  */
 export class ScopeManager {
-  constructor(options = {}) {
+  constructor(_options = {}) {
     this.sessionAuthority = new SessionAuthority();
     this.memoryManager = new MemoryNamespaceManager(this.sessionAuthority);
     this.neuralManager = new NeuralIsolationManager(this.sessionAuthority);
@@ -725,8 +725,8 @@ export class ScopeManager {
    */
   getMemoryStatsByScope() {
     const stats = {};
-    for (const [key, data] of this.memoryManager.scopedMemory.entries()) {
-      const scopeType = key.split(':')[0];
+    for (const [key, _data] of this.memoryManager.scopedMemory.entries()) {
+      const [scopeType] = key.split(':');
       if (!stats[scopeType]) {
         stats[scopeType] = 0;
       }

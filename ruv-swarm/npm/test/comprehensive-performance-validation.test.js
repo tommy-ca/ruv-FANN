@@ -573,8 +573,12 @@ class PerformanceValidator {
       const process = spawn(cmd, args, { stdio: 'pipe' });
 
       let output = '';
-      process.stdout.on('data', (data) => output += data.toString());
-      process.stderr.on('data', (data) => output += data.toString());
+      process.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      process.stderr.on('data', (data) => {
+        output += data.toString();
+      });
 
       process.on('close', (code) => {
         resolve({ success: code === 0, output });

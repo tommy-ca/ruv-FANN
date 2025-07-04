@@ -72,7 +72,7 @@ describe('NeuralNetworkManager Comprehensive Tests', () => {
       ];
 
       for (const config of invalidConfigs) {
-        expect(() => manager.createNetwork('invalid', config)).toThrow();
+        expect(() => manager.createNetwork('invalid', config)).toThrow(); // eslint-disable-line no-loop-func
       }
     });
 

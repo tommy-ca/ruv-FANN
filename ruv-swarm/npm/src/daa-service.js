@@ -225,7 +225,7 @@ class WorkflowCoordinator {
   }
 
   async runStepWithAgents(step, agents) {
-    const results = [];
+    const _results = [];
 
     // Parallel execution for independent agent tasks
     const promises = agents.map(async(agent) => {
@@ -366,10 +366,10 @@ export class DAAService extends EventEmitter {
     if (typeof config === 'string') {
       // Old signature: createAgent(id, capabilities)
       id = config;
-      capabilities = arguments[1] || [];
+      capabilities = arguments[1] || []; // eslint-disable-line prefer-rest-params
     } else {
       // New signature: createAgent({id, capabilities, ...})
-      id = config.id;
+      ({ id } = config);
       capabilities = config.capabilities || [];
     }
 
@@ -397,7 +397,7 @@ export class DAAService extends EventEmitter {
         wasmAgent = {
           id,
           capabilities: new Set(capabilities),
-          make_decision: async(context) => {
+          make_decision: async(_context) => {
             // Simple decision logic
             return JSON.stringify({
               decision: 'proceed',
@@ -721,7 +721,7 @@ export class DAAService extends EventEmitter {
 
   // Get comprehensive performance metrics
   async getPerformanceMetrics(options = {}) {
-    const { category = 'all', timeRange = '1h' } = options;
+    const { category: _category = 'all', timeRange: _timeRange = '1h' } = options;
 
     const allAgents = Array.from(this.agents.values());
 
@@ -956,7 +956,7 @@ export class DAAService extends EventEmitter {
     }
 
     // Collect workflow metrics
-    for (const [id, workflow] of this.workflows.workflows) {
+    for (const [id, _workflow] of this.workflows.workflows) {
       metrics.workflows[id] = this.workflows.getWorkflowStatus(id);
     }
 

@@ -96,8 +96,7 @@ class TransformerModel extends NeuralModel {
 
   async forward(input, training = false) {
     // Input should be token indices [batch_size, sequence_length]
-    const batchSize = input.shape[0];
-    const sequenceLength = input.shape[1];
+    const [, sequenceLength] = input.shape;
 
     // Token embedding (simplified - in practice would use embedding layer)
     let x = this.tokenEmbedding(input);
@@ -133,8 +132,7 @@ class TransformerModel extends NeuralModel {
 
   async multiHeadAttention(input, layerIndex, training = false) {
     const weights = this.attentionWeights.get(`layer_${layerIndex}`);
-    const batchSize = input.shape[0];
-    const sequenceLength = input.shape[1];
+    const [batchSize, sequenceLength] = input.shape;
 
     // Linear projections for Q, K, V
     const Q = this.matmul(input, weights.query);

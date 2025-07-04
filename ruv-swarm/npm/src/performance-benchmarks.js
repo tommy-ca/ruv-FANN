@@ -371,7 +371,7 @@ class PerformanceBenchmarks {
         // Run multiple inferences
         for (let i = 0; i < iterations; i++) {
           // Simulate neural network inference
-          const result = this.simulateNeuralInference(testInput, config.layers);
+          const _result = this.simulateNeuralInference(testInput, config.layers);
         }
 
         const totalTime = performance.now() - startTime;
@@ -469,7 +469,7 @@ class PerformanceBenchmarks {
       const execStartTime = performance.now();
 
       // Simulate parallel execution
-      const batchPromises = testWorkflow.steps.map(async(step, index) => {
+      const batchPromises = testWorkflow.steps.map(async(step, _index) => {
         await new Promise(resolve => setTimeout(resolve, 10 + Math.random() * 20));
         return { stepId: step.id, completed: true };
       });
@@ -868,7 +868,7 @@ class PerformanceBenchmarks {
   /**
    * Compare with baseline performance
    */
-  compareWithBaseline(results) {
+  compareWithBaseline(_results) {
     // Would compare with stored baseline results
     return {
       available: false,

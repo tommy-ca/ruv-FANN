@@ -310,7 +310,7 @@ class NeuralAgent {
     console.log(`   Agent ${this.id} executing ${decision.action} for task ${task.id} (confidence: ${decision.confidence.toFixed(3)})`);
   }
 
-  updatePerformance(experience) {
+  updatePerformance(_experience) {
     this.performance.tasksCompleted++;
 
     const successCount = this.experience.filter(e => e.success).length;

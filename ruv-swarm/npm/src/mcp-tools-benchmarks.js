@@ -89,10 +89,10 @@ export class MCPBenchmarks {
         // Memory access benchmark - more operations
         start = performance.now();
         const accessCount = Math.min(1000, allocation.length);
-        let sum = 0;
+        let _sum = 0;
         for (let j = 0; j < accessCount; j++) {
           const randomIndex = Math.floor(Math.random() * allocation.length);
-          sum += allocation[randomIndex].data;
+          _sum += allocation[randomIndex].data;
         }
         benchmarks.memory_access.push(performance.now() - start);
 
@@ -113,12 +113,12 @@ export class MCPBenchmarks {
         start = performance.now();
         let tempArrays = [];
         for (let l = 0; l < 100; l++) {
-          tempArrays.push(new Array(1000).fill(0).map(x => Math.random()));
+          tempArrays.push(new Array(1000).fill(0).map(_x => Math.random()));
         }
         // Force some operations on the arrays
-        let total = 0;
+        let _total = 0;
         tempArrays.forEach(arr => {
-          total += arr.length;
+          _total += arr.length;
         });
         tempArrays = null; // Release for GC
         benchmarks.garbage_collection.push(performance.now() - start);
@@ -159,9 +159,9 @@ export class MCPBenchmarks {
       try {
         // CPU intensive computation benchmark
         let start = performance.now();
-        let result = 0;
+        let _result = 0;
         for (let j = 0; j < 100000; j++) {
-          result += Math.sqrt(j) * Math.sin(j / 1000) * Math.cos(j / 1000);
+          _result += Math.sqrt(j) * Math.sin(j / 1000) * Math.cos(j / 1000);
         }
         benchmarks.cpu_intensive_computation.push(performance.now() - start);
 
@@ -189,7 +189,7 @@ export class MCPBenchmarks {
         };
         for (let l = 0; l < 50; l++) {
           const serialized = JSON.stringify(largeObject);
-          const parsed = JSON.parse(serialized);
+          const _parsed = JSON.parse(serialized);
         }
         benchmarks.json_operations.push(performance.now() - start);
 
@@ -199,7 +199,7 @@ export class MCPBenchmarks {
         largeArray.sort();
         const filtered = largeArray.filter(x => x > 0.5);
         const mapped = filtered.map(x => x * 2);
-        const reduced = mapped.reduce((sum, x) => sum + x, 0);
+        const _reduced = mapped.reduce((sum, x) => sum + x, 0);
         benchmarks.array_operations.push(performance.now() - start);
 
         // Math operations benchmark
@@ -207,7 +207,7 @@ export class MCPBenchmarks {
         const matrix1 = Array.from({ length: 100 }, () => Array.from({ length: 100 }, () => Math.random()));
         const matrix2 = Array.from({ length: 100 }, () => Array.from({ length: 100 }, () => Math.random()));
         // Simple matrix multiplication
-        const resultMatrix = matrix1.map((row, i) =>
+        const _resultMatrix = matrix1.map((row, i) =>
           row.map((_, j) =>
             matrix1[i].reduce((sum, cell, k) => sum + cell * matrix2[k][j], 0),
           ),

@@ -402,7 +402,7 @@ class NeuralCoordinationProtocol {
     let bestStrategy = null;
     let bestScore = 0;
 
-    for (const [strategyName, strategy] of this.coordinationStrategies.entries()) {
+    for (const [_strategyName, strategy] of this.coordinationStrategies.entries()) {
       let score = 0;
 
       // Score based on agent count and scalability
@@ -523,7 +523,7 @@ class NeuralCoordinationProtocol {
    * @param {Object} session - Session configuration
    * @param {Object} strategy - Coordination strategy
    */
-  selectConsensusProtocol(session, strategy) {
+  selectConsensusProtocol(session, _strategy) {
     const trustLevel = this.calculateSessionTrustLevel(session);
     const agentCount = session.agentIds.length;
 
@@ -688,7 +688,7 @@ class NeuralCoordinationProtocol {
    * @param {string} agentA - First agent ID
    * @param {string} agentB - Second agent ID
    */
-  calculateChannelLatency(agentA, agentB) {
+  calculateChannelLatency(_agentA, _agentB) {
     // Simplified latency calculation (in practice, would consider network topology)
     const baseLatency = 50; // Base latency in milliseconds
     const randomVariation = Math.random() * 50; // Random variation
@@ -700,11 +700,11 @@ class NeuralCoordinationProtocol {
    * @param {string} agentA - First agent ID
    * @param {string} agentB - Second agent ID
    */
-  calculateChannelBandwidth(agentA, agentB) {
+  calculateChannelBandwidth(_agentA, _agentB) {
     // Simplified bandwidth calculation (in practice, would consider agent capabilities)
     const baseBandwidth = 1000; // Base bandwidth
-    const agentAMetrics = this.coordinationMetrics.get(agentA);
-    const agentBMetrics = this.coordinationMetrics.get(agentB);
+    const agentAMetrics = this.coordinationMetrics.get(_agentA);
+    const agentBMetrics = this.coordinationMetrics.get(_agentB);
 
     // Bandwidth limited by slower agent
     const agentABandwidth = agentAMetrics?.communicationBandwidth || baseBandwidth;
@@ -1028,15 +1028,15 @@ class NeuralCoordinationProtocol {
 
     // Run Byzantine consensus on each decision type
     const decisionTypes = new Set();
-    for (const [agentId, decision] of decisions.entries()) {
+    for (const [_agentId, decision] of decisions.entries()) {
       decisionTypes.add(decision.type);
     }
 
     for (const decisionType of decisionTypes) {
       const typeDecisions = new Map();
-      for (const [agentId, decision] of decisions.entries()) {
+      for (const [_agentId, decision] of decisions.entries()) {
         if (decision.type === decisionType) {
-          typeDecisions.set(agentId, decision);
+          typeDecisions.set(_agentId, decision);
         }
       }
 
@@ -1114,7 +1114,7 @@ class NeuralCoordinationProtocol {
     let avgSuccessRate = 0;
     let totalMessages = 0;
 
-    for (const [agentId, metrics] of this.coordinationMetrics.entries()) {
+    for (const [_agentId, metrics] of this.coordinationMetrics.entries()) {
       avgSuccessRate += metrics.coordinationSuccessRate;
       totalMessages += metrics.messagesExchanged;
     }
@@ -1166,7 +1166,7 @@ class NeuralCoordinationProtocol {
     return { tasks, leader, timestamp: Date.now() };
   }
 
-  async assignTask(agentId, task, session) {
+  async assignTask(agentId, task, _session) {
     // Simulate task assignment
     return {
       agentId,
@@ -1176,10 +1176,10 @@ class NeuralCoordinationProtocol {
     };
   }
 
-  async negotiateWithPeer(agentA, agentB, session) {
+  async negotiateWithPeer(_agentA, _agentB, _session) {
     // Simulate negotiation between peers
     return {
-      participants: [agentA, agentB],
+      participants: [_agentA, _agentB],
       outcome: 'agreement',
       terms: { cooperation: 0.8 },
       timestamp: Date.now(),
@@ -1201,7 +1201,7 @@ class NeuralCoordinationProtocol {
     return session.communicationGraph.get(agentId) || new Set();
   }
 
-  async calculateLocalState(agentId, neighborhood, session) {
+  async calculateLocalState(agentId, neighborhood, _session) {
     // Calculate local state based on neighborhood
     return {
       agentId,
@@ -1211,7 +1211,7 @@ class NeuralCoordinationProtocol {
     };
   }
 
-  updateSwarmBehavior(agentId, localState, session) {
+  updateSwarmBehavior(agentId, localState, _session) {
     // Update agent behavior based on local state
     return {
       agentId,
@@ -1221,7 +1221,7 @@ class NeuralCoordinationProtocol {
     };
   }
 
-  detectEmergentPattern(agentId, swarmBehaviors, session) {
+  detectEmergentPattern(agentId, _swarmBehaviors, _session) {
     // Detect emergent coordination patterns
     return {
       agentId,
@@ -1231,7 +1231,7 @@ class NeuralCoordinationProtocol {
     };
   }
 
-  identifyCoordinationTasks(session) {
+  identifyCoordinationTasks(_session) {
     // Identify tasks that need coordination
     return [
       { id: 'task1', type: 'computation', complexity: 0.5 },
@@ -1249,7 +1249,7 @@ class NeuralCoordinationProtocol {
     }
 
     const winningBid = Math.max(...bids.values().map(b => b.bid));
-    const winner = Array.from(bids.entries()).find(([id, bid]) => bid.bid === winningBid)?.[0];
+    const winner = Array.from(bids.entries()).find(([_id, bid]) => bid.bid === winningBid)?.[0];
 
     return { task, bids, winner, winningBid };
   }
@@ -1269,7 +1269,7 @@ class NeuralCoordinationProtocol {
   // Additional helper methods would be implemented here...
   // For brevity, including placeholder implementations
 
-  async createTaskAnnouncements(session) {
+  async createTaskAnnouncements(_session) {
     return [{ taskId: 'announce1', description: 'Coordination task' }];
   }
 
@@ -1277,15 +1277,15 @@ class NeuralCoordinationProtocol {
     return [{ agentId: session.agentIds[0], bid: 50 }];
   }
 
-  selectWinningBid(bids, announcement) {
+  selectWinningBid(bids, _announcement) {
     return bids[0];
   }
 
-  async establishContract(announcement, selectedBid, session) {
+  async establishContract(announcement, selectedBid, _session) {
     return { contractor: selectedBid.agentId, task: announcement.taskId };
   }
 
-  initializeBlackboard(session) {
+  initializeBlackboard(_session) {
     return new Map();
   }
 
@@ -1297,7 +1297,7 @@ class NeuralCoordinationProtocol {
     return sources;
   }
 
-  async executeKnowledgeSource(agentId, ks, blackboard, session) {
+  async executeKnowledgeSource(agentId, ks, blackboard, _session) {
     // Simulate knowledge source execution
     blackboard.set(`${agentId}_contribution`, { data: 'knowledge', timestamp: Date.now() });
   }
@@ -1310,19 +1310,19 @@ class NeuralCoordinationProtocol {
     return Object.fromEntries(blackboard);
   }
 
-  calculateSharedReward(session) {
+  calculateSharedReward(_session) {
     return Math.random(); // Simplified shared reward
   }
 
-  async getAgentPolicy(agentId, session) {
+  async getAgentPolicy(agentId, _session) {
     return { agentId, policy: 'default', parameters: {} };
   }
 
-  async updatePolicyWithSharedReward(agentId, policy, reward, session) {
-    return { ...policy, reward };
+  async updatePolicyWithSharedReward(agentId, _policy, reward, _session) {
+    return { ..._policy, reward };
   }
 
-  async selectCoordinatedAction(agentId, policy, session) {
+  async selectCoordinatedAction(agentId, _policy, _session) {
     return { agentId, action: 'cooperate', confidence: 0.8 };
   }
 
@@ -1334,7 +1334,7 @@ class NeuralCoordinationProtocol {
     return decisions;
   }
 
-  async runByzantineConsensus(decisions, session) {
+  async runByzantineConsensus(decisions, _session) {
     // Simplified Byzantine consensus
     const values = Array.from(decisions.values()).map(d => d.value);
     const median = values.sort()[Math.floor(values.length / 2)];
@@ -1343,19 +1343,19 @@ class NeuralCoordinationProtocol {
 
   // Consensus protocol implementations (simplified)
 
-  async executeProofOfStakeConsensus(session, coordinationResult) {
+  async executeProofOfStakeConsensus(_session, _coordinationResult) {
     return { protocol: 'proof_of_stake', result: 'consensus_reached' };
   }
 
-  async executePBFTConsensus(session, coordinationResult) {
+  async executePBFTConsensus(_session, _coordinationResult) {
     return { protocol: 'pbft', result: 'consensus_reached' };
   }
 
-  async executeRaftConsensus(session, coordinationResult) {
+  async executeRaftConsensus(_session, _coordinationResult) {
     return { protocol: 'raft', result: 'consensus_reached' };
   }
 
-  async executeGossipConsensus(session, coordinationResult) {
+  async executeGossipConsensus(_session, _coordinationResult) {
     return { protocol: 'gossip', result: 'consensus_reached' };
   }
 }

@@ -34,7 +34,7 @@ async function testAgentTaskBinding() {
     });
     console.log('✅ Swarm initialized:', swarmResult.id);
     console.log('   Features:', Object.entries(swarmResult.features)
-      .filter(([key, value]) => value)
+      .filter(([_key, value]) => value)
       .map(([key]) => key)
       .join(', '));
 

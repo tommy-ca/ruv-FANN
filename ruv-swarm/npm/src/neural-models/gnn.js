@@ -82,7 +82,7 @@ class GNNModel extends NeuralModel {
 
   async forward(graphData, training = false) {
     const { nodes, edges, adjacency } = graphData;
-    const numNodes = nodes.shape[0];
+    // const [numNodes] = nodes.shape;
 
     // Initialize node representations
     let nodeRepresentations = nodes;
@@ -133,7 +133,7 @@ class GNNModel extends NeuralModel {
 
     // For each edge, compute message
     for (let edgeIdx = 0; edgeIdx < numEdges; edgeIdx++) {
-      const [sourceIdx, targetIdx] = adjacency[edgeIdx];
+      const [sourceIdx] = adjacency[edgeIdx];
 
       // Get source node features
       const sourceStart = sourceIdx * nodes.shape[1];
@@ -175,7 +175,7 @@ class GNNModel extends NeuralModel {
     return messages;
   }
 
-  aggregateMessages(messages, adjacency, layerIndex) {
+  aggregateMessages(messages, adjacency, _layerIndex) {
     const numNodes = Math.max(...adjacency.flat()) + 1;
     const aggregated = new Float32Array(numNodes * this.config.hiddenDimensions);
     const messageCounts = new Float32Array(numNodes);
@@ -220,7 +220,7 @@ class GNNModel extends NeuralModel {
 
   updateNodes(currentNodes, aggregatedMessages, layerIndex) {
     const weights = this.updateWeights[layerIndex];
-    const numNodes = currentNodes.shape[0];
+    const [numNodes] = currentNodes.shape;
     const updated = new Float32Array(numNodes * this.config.hiddenDimensions);
 
     for (let nodeIdx = 0; nodeIdx < numNodes; nodeIdx++) {
@@ -274,8 +274,7 @@ class GNNModel extends NeuralModel {
 
   transform(input, weight, bias) {
     // Simple linear transformation
-    const inputDim = weight.shape[0];
-    const outputDim = weight.shape[1];
+    const [inputDim, outputDim] = weight.shape;
     const numSamples = input.length / inputDim;
     const output = new Float32Array(numSamples * outputDim);
 
@@ -381,8 +380,7 @@ class GNNModel extends NeuralModel {
 
   globalPooling(nodeRepresentations) {
     // Simple mean pooling over all nodes
-    const numNodes = nodeRepresentations.shape[0];
-    const dimensions = nodeRepresentations.shape[1];
+    const [numNodes, dimensions] = nodeRepresentations.shape;
     const pooled = new Float32Array(dimensions);
 
     for (let dim = 0; dim < dimensions; dim++) {

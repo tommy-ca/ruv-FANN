@@ -603,8 +603,12 @@ class RegressionTestingPipeline {
       let output = '';
       let error = '';
 
-      process.stdout.on('data', (data) => output += data.toString());
-      process.stderr.on('data', (data) => error += data.toString());
+      process.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      process.stderr.on('data', (data) => {
+        error += data.toString();
+      });
 
       process.on('close', (code) => {
         resolve({

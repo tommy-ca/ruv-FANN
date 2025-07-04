@@ -191,8 +191,7 @@ class VAEModel extends NeuralModel {
 
   linearTransform(input, weight, bias) {
     const batchSize = input.shape ? input.shape[0] : 1;
-    const inputDim = weight.shape[0];
-    const outputDim = weight.shape[1];
+    const [inputDim, outputDim] = weight.shape;
 
     const output = new Float32Array(batchSize * outputDim);
 

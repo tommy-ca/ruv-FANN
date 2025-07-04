@@ -88,8 +88,7 @@ class GRUModel extends NeuralModel {
   }
 
   async forward(input, training = false) {
-    const batchSize = input.shape[0];
-    const sequenceLength = input.shape[1];
+    const [batchSize] = input.shape;
 
     // Initialize hidden states for all layers
     const hiddenStates = this.initializeHiddenStates(batchSize);
@@ -135,9 +134,7 @@ class GRUModel extends NeuralModel {
   }
 
   async processLayer(input, hiddenStates, layerIndex, training) {
-    const batchSize = input.shape[0];
-    const sequenceLength = input.shape[1];
-    const inputSize = input.shape[2];
+    const [batchSize, sequenceLength, inputSize] = input.shape;
 
     const directions = this.config.bidirectional ? 2 : 1;
     const outputs = [];
@@ -190,7 +187,7 @@ class GRUModel extends NeuralModel {
     if (this.config.bidirectional) {
       finalOutput = this.concatenateBidirectional(outputs[0], outputs[1]);
     } else {
-      finalOutput = outputs[0];
+      [finalOutput] = outputs;
     }
 
     // Apply dropout if training
@@ -205,8 +202,7 @@ class GRUModel extends NeuralModel {
   }
 
   gruCell(input, hidden, gates) {
-    const batchSize = input.shape[0];
-    const inputSize = input.shape[1];
+    const [batchSize, inputSize] = input.shape;
     const { hiddenSize } = this.config;
 
     // Reset gate: r = σ(W_ir @ x + W_hr @ h + b_r)
@@ -471,7 +467,7 @@ class GRUModel extends NeuralModel {
   }
 
   calculateAccuracy(predictions, targets) {
-    const batchSize = predictions.shape[0];
+    const [batchSize] = predictions.shape;
     let correct = 0;
 
     for (let b = 0; b < batchSize; b++) {

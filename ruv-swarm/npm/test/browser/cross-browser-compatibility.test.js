@@ -85,7 +85,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('Basic WASM Support', () => {
     for (const { name, browser } of browsers) {
-      it(`should detect WASM support in ${name}`, async() => {
+      it(`should detect WASM support in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -101,7 +101,7 @@ describe('Cross-Browser WASM Compatibility', () => {
         await context.close();
       });
 
-      it(`should load WASM module in ${name}`, async() => {
+      it(`should load WASM module in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -128,7 +128,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('SIMD Support', () => {
     for (const { name, browser } of browsers) {
-      it(`should detect SIMD support in ${name}`, async() => {
+      it(`should detect SIMD support in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -159,7 +159,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('Memory Management', () => {
     for (const { name, browser } of browsers) {
-      it(`should handle SharedArrayBuffer in ${name}`, async() => {
+      it(`should handle SharedArrayBuffer in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -207,7 +207,7 @@ describe('Cross-Browser WASM Compatibility', () => {
         await context.close();
       });
 
-      it(`should handle memory growth in ${name}`, async() => {
+      it(`should handle memory growth in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -250,7 +250,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('Neural Network Operations', () => {
     for (const { name, browser } of browsers) {
-      it(`should run neural network in ${name}`, async() => {
+      it(`should run neural network in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -298,7 +298,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('Swarm Operations', () => {
     for (const { name, browser } of browsers) {
-      it(`should create and manage swarm in ${name}`, async() => {
+      it(`should create and manage swarm in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -353,7 +353,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('Performance Characteristics', () => {
     for (const { name, browser } of browsers) {
-      it(`should measure WASM performance in ${name}`, async() => {
+      it(`should measure WASM performance in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -427,7 +427,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('Error Handling', () => {
     for (const { name, browser } of browsers) {
-      it(`should handle WASM errors gracefully in ${name}`, async() => {
+      it(`should handle WASM errors gracefully in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 
@@ -492,7 +492,7 @@ describe('Cross-Browser WASM Compatibility', () => {
 
   describe('WebWorker Integration', () => {
     for (const { name, browser } of browsers) {
-      it(`should run WASM in WebWorker in ${name}`, async() => {
+      it(`should run WASM in WebWorker in ${name}`, async() => { // eslint-disable-line no-loop-func
         const context = await browser.newContext();
         const page = await context.newPage();
 

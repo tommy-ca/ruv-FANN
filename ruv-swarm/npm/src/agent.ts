@@ -13,13 +13,16 @@ import {
 } from './types';
 import { generateId, getDefaultCognitiveProfile } from './utils';
 
+// eslint-disable-next-line no-unused-vars
+type MessageHandler = (message: Message) => Promise<void>;
+
 export class BaseAgent implements Agent {
   id: string;
   config: AgentConfig;
   state: AgentState;
   connections: string[] = [];
   
-  private messageHandlers: Map<MessageType, (message: Message) => Promise<void>> = new Map();
+  private messageHandlers: Map<MessageType, MessageHandler> = new Map();
   private wasmAgentId?: number;
 
   constructor(config: AgentConfig) {

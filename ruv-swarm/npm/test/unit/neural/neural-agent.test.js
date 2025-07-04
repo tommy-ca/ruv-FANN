@@ -20,7 +20,7 @@ class MockAgent {
     this.capabilities = ['research', 'analysis'];
   }
 
-  async execute(task) {
+  async execute(_task) {
     return {
       success: true,
       result: 'Mock execution result',
@@ -545,7 +545,7 @@ describe('NeuralAgentFactory Tests', () => {
 
 describe('Cognitive Profiles Tests', () => {
   it('should have valid profiles for all agent types', () => {
-    Object.entries(AGENT_COGNITIVE_PROFILES).forEach(([agentType, profile]) => {
+    Object.entries(AGENT_COGNITIVE_PROFILES).forEach(([_agentType, profile]) => {
       assert(profile.primary);
       assert(profile.secondary);
       assert(typeof profile.learningRate === 'number');

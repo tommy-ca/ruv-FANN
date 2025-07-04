@@ -407,7 +407,7 @@ class MetaLearningFramework {
     // Define task characteristics
     const taskCharacteristics = this.inferTaskCharacteristics(patterns, config);
 
-    for (const [strategyName, strategy] of this.metaStrategies.entries()) {
+    for (const [, strategy] of this.metaStrategies.entries()) {
       let score = 0;
 
       // Score based on applicability to current task characteristics
@@ -1104,7 +1104,7 @@ class MetaLearningFramework {
       return 0;
     }
 
-    const sample = data.samples[0];
+    const [sample] = data.samples;
     if (Array.isArray(sample)) {
       return sample.length;
     }
@@ -1266,7 +1266,7 @@ class MetaLearningFramework {
       return 'unknown';
     }
 
-    const sample = data.samples[0];
+    const [sample] = data.samples;
 
     if (Array.isArray(sample)) {
       return sample.length > 100 ? 'image' : 'vector';

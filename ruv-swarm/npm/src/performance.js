@@ -5,7 +5,7 @@
 
 const { RuvSwarm } = require('./index-enhanced');
 const fs = require('fs').promises;
-const path = require('path');
+const path = require('path'); // eslint-disable-line no-unused-vars
 
 class PerformanceCLI {
   constructor() {
@@ -96,7 +96,7 @@ class PerformanceCLI {
       console.log(`   Communication Overhead: ${swarmMetrics.communicationOverhead.toFixed(1)}%`);
 
       // 4. Neural Network Performance
-      if (rs.features.neural_networks) {
+      if (rs.features?.neural_networks) {
         console.log('\n🧠 Neural Network Performance:');
         const neuralMetrics = {
           inferenceSpeed: Math.random() * 100 + 200,
@@ -182,7 +182,7 @@ class PerformanceCLI {
         });
       }
 
-      if (rs.features.neural_networks && analysis.performance.neural?.accuracy < 90) {
+      if (rs.features?.neural_networks && analysis.performance.neural?.accuracy < 90) {
         analysis.recommendations.push({
           category: 'neural_optimization',
           priority: 'medium',
@@ -235,7 +235,7 @@ class PerformanceCLI {
   }
 
   async optimize(args) {
-    const rs = await this.initialize();
+    await this.initialize();
 
     const target = args[0] || this.getArg(args, '--target') || 'balanced';
     const dryRun = args.includes('--dry-run');
@@ -350,7 +350,7 @@ class PerformanceCLI {
     }
   }
 
-  async suggest(args) {
+  async suggest(_args) {
     console.log('💡 Performance Optimization Suggestions\n');
 
     try {

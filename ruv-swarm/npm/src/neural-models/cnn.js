@@ -39,7 +39,7 @@ class CNNModel extends NeuralModel {
     // Initialize convolutional layers
     for (const convLayer of this.config.convLayers) {
       const { filters, kernelSize } = convLayer;
-      const inputChannels = currentShape[2];
+      const [, , inputChannels] = currentShape;
 
       // Initialize kernel weights [kernelSize, kernelSize, inputChannels, filters]
       const kernelWeights = this.createWeight([
@@ -102,7 +102,7 @@ class CNNModel extends NeuralModel {
   }
 
   getConvOutputShape(inputShape, convLayer) {
-    const [height, width, channels] = inputShape;
+    const [height, width, _channels] = inputShape;
     const { filters, kernelSize, stride = 1, padding } = convLayer;
 
     let outputHeight, outputWidth;
@@ -434,8 +434,7 @@ class CNNModel extends NeuralModel {
 
   calculateAccuracy(predictions, targets) {
     let correct = 0;
-    const batchSize = predictions.shape[0];
-    const numClasses = predictions.shape[1];
+    const [batchSize, numClasses] = predictions.shape;
 
     for (let b = 0; b < batchSize; b++) {
       let predClass = 0;

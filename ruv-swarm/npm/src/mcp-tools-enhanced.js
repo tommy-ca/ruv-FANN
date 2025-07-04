@@ -464,7 +464,7 @@ class EnhancedMCPTools {
   async agent_spawn(params) {
     const startTime = performance.now();
     const toolName = 'agent_spawn';
-    const operationId = this.logger.startOperation('agent_spawn', { params });
+    this.logger.startOperation('agent_spawn', { params });
 
     try {
       this.logger.info('Spawning agent', { params });
@@ -2026,9 +2026,9 @@ class EnhancedMCPTools {
 
         // Benchmark capability matching
         start = performance.now();
-        const requiredCaps = ['analysis', 'research', 'optimization', 'coordination'];
-        const agentCaps = ['analysis', 'research', 'testing', 'documentation'];
-        const matches = requiredCaps.filter(cap => agentCaps.includes(cap));
+        // const requiredCaps = ['analysis', 'research', 'optimization', 'coordination'];
+        // const agentCaps = ['analysis', 'research', 'testing', 'documentation'];
+        // const matches = requiredCaps.filter(cap => agentCaps.includes(cap));
         // const matchScore = matches.length / requiredCaps.length;
         // Simulate more complex matching logic
         await new Promise(resolve => setTimeout(resolve, Math.random() * 2 + 1));
@@ -2129,6 +2129,7 @@ class EnhancedMCPTools {
 
         // Benchmark result aggregation
         start = performance.now();
+        /*
         const results = subtasks.map(subtask => ({
           taskId: subtask.id,
           agentId: subtask.assignedAgent,
@@ -2142,8 +2143,11 @@ class EnhancedMCPTools {
           },
           timestamp: new Date(),
         }));
+        */
 
         // Simulate result merging and validation
+        // Simulate result merging and validation
+        /*
         const aggregatedResult = {
           taskId: mainTask.id,
           subtaskResults: results,
@@ -2154,6 +2158,7 @@ class EnhancedMCPTools {
           },
           completedAt: new Date(),
         };
+        */
 
         // Simulate data validation
         // const isValid = aggregatedResult.summary.avgConfidence > 0.5 &&

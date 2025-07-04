@@ -627,7 +627,7 @@ class NeuralNetworkManager {
     // Generate Laplacian noise for differential privacy
     const scale = sensitivity / epsilon;
     const u1 = Math.random();
-    const u2 = Math.random();
+    const _u2 = Math.random();
     return scale * Math.sign(u1 - 0.5) * Math.log(1 - 2 * Math.abs(u1 - 0.5));
   }
 
@@ -1304,7 +1304,7 @@ class NeuralNetworkManager {
    * @param {Object} options - Distillation options
    */
   async applyKnowledgeDistillation(student, teacherKnowledge, options) {
-    const { temperature, alpha } = options;
+    const { temperature: _temperature, alpha: _alpha } = options;
 
     // Simulate knowledge transfer (in practice, would involve actual training)
     const beforeMetrics = student.getMetrics();
@@ -1700,7 +1700,7 @@ class NeuralNetwork {
 
   async save(filePath) {
     try {
-      const state = this.wasmModule.exports.serialize_network(this.networkId);
+      const _state = this.wasmModule.exports.serialize_network(this.networkId);
       // In real implementation, save to file
       console.log(`Saving network state to ${filePath}`);
       return true;
@@ -1743,7 +1743,7 @@ class SimulatedNeuralNetwork {
     return this.config.layers?.map(() => Math.random() * 2 - 1) || [0];
   }
 
-  async forward(input) {
+  async forward(_input) {
     // Simple forward pass simulation
     const outputSize = this.config.layers?.[this.config.layers.length - 1] || 1;
     const output = new Float32Array(outputSize);
@@ -1779,7 +1779,7 @@ class SimulatedNeuralNetwork {
     };
   }
 
-  applyGradients(gradients) {
+  applyGradients(_gradients) {
     // Simulate gradient application
     console.log('[Simulated] Applying gradients');
   }
@@ -1893,7 +1893,7 @@ class AdvancedNeuralNetwork {
     return {};
   }
 
-  applyGradients(gradients) {
+  applyGradients(_gradients) {
     // Advanced models handle gradient updates internally
     console.log(`Gradient update handled internally by ${this.modelType}`);
   }

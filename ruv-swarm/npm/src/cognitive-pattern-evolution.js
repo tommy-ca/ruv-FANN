@@ -359,7 +359,7 @@ class CognitivePatternEvolution {
       return 'unknown';
     }
 
-    const sample = trainingData.samples[0];
+    const [sample] = trainingData.samples;
     if (!sample) {
       return 'unknown';
     }
@@ -435,7 +435,7 @@ class CognitivePatternEvolution {
       return 0;
     }
 
-    const sample = trainingData.samples[0];
+    const [sample] = trainingData.samples;
     if (Array.isArray(sample)) {
       return Math.min(1, sample.length / 1000); // Normalize to 0-1
     }
@@ -1003,7 +1003,7 @@ class CognitivePatternEvolution {
     }
 
     // Select pattern that best matches current context
-    let bestPattern = patterns[0];
+    let [bestPattern] = patterns;
     let bestScore = 0;
 
     for (const pattern of patterns) {
@@ -1259,7 +1259,7 @@ class CognitivePatternEvolution {
     const totalAgents = this.agentPatterns.size;
     let totalEvolutions = 0;
     let totalPatterns = 0;
-    const avgGrowthScore = 0;
+    // const avgGrowthScore = 0;
 
     for (const [agentId, metrics] of this.evolutionMetrics.entries()) {
       totalEvolutions += metrics.totalEvolutions;

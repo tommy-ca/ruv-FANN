@@ -31,8 +31,12 @@ class PerformanceAnalyzer {
       let output = '';
       let error = '';
 
-      child.stdout.on('data', (data) => output += data.toString());
-      child.stderr.on('data', (data) => error += data.toString());
+      child.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      child.stderr.on('data', (data) => {
+        error += data.toString();
+      });
 
       child.on('close', (code) => {
         resolve({ code, output, error });

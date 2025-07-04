@@ -228,11 +228,11 @@ async function analyzeLogs(args, logger) {
   }
 }
 
-function showLoggingConfig(logger) {
+function showLoggingConfig(_logger) {
   console.log('\n⚙️  Logging Configuration');
   console.log('═══════════════════════════\n');
 
-  const config = loggingConfig.logConfiguration();
+  loggingConfig.logConfiguration();
 
   // Configuration is already logged to stderr by logConfiguration()
   // Just add usage instructions

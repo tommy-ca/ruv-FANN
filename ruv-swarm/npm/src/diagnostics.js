@@ -3,7 +3,7 @@
  * Helps debug connection issues and performance problems
  */
 
-import { Logger } from './logger.js';
+import { Logger as _Logger } from './logger.js';
 import { loggingConfig } from './logging-config.js';
 import fs from 'fs';
 import path from 'path';
@@ -467,7 +467,7 @@ export class DiagnosticsManager {
   async testMemoryAllocation() {
     try {
       const start = process.memoryUsage().heapUsed;
-      const testArray = new Array(1000000).fill(0);
+      const _testArray = new Array(1000000).fill(0);
       const end = process.memoryUsage().heapUsed;
 
       return {

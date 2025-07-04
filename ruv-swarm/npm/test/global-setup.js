@@ -131,7 +131,7 @@ export default async function globalSetup() {
         path.join(__dirname, '.mcp-server.pid'),
         'utf-8',
       );
-      process.kill(parseInt(pid), 'SIGTERM');
+      process.kill(parseInt(pid, 10), 'SIGTERM');
       await fs.unlink(path.join(__dirname, '.mcp-server.pid'));
     } catch (error) {
       // Ignore if already stopped

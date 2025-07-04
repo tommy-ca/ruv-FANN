@@ -1,6 +1,6 @@
 // neural-network.test.js - Tests for neural network WASM integration
 
-import { jest } from '@jest/globals';
+// import { jest } from '@jest/globals';
 import {
   createNeuralNetwork,
   createTrainer,

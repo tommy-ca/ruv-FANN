@@ -3,9 +3,8 @@
  * Tests numerical stability, gradient issues, and model training edge cases
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { NeuralNetworkManager } from '../../src/neural-network-manager.js';
-import { NeuralAgent } from '../../src/neural-agent.js';
 
 describe('Neural Network Edge Cases', () => {
   let manager;
@@ -164,7 +163,7 @@ describe('Neural Network Edge Cases', () => {
         let totalLoss = 0;
 
         for (const sample of trainingData) {
-          const output = await network.forward(sample.input);
+          await network.forward(sample.input);
           const loss = await network.backward(sample.target);
           totalLoss += loss;
         }

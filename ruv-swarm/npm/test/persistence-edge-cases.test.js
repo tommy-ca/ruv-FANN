@@ -358,7 +358,7 @@ describe('PersistenceManager Edge Cases', () => {
       // Create operations that will be pending
       for (let i = 0; i < 5; i++) {
         pendingOps.push(
-          new Promise(resolve => {
+          new Promise(resolve => { // eslint-disable-line no-loop-func
             setTimeout(() => {
               persistence.storeMemory(`pending-${i}`, { data: i })
                 .then(resolve);
@@ -469,7 +469,7 @@ describe('PersistenceManager Edge Cases', () => {
       for (let i = 0; i < hugeBatch.length; i += 100) {
         const chunk = hugeBatch.slice(i, i + 100);
         const chunkResults = await Promise.all(
-          chunk.map(item => persistence.storeMemory(item.key, item.value)),
+          chunk.map(item => persistence.storeMemory(item.key, item.value)), // eslint-disable-line no-loop-func
         );
         results.push(...chunkResults);
       }

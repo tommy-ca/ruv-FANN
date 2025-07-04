@@ -376,7 +376,7 @@ class LoadTestingSuite extends EventEmitter {
       console.log('   Running sustained load for 5 minutes...');
 
       while (Date.now() < endTime) {
-        const batchPromises = scenario.agents.map(async(agent, i) => {
+        const batchPromises = scenario.agents.map(async(agent, i) => { // eslint-disable-line no-loop-func
           const taskStart = Date.now();
           try {
             await agent.execute({

@@ -513,7 +513,7 @@ describe('Neural Presets Edge Cases and E2E Tests', () => {
       });
 
       // Ensure all presets have required structure
-      allPresets.forEach(({ category, presetName, preset }) => {
+      allPresets.forEach(({ preset }) => {
         expect(preset).toHaveProperty('name');
         expect(preset).toHaveProperty('description');
         expect(typeof preset.name).toBe('string');
@@ -696,7 +696,7 @@ describe('Neural Presets Edge Cases and E2E Tests', () => {
         { performance: { expectedAccuracy: null } },
       ];
 
-      malformedCases.forEach((malformed, index) => {
+      malformedCases.forEach((malformed) => {
         try {
           validatePresetConfig(malformed);
           // If it doesn't throw, it means the preset is somehow valid

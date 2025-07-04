@@ -53,8 +53,7 @@ class NeuralModel {
       throw new Error('Invalid matrix dimensions for multiplication');
     }
 
-    const m = a.shape[0];
-    const n = a.shape[1];
+    const [m, n] = a.shape;
     const p = b.shape[b.shape.length - 1];
 
     const result = new Float32Array(m * p);

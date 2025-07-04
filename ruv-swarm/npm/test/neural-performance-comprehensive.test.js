@@ -152,10 +152,10 @@ describe('🧠 Neural Performance Comprehensive Test Suite', () => {
     });
 
     test('should fine-tune network with comprehensive options', async() => {
-      const network = await neuralManager.createAgentNeuralNetwork('agent-finetune');
+      await neuralManager.createAgentNeuralNetwork('agent-finetune');
 
       const trainingData = {
-        samples: Array.from({ length: 100 }, (_, i) => ({
+        samples: Array.from({ length: 100 }, () => ({
           input: Array.from({ length: 10 }, () => Math.random()),
           target: Array.from({ length: 5 }, () => Math.random()),
         })),
@@ -241,7 +241,7 @@ describe('🧠 Neural Performance Comprehensive Test Suite', () => {
     });
 
     test('should save and load network state', async() => {
-      const network = await neuralManager.createAgentNeuralNetwork('save-load-test');
+      await neuralManager.createAgentNeuralNetwork('save-load-test');
 
       const saved = neuralManager.saveNetworkState('save-load-test', '/tmp/test-network.json');
       expect(saved).toBe(true);
@@ -416,7 +416,7 @@ describe('🧠 Neural Performance Comprehensive Test Suite', () => {
   describe('🤝 Neural Network Manager - Enhanced Capabilities', () => {
     test('should extract agent knowledge comprehensively', async() => {
       const agentId = 'knowledge-test';
-      const network = await neuralManager.createAgentNeuralNetwork(agentId);
+      await neuralManager.createAgentNeuralNetwork(agentId);
 
       // Simulate some training
       await neuralManager.fineTuneNetwork(agentId, {
@@ -1750,7 +1750,7 @@ describe('🧠 Neural Performance Comprehensive Test Suite', () => {
       expect(allPresets.length).toBeGreaterThanOrEqual(30);
 
       // Test each preset structure
-      allPresets.forEach((preset, index) => {
+      allPresets.forEach((preset) => {
         expect(preset.modelType).toBeDefined();
         expect(preset.presetName).toBeDefined();
         expect(preset.config).toBeDefined();

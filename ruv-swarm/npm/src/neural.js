@@ -40,7 +40,7 @@ class NeuralCLI {
     return this.ruvSwarm;
   }
 
-  async status(args) {
+  async status(_args) {
     const rs = await this.initialize();
 
     try {
@@ -187,7 +187,7 @@ class NeuralCLI {
   }
 
   async patterns(args) {
-    const rs = await this.initialize();
+    const _rs = await this.initialize();
 
     // Parse --pattern or --model argument correctly
     let patternType = this.getArg(args, '--pattern') || this.getArg(args, '--model');
@@ -334,7 +334,7 @@ class NeuralCLI {
   }
 
   async export(args) {
-    const rs = await this.initialize();
+    const _rs = await this.initialize();
 
     const modelType = this.getArg(args, '--model') || 'all';
     const outputPath = this.getArg(args, '--output') || './neural-weights.json';
@@ -486,7 +486,7 @@ class NeuralCLI {
                 }
               }
             }
-          } catch (err) {
+          } catch (_err) {
             // Ignore files that can't be parsed
           }
         } else if (file.includes('-weights-') && file.endsWith('.json')) {
@@ -538,7 +538,7 @@ class NeuralCLI {
         sessionContinuity,
       };
 
-    } catch (err) {
+    } catch (_err) {
       // Directory doesn't exist or can't be read
       return {
         totalSessions: 0,

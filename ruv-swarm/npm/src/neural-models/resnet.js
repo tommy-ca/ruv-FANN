@@ -178,8 +178,7 @@ class ResNetModel extends NeuralModel {
 
   linearTransform(input, weight, bias) {
     const batchSize = input.shape ? input.shape[0] : 1;
-    const inputDim = weight.shape[0];
-    const outputDim = weight.shape[1];
+    const [inputDim, outputDim] = weight.shape;
 
     const output = new Float32Array(batchSize * outputDim);
 
@@ -305,9 +304,9 @@ class ResNetModel extends NeuralModel {
   globalAveragePooling(input) {
     // Assumes input shape is [batch, height, width, channels]
     const { shape } = input;
-    const batchSize = shape[0];
+    const [batchSize] = shape;
     const spatialSize = shape[1] * shape[2];
-    const channels = shape[3];
+    const [, , , channels] = shape;
 
     const pooled = new Float32Array(batchSize * channels);
 
@@ -439,8 +438,7 @@ class ResNetModel extends NeuralModel {
 
   argmax(tensor) {
     // Assumes tensor shape is [batch, classes]
-    const batchSize = tensor.shape[0];
-    const numClasses = tensor.shape[1];
+    const [batchSize, numClasses] = tensor.shape;
     const result = new Int32Array(batchSize);
 
     for (let b = 0; b < batchSize; b++) {

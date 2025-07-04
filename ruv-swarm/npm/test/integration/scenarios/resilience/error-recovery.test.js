@@ -495,7 +495,7 @@ describe('Error Recovery and Resilience Integration', () => {
         }
 
         // Execute tasks
-        const tasks = agents.map(agent =>
+        const tasks = agents.map(agent => // eslint-disable-line no-loop-func
           swarm.executeAgentTask(agent.id, {
             task: 'Memory intensive operation',
             data: Buffer.alloc(1024 * 1024), // 1MB per task
@@ -505,7 +505,7 @@ describe('Error Recovery and Resilience Integration', () => {
         await Promise.all(tasks);
 
         // Destroy agents
-        await Promise.all(agents.map(a => swarm.destroyAgent(a.id)));
+        await Promise.all(agents.map(a => swarm.destroyAgent(a.id))); // eslint-disable-line no-loop-func
 
         // Force GC if available
         if (global.gc) {

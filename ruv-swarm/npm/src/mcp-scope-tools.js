@@ -4,7 +4,7 @@
  */
 
 import { ScopeManager } from './scope-manager.js';
-import { RuvSwarmError, ValidationError } from './errors.js';
+import { ValidationError } from './errors.js';
 
 /**
  * MCP Scope Tools Class
@@ -178,7 +178,7 @@ export class MCPScopeTools {
   async neural_train(params) {
     await this.initialize();
 
-    const { agentId, pattern, data, scope: scopeParams } = params;
+    const { agentId, pattern, scope: scopeParams } = params;
 
     // Get or create scope
     let scope;
@@ -284,7 +284,7 @@ export class MCPScopeTools {
   async scope_configure(params) {
     await this.initialize();
 
-    const { swarmId, scope: scopeConfig } = params;
+    const { scope: scopeConfig } = params;
 
     if (!scopeConfig) {
       throw new ValidationError('Scope configuration required');
