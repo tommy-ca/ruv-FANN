@@ -4,7 +4,8 @@
  */
 
 import assert from 'assert';
-const sqlite3 = require('sqlite3').verbose();
+import sqlite3 from 'sqlite3';
+const sqlite3Verbose = sqlite3.verbose();
 import path from 'path';
 import { promises as fs } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,7 +27,7 @@ class SwarmPersistence {
 
   async connect() {
     return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
+      this.db = new sqlite3Verbose.Database(this.dbPath, (err) => {
         if (err) {
           reject(err);
         } else {
@@ -223,7 +224,7 @@ class SwarmPersistence {
     const sql = `
             SELECT * FROM memory 
             WHERE key = ? 
-            AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+            AND (expires_at IS NULL OR datetime(expires_at) > datetime('now'))
         `;
     const row = await this.get(sql, [key]);
     if (row) {
@@ -233,7 +234,7 @@ class SwarmPersistence {
   }
 
   async cleanupExpiredMemory() {
-    const sql = 'DELETE FROM memory WHERE expires_at <= CURRENT_TIMESTAMP';
+    const sql = 'DELETE FROM memory WHERE datetime(expires_at) <= datetime(\'now\')';
     return this.run(sql);
   }
 
