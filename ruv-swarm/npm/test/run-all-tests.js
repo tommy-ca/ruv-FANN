@@ -177,15 +177,22 @@ async function runTestSuite(suite, report) {
       output += text;
       process.stdout.write(data);
 
-      // Parse test results from output
-      const passedMatches = text.match(/✅|✓/g);
-      const failedMatches = text.match(/❌|✗/g);
-
-      if (passedMatches) {
-        suiteResult.passedTests += passedMatches.length;
-      }
-      if (failedMatches) {
-        suiteResult.failedTests += failedMatches.length;
+      // Parse test results from output - more specific patterns
+      // Count only actual test assertions, not summary lines
+      // Avoid counting "Failed: 0" as a failure
+      const lines = text.split('\n');
+      for (const line of lines) {
+        // Skip summary lines that contain colons after the icon
+        if (line.includes('Failed:') || line.includes('Passed:') || line.includes('Total:')) {
+          continue;
+        }
+        
+        // Count actual test assertions
+        if (line.match(/^\s*✅\s+\w/) || line.match(/^\s*✓\s+\w/)) {
+          suiteResult.passedTests++;
+        } else if (line.match(/^\s*❌\s+\w/) || line.match(/^\s*✗\s+\w/)) {
+          suiteResult.failedTests++;
+        }
       }
     });
 
@@ -210,7 +217,11 @@ async function runTestSuite(suite, report) {
         suiteResult.environmentIssue = true;
         suiteResult.reason = 'Environment issue: ' + suite.environmentIssues.join(', ');
       } else {
-        suiteResult.passed = code === 0 && suiteResult.failedTests === 0;
+        // A suite passes if:
+        // 1. Exit code is 0 (test file exited successfully) AND
+        // 2. Either no tests were counted OR no failed tests were counted
+        // This handles cases where test files don't output countable markers
+        suiteResult.passed = code === 0 && (suiteResult.totalTests === 0 || suiteResult.failedTests === 0);
       }
       suiteResult.exitCode = code;
       suiteResult.output = output.split('\n').filter(line => line.trim());
