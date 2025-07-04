@@ -477,6 +477,11 @@ async function startMcpServer(args) {
             // Start stdio MCP server loop
             process.stdin.setEncoding('utf8');
             
+            // Signal server readiness for testing
+            if (process.env.MCP_TEST_MODE === 'true') {
+                console.error('MCP server ready'); // Use stderr so it doesn't interfere with JSON-RPC
+            }
+            
             let buffer = '';
             let messageCount = 0;
             
