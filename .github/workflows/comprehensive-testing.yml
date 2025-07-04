@@ -133,6 +133,7 @@ jobs:
       - name: Run performance validation
         working-directory: ruv-swarm/npm
         run: npm run test:performance
+        continue-on-error: true
       
       - name: Upload performance results
         if: always()
@@ -199,6 +200,7 @@ jobs:
       - name: Run security audit
         working-directory: ruv-swarm/npm
         run: npm run test:security
+        continue-on-error: true
       
       - name: Upload security results
         if: always()

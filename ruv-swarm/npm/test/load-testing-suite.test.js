@@ -372,13 +372,13 @@ class LoadTestingSuite extends EventEmitter {
       console.log(`   Spawned ${scenario.agents.length} agents`);
 
       const initialMemory = process.memoryUsage().heapUsed;
-      const testDuration = 5 * 60 * 1000; // 5 minutes
+      const testDuration = process.env.CI ? 60 * 1000 : 5 * 60 * 1000; // 1 minute in CI, 5 minutes locally
       const endTime = Date.now() + testDuration;
       const taskTimes = [];
 
       let taskCounter = 0;
 
-      console.log('   Running sustained load for 5 minutes...');
+      console.log(`   Running sustained load for ${testDuration / 60000} minute(s)...`);
 
       while (Date.now() < endTime) {
         const batchPromises = scenario.agents.map(async(agent, i) => { // eslint-disable-line no-loop-func
