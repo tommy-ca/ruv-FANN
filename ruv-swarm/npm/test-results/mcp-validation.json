@@ -1,0 +1,28 @@
+{
+  "testSuite": "mcp-server-validation",
+  "version": "1.0.6",
+  "timestamp": "2025-07-04T14:51:56.804Z",
+  "tests": [
+    {
+      "name": "MCP Server Start",
+      "status": "passed",
+      "message": "Server started successfully"
+    },
+    {
+      "name": "WebSocket Connection",
+      "status": "failed",
+      "message": "Connection failed"
+    },
+    {
+      "name": "Test Suite",
+      "status": "failed",
+      "message": "Suite execution failed"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 1,
+    "failed": 2,
+    "passRate": "33.33"
+  }
+}

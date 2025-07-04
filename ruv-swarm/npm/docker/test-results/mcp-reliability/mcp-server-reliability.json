@@ -1,37 +1,37 @@
 {
   "testSuite": "mcp-server-reliability",
   "version": "1.0.13",
-  "timestamp": "2025-07-04T14:46:57.972Z",
+  "timestamp": "2025-07-04T14:51:40.392Z",
   "tests": [
     {
       "name": "MCP Server Startup",
       "status": "passed",
       "message": "Server started successfully",
-      "duration": 59
+      "duration": 56
     },
     {
       "name": "MCP Server Startup",
       "status": "passed",
       "message": "Server started successfully",
-      "duration": 60
+      "duration": 57
     },
     {
       "name": "MCP Server Startup",
       "status": "passed",
       "message": "Server started successfully",
-      "duration": 85
+      "duration": 80
     },
     {
       "name": "Stdio Communication",
       "status": "passed",
       "message": "JSON-RPC communication working",
-      "duration": 3
+      "duration": 5
     },
     {
       "name": "Server Stability",
       "status": "passed",
       "message": "All 5 requests handled successfully",
-      "duration": 4
+      "duration": 2
     },
     {
       "name": "Graceful Shutdown",
