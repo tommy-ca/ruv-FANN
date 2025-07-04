@@ -1,0 +1,59 @@
+{
+  "name": "connection-stability",
+  "description": "Test MCP connection stability over time",
+  "steps": [
+    {
+      "action": "connect",
+      "description": "Establish initial connection"
+    },
+    {
+      "action": "initialize",
+      "description": "Initialize MCP session"
+    },
+    {
+      "action": "call-tool",
+      "tool": "swarm_init",
+      "params": {
+        "topology": "mesh",
+        "maxAgents": 5
+      }
+    },
+    {
+      "action": "repeat",
+      "count": 60,
+      "interval": 60000,
+      "description": "Monitor connection for 1 hour",
+      "steps": [
+        {
+          "action": "call-tool",
+          "tool": "swarm_status",
+          "params": {
+            "verbose": true
+          }
+        },
+        {
+          "action": "call-tool",
+          "tool": "memory_usage",
+          "params": {
+            "detail": "summary"
+          }
+        },
+        {
+          "action": "call-tool",
+          "tool": "agent_list",
+          "params": {
+            "filter": "all"
+          }
+        }
+      ]
+    },
+    {
+      "action": "verify-state",
+      "description": "Verify connection is still valid"
+    },
+    {
+      "action": "disconnect",
+      "description": "Clean disconnect"
+    }
+  ]
+}
