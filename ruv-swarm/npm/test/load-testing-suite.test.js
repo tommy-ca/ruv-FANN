@@ -5,10 +5,15 @@
  * Tests concurrent operation of 50+ agents with stress testing scenarios
  */
 
-const { RuvSwarm } = require('../src/index-enhanced');
-const { EventEmitter } = require('events');
-const fs = require('fs').promises;
-const os = require('os');
+import { RuvSwarm } from '../src/index-enhanced.js';
+import { EventEmitter } from 'events';
+import { promises as fs } from 'fs';
+import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class LoadTestingSuite extends EventEmitter {
   constructor() {
@@ -765,7 +770,7 @@ class LoadTestingSuite extends EventEmitter {
     };
 
     // Save detailed report
-    const reportPath = '/workspaces/ruv-FANN/ruv-swarm/npm/test/load-test-report.json';
+    const reportPath = path.join(__dirname, 'reports', 'load-test-report.json');
     await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
 
     // Console summary
@@ -802,8 +807,8 @@ async function runLoadTests() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runLoadTests();
 }
 
-module.exports = { LoadTestingSuite };
+export { LoadTestingSuite };

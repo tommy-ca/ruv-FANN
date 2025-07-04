@@ -80,7 +80,7 @@ async function testMcpTools() {
 
     try {
       const cmd = `echo '${JSON.stringify(test.request)}' | node bin/ruv-swarm.js mcp start --protocol=stdio 2>/dev/null`;
-      const { stdout, stderr } = await execPromise(cmd, { cwd: '/workspaces/ruv-FANN/ruv-swarm/npm' });
+      const { stdout, stderr } = await execPromise(cmd, { cwd: '__dirname + '/..'' });
 
       if (stdout) {
         const lines = stdout.trim().split('\n');
@@ -132,7 +132,7 @@ async function testParallelAgents() {
     };
 
     const cmd = `echo '${JSON.stringify(request)}' | node bin/ruv-swarm.js mcp start --protocol=stdio 2>/dev/null | grep -E "jsonrpc|result"`;
-    promises.push(execPromise(cmd, { cwd: '/workspaces/ruv-FANN/ruv-swarm/npm' }));
+    promises.push(execPromise(cmd, { cwd: '__dirname + '/..'' }));
   }
 
   try {

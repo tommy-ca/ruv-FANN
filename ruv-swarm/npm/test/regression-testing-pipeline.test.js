@@ -897,8 +897,8 @@ async function runRegressionPipeline() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runRegressionPipeline();
 }
 
-module.exports = { RegressionTestingPipeline };
+export { RegressionTestingPipeline };

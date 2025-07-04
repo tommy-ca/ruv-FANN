@@ -5,12 +5,16 @@
  * Master test suite that orchestrates all testing components
  */
 
-const { PerformanceValidator } = require('./comprehensive-performance-validation.test.js');
-const { LoadTestingSuite } = require('./load-testing-suite.test.js');
-const { SecurityAuditor } = require('./security-audit.test.js');
-const { RegressionTestingPipeline } = require('./regression-testing-pipeline.test.js');
-const fs = require('fs').promises;
-const path = require('path');
+import { PerformanceValidator } from './comprehensive-performance-validation.test.js';
+import { LoadTestingSuite } from './load-testing-suite.test.js';
+import { SecurityAuditor } from './security-audit.test.js';
+import { RegressionTestingPipeline } from './regression-testing-pipeline.test.js';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class ComprehensiveTestOrchestrator {
   constructor() {
@@ -521,7 +525,7 @@ class ComprehensiveTestOrchestrator {
     this.generateRecommendations();
 
     // Save comprehensive report
-    const reportPath = '/workspaces/ruv-FANN/ruv-swarm/npm/test/comprehensive-test-report.json';
+    const reportPath = path.join(__dirname, 'comprehensive-test-report.json');
     await fs.writeFile(reportPath, JSON.stringify(this.orchestrationResults, null, 2));
 
     // Generate executive summary
@@ -631,7 +635,7 @@ ${this.orchestrationResults.cicdReadiness
 }
 `;
 
-    await fs.writeFile('/workspaces/ruv-FANN/ruv-swarm/npm/test/executive-summary.md', summary);
+    await fs.writeFile(path.join(__dirname, 'executive-summary.md'), summary);
   }
 }
 
@@ -648,8 +652,8 @@ async function runComprehensiveTests() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runComprehensiveTests();
 }
 
-module.exports = { ComprehensiveTestOrchestrator };
+export { ComprehensiveTestOrchestrator };

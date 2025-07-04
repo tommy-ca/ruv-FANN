@@ -1,0 +1,92 @@
+{
+  "testSuite": "cross-platform-validation",
+  "version": "1.0.6",
+  "timestamp": "2025-07-04T17:31:34.561Z",
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "osRelease": "5.4.0-88-generic",
+    "nodeVersion": "v22.17.0",
+    "endianness": "LE",
+    "cpus": 4,
+    "memory": 31557320704
+  },
+  "tests": [
+    {
+      "name": "File System Operations",
+      "status": "passed",
+      "message": "File I/O working correctly"
+    },
+    {
+      "name": "WASM File Access",
+      "status": "passed",
+      "message": "WASM file accessible: 167516 bytes"
+    },
+    {
+      "name": "WASM Module Loading",
+      "status": "passed",
+      "message": "WASM loaded successfully on linux"
+    },
+    {
+      "name": "WASM Functionality",
+      "status": "warning",
+      "message": "WASM operations limited: Failed to create swarm: this._wasmSwarm.RuvSwarm is not a constructor"
+    },
+    {
+      "name": "Process Execution",
+      "status": "passed",
+      "message": "Can execute processes: v22.17.0"
+    },
+    {
+      "name": "NPX Availability",
+      "status": "passed",
+      "message": "NPX available: v10.9.2"
+    },
+    {
+      "name": "Large Memory Allocation",
+      "status": "warning",
+      "message": "Memory operations limited: Failed to create swarm: this._wasmSwarm.RuvSwarm is not a constructor"
+    },
+    {
+      "name": "Memory Usage",
+      "status": "passed",
+      "message": "Heap: 7.82MB",
+      "memoryUsage": {
+        "rss": 65757184,
+        "heapTotal": 12386304,
+        "heapUsed": 8195624,
+        "external": 4944060,
+        "arrayBuffers": 235862
+      }
+    },
+    {
+      "name": "SQLite Module",
+      "status": "passed",
+      "message": "Native SQLite module working"
+    },
+    {
+      "name": "Endianness Handling",
+      "status": "passed",
+      "message": "LE endian system"
+    },
+    {
+      "name": "Path Separator",
+      "status": "passed",
+      "message": "Using correct separator: /"
+    },
+    {
+      "name": "Concurrency Test",
+      "status": "warning",
+      "message": "Concurrency limited: Failed to create swarm: this._wasmSwarm.RuvSwarm is not a constructor"
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "passed": 9,
+    "failed": 0,
+    "warnings": 3,
+    "skipped": 0,
+    "passRate": "75.00",
+    "compatibilityScore": 85
+  }
+}

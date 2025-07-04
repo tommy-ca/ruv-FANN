@@ -5,11 +5,15 @@
  * Tests all performance targets and validates DAA integration
  */
 
-const { RuvSwarm } = require('../src/index-enhanced');
-const { performanceCLI } = require('../src/performance');
-const fs = require('fs').promises;
-const path = require('path');
-const { spawn } = require('child_process');
+import { RuvSwarm } from '../src/index-enhanced.js';
+import { performanceCLI } from '../src/performance.js';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class PerformanceValidator {
   constructor() {
@@ -393,7 +397,7 @@ class PerformanceValidator {
 
     try {
       // Test DAA AI module integration
-      const daaPath = '/workspaces/ruv-FANN/daa-repository';
+      const daaPath = path.join(__dirname, '..', '..', '..', 'daa-repository');
       const daaExists = await this.checkPathExists(daaPath);
 
       if (!daaExists) {
@@ -401,7 +405,7 @@ class PerformanceValidator {
       }
 
       // Test Rust integration
-      const cargoTest = await this.runCommand('cargo test --manifest-path /workspaces/ruv-FANN/daa-repository/Cargo.toml');
+      const cargoTest = await this.runCommand(`cargo test --manifest-path ${path.join(daaPath, 'Cargo.toml')}`);
 
       // Test MCP integration
       const mcpTest = await this.testMCPIntegration();
@@ -502,7 +506,7 @@ class PerformanceValidator {
     };
 
     // Save detailed report
-    const reportPath = '/workspaces/ruv-FANN/ruv-swarm/npm/test/validation-report.json';
+    const reportPath = path.join(__dirname, 'reports', 'validation-report.json');
     await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
 
     // Generate readable summary
@@ -668,8 +672,8 @@ async function runValidation() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runValidation();
 }
 
-module.exports = { PerformanceValidator };
+export { PerformanceValidator };

@@ -3,9 +3,9 @@
  * Provides performance analysis, optimization, and suggestions
  */
 
-const { RuvSwarm } = require('./index-enhanced');
-const fs = require('fs').promises;
-const path = require('path'); // eslint-disable-line no-unused-vars
+import { RuvSwarm } from './index-enhanced.js';
+import { promises as fs } from 'fs';
+import path from 'path'; // eslint-disable-line no-unused-vars
 
 class PerformanceCLI {
   constructor() {
@@ -455,4 +455,4 @@ class PerformanceCLI {
 
 const performanceCLI = new PerformanceCLI();
 
-module.exports = { performanceCLI, PerformanceCLI };
+export { performanceCLI, PerformanceCLI };

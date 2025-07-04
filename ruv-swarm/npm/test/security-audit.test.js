@@ -5,12 +5,16 @@
  * Comprehensive security testing for ruv-swarm
  */
 
-const { RuvSwarm } = require('../src/index-enhanced');
-const { PersistenceManager } = require('../src/persistence');
-const fs = require('fs').promises;
-const path = require('path');
-const crypto = require('crypto');
-const { spawn } = require('child_process');
+import { RuvSwarm } from '../src/index-enhanced.js';
+import { SwarmPersistence as PersistenceManager } from '../src/persistence.js';
+import { promises as fs } from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class SecurityAuditor {
   constructor() {
@@ -1027,7 +1031,7 @@ class SecurityAuditor {
     this.generateSecurityRecommendations();
 
     // Save report
-    const reportPath = '/workspaces/ruv-FANN/ruv-swarm/npm/test/security-audit-report.json';
+    const reportPath = path.join(__dirname, 'reports', 'security-audit-report.json');
     await fs.writeFile(reportPath, JSON.stringify(this.auditResults, null, 2));
 
     // Console summary
@@ -1093,8 +1097,8 @@ async function runSecurityAudit() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   runSecurityAudit();
 }
 
-module.exports = { SecurityAuditor };
+export { SecurityAuditor };

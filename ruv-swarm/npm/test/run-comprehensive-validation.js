@@ -5,9 +5,13 @@
  * Main entry point for complete test suite validation
  */
 
-const { ComprehensiveTestOrchestrator } = require('./comprehensive-test-orchestrator.js');
-const fs = require('fs').promises;
-const path = require('path');
+import { ComprehensiveTestOrchestrator } from './comprehensive-test-orchestrator.js';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function main() {
   console.log('🚀 ruv-swarm Comprehensive Validation');
@@ -277,8 +281,8 @@ ${finalReport.cicdReadiness && finalReport.validation.overallScore >= 90
 }
 
 // Run if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }
 
-module.exports = { main };
+export { main };
