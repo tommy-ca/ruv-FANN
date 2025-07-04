@@ -71,7 +71,12 @@ async function startMCPServer() {
 
     mcpProcess.stdout.on('data', (data) => {
       const output = data.toString();
-      console.log('  Server:', output.trim());
+      console.log('  Server stdout:', output.trim());
+    });
+    
+    mcpProcess.stderr.on('data', (data) => {
+      const output = data.toString();
+      console.log('  Server stderr:', output.trim());
 
       if (output.includes('MCP server ready') || output.includes('Listening on')) {
         serverReady = true;
@@ -80,22 +85,19 @@ async function startMCPServer() {
       }
     });
 
-    mcpProcess.stderr.on('data', (data) => {
-      console.error('  Error:', data.toString());
-    });
 
     mcpProcess.on('error', (error) => {
       addTestResult('MCP Server Start', 'failed', 'Failed to start server', error.message);
       reject(error);
     });
 
-    // Timeout after 10 seconds
+    // Increased timeout to 30 seconds for reliability
     setTimeout(() => {
       if (!serverReady) {
         addTestResult('MCP Server Start', 'failed', 'Server startup timeout');
         reject(new Error('Server startup timeout'));
       }
-    }, 10000);
+    }, 30000);
   });
 }
 

@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { SwarmPersistence } from '../persistence.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +25,23 @@ class RuvSwarmHooks {
         patternsImproved: 0,
       },
     };
+    
+    // Initialize persistence layer for cross-agent memory
+    this.persistence = null;
+    this.initializePersistence();
+  }
+
+  /**
+   * Initialize persistence layer with error handling
+   */
+  async initializePersistence() {
+    try {
+      this.persistence = new SwarmPersistence();
+      console.log('🗄️ Hook persistence layer initialized');
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize persistence layer:', error.message);
+      console.warn('⚠️ Operating in memory-only mode');
+    }
   }
 
   /**
@@ -372,11 +390,14 @@ class RuvSwarmHooks {
      * Notification hook - Handle notifications with swarm status
      */
   async notificationHook(args) {
-    const { message, level, withSwarmStatus, sendTelemetry } = args;
+    const { message, level, withSwarmStatus, sendTelemetry, type, context, agentId } = args;
 
     const notification = {
       message,
       level: level || 'info',
+      type: type || 'general',
+      context: context || {},
+      agentId: agentId || null,
       timestamp: Date.now(),
     };
 
@@ -395,11 +416,14 @@ class RuvSwarmHooks {
       this.sendTelemetry('notification', notification);
     }
 
-    // Store notification
+    // Store notification in both runtime memory AND persistent database
     if (!this.sessionData.notifications) {
       this.sessionData.notifications = [];
     }
     this.sessionData.notifications.push(notification);
+
+    // CRITICAL FIX: Also store in persistent database for cross-agent access
+    await this.storeNotificationInDatabase(notification);
 
     return {
       continue: true,
@@ -1714,6 +1738,157 @@ ${this.sessionData.learnings.slice(-5).map(l =>
     }
 
     return related.filter(f => f !== filePath);
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Store notification in database for cross-agent access
+   */
+  async storeNotificationInDatabase(notification) {
+    if (!this.persistence) {
+      console.warn('⚠️ No persistence layer - notification stored in memory only');
+      return;
+    }
+
+    try {
+      // Store as agent memory with special hook prefix
+      const agentId = notification.agentId || 'hook-system';
+      const memoryKey = `notifications/${notification.type}/${Date.now()}`;
+      
+      await this.persistence.storeAgentMemory(agentId, memoryKey, {
+        type: notification.type,
+        message: notification.message,
+        context: notification.context,
+        timestamp: notification.timestamp,
+        source: 'hook-system',
+        sessionId: this.getSessionId()
+      });
+
+      console.log(`📝 Notification stored in database: ${memoryKey}`);
+    } catch (error) {
+      console.error('❌ Failed to store notification in database:', error.message);
+    }
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Retrieve notifications from database for cross-agent access
+   */
+  async getNotificationsFromDatabase(agentId = null, type = null) {
+    if (!this.persistence) {
+      return [];
+    }
+
+    try {
+      const targetAgentId = agentId || 'hook-system';
+      const memories = await this.persistence.getAllMemory(targetAgentId);
+      
+      return memories
+        .filter(memory => memory.key.startsWith('notifications/'))
+        .filter(memory => !type || memory.value.type === type)
+        .map(memory => memory.value)
+        .sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('❌ Failed to retrieve notifications from database:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Enhanced agent completion with database coordination  
+   */
+  async agentCompleteHook(args) {
+    const { agentId, taskId, results, learnings } = args;
+
+    // Store completion in database for other agents to see
+    if (this.persistence && agentId) {
+      try {
+        await this.persistence.storeAgentMemory(agentId, `completion/${taskId}`, {
+          taskId,
+          results,
+          learnings,
+          completedAt: Date.now(),
+          source: 'agent-completion'
+        });
+
+        // Update agent status in database
+        await this.persistence.updateAgentStatus(agentId, 'completed');
+        
+        console.log(`✅ Agent ${agentId} completion stored in database`);
+      } catch (error) {
+        console.error('❌ Failed to store agent completion:', error.message);
+      }
+    }
+
+    // Store in runtime memory as before
+    const agent = this.sessionData.agents.get(agentId);
+    if (agent) {
+      agent.lastCompletion = {
+        taskId,
+        results,
+        learnings,
+        timestamp: Date.now(),
+      };
+      agent.status = 'completed';
+    }
+
+    return {
+      continue: true,
+      stored: true,
+      agent: agentId,
+    };
+  }
+
+  /**
+   * Get current session ID for coordination
+   */
+  getSessionId() {
+    if (!this._sessionId) {
+      this._sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    return this._sessionId;
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Cross-agent memory retrieval for coordinated decisions
+   */
+  async getSharedMemory(key, agentId = null) {
+    // Check runtime memory first
+    const runtimeValue = this.sessionData[key];
+    
+    // Check database for persistent cross-agent memory
+    if (this.persistence) {
+      try {
+        const targetAgentId = agentId || 'shared-memory';
+        const memory = await this.persistence.getAgentMemory(targetAgentId, key);
+        
+        if (memory) {
+          console.log(`📖 Retrieved shared memory from database: ${key}`);
+          return memory.value;
+        }
+      } catch (error) {
+        console.error('❌ Failed to retrieve shared memory:', error.message);
+      }
+    }
+    
+    return runtimeValue;
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Cross-agent memory storage for coordinated decisions
+   */
+  async setSharedMemory(key, value, agentId = null) {
+    // Store in runtime memory
+    this.sessionData[key] = value;
+    
+    // Store in database for cross-agent access
+    if (this.persistence) {
+      try {
+        const targetAgentId = agentId || 'shared-memory';
+        await this.persistence.storeAgentMemory(targetAgentId, key, value);
+        console.log(`📝 Stored shared memory in database: ${key}`);
+      } catch (error) {
+        console.error('❌ Failed to store shared memory:', error.message);
+      }
+    }
   }
 }
 

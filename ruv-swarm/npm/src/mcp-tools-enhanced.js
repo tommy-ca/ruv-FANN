@@ -237,6 +237,106 @@ class EnhancedMCPTools {
     return stats;
   }
 
+  /**
+   * 🔧 CRITICAL FIX: Integrate hook notifications with MCP memory system
+   */
+  async integrateHookNotifications(hookInstance) {
+    if (!hookInstance || !this.persistence) {
+      console.warn('⚠️ Cannot integrate hook notifications - missing components');
+      return false;
+    }
+
+    try {
+      // Get all notifications from hook runtime memory
+      const runtimeNotifications = hookInstance.sessionData.notifications || [];
+      
+      // Store each notification in persistent database
+      for (const notification of runtimeNotifications) {
+        const agentId = notification.agentId || 'hook-system';
+        const memoryKey = `notifications/${notification.type}/${notification.timestamp}`;
+        
+        await this.persistence.storeAgentMemory(agentId, memoryKey, {
+          ...notification,
+          source: 'hook-integration',
+          integratedAt: Date.now()
+        });
+      }
+
+      console.log(`🔗 Integrated ${runtimeNotifications.length} hook notifications into MCP memory`);
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to integrate hook notifications:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Retrieve cross-agent notifications for coordinated decision making
+   */
+  async getCrossAgentNotifications(agentId = null, type = null, since = null) {
+    if (!this.persistence) {
+      return [];
+    }
+
+    try {
+      const allAgents = agentId ? [agentId] : await this.getActiveAgentIds();
+      console.log(`🔍 Debug: Target agents for notification retrieval:`, allAgents);
+      const notifications = [];
+
+      for (const agent of allAgents) {
+        const memories = await this.persistence.getAllMemory(agent);
+        console.log(`🔍 Debug: Agent ${agent} has ${memories.length} memories`);
+        
+        const agentNotifications = memories
+          .filter(memory => {
+            const isNotification = memory.key.startsWith('notifications/');
+            console.log(`🔍 Debug: Key ${memory.key} is notification: ${isNotification}`);
+            return isNotification;
+          })
+          .filter(memory => !type || memory.value.type === type)
+          .filter(memory => !since || memory.value.timestamp > since)
+          .map(memory => ({
+            ...memory.value,
+            agentId: agent,
+            memoryKey: memory.key
+          }));
+
+        console.log(`🔍 Debug: Agent ${agent} has ${agentNotifications.length} notification memories`);
+        notifications.push(...agentNotifications);
+      }
+
+      return notifications.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('❌ Failed to retrieve cross-agent notifications:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of active agent IDs from database
+   */
+  async getActiveAgentIds() {
+    try {
+      const swarms = await this.persistence.getActiveSwarms();
+      console.log(`🔍 Debug: Found ${swarms.length} active swarms`);
+      const agentIds = [];
+
+      for (const swarm of swarms) {
+        // Get ALL agents (not just active) for cross-agent notifications
+        const agents = await this.persistence.getSwarmAgents(swarm.id, 'all');
+        console.log(`🔍 Debug: Swarm ${swarm.id} has ${agents.length} total agents`);
+        agentIds.push(...agents.map(a => a.id));
+      }
+
+      const uniqueAgentIds = [...new Set(agentIds)]; // Remove duplicates
+      console.log(`🔍 Debug: Total unique active agent IDs:`, uniqueAgentIds);
+      return uniqueAgentIds;
+    } catch (error) {
+      console.error('❌ Failed to get active agent IDs:', error.message);
+      return [];
+    }
+  }
+
   async initialize(ruvSwarmInstance = null) {
     // If instance provided, use it and load existing swarms
     if (ruvSwarmInstance) {
