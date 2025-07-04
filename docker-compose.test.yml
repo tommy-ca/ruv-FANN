@@ -1,0 +1,221 @@
+# Docker Compose for Comprehensive Testing of ruv-FANN
+version: '3.8'
+
+networks:
+  ruv-fann-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  test-results:
+  postgres-data:
+  redis-data:
+
+services:
+  # Main ruv-FANN testing service
+  ruv-fann-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: ruv-fann-test
+    volumes:
+      - .:/workspace:cached
+      - test-results:/test-results
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_TEST_MODE=true
+      - RUST_LOG=debug
+      - DENO_PERMISSIONS=allow-all
+      - MCP_SERVER_PORT=3000
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - POSTGRES_URL=postgresql://postgres:password@postgres:5432/ruv_fann_test
+      - REDIS_URL=redis://redis:6379
+    networks:
+      - ruv-fann-network
+    depends_on:
+      - postgres
+      - redis
+    command: >
+      sh -c "
+        echo 'Starting comprehensive ruv-FANN capability tests...' &&
+        sleep 5 &&
+        ./scripts/test-all-capabilities.sh
+      "
+
+  # PostgreSQL for testing
+  postgres:
+    image: postgres:15-alpine
+    container_name: ruv-fann-postgres
+    environment:
+      POSTGRES_DB: ruv_fann_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ruv-fann-network
+    ports:
+      - "5432:5432"
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: ruv-fann-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - ruv-fann-network
+    ports:
+      - "6379:6379"
+
+  # MCP Server Test
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: ruv-fann-mcp-server
+    environment:
+      - MCP_SERVER_PORT=3000
+      - NODE_ENV=test
+    networks:
+      - ruv-fann-network
+    ports:
+      - "3000:3000"
+    command: ./bin/claude-flow mcp start --port 3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # DAA Orchestrator Test
+  daa-orchestrator:
+    build:
+      context: daa-repository
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: ruv-fann-daa-orchestrator
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/ruv_fann_test
+    networks:
+      - ruv-fann-network
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+  # WASM Test Server
+  wasm-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: ruv-fann-wasm-test
+    volumes:
+      - .:/workspace:cached
+    networks:
+      - ruv-fann-network
+    command: >
+      sh -c "
+        echo 'Testing WASM capabilities...' &&
+        cd /workspace/ruv-swarm &&
+        wasm-pack test --node
+      "
+
+  # Training Test
+  training-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: ruv-fann-training-test
+    volumes:
+      - .:/workspace:cached
+    networks:
+      - ruv-fann-network
+    environment:
+      - RUST_LOG=debug
+    command: >
+      sh -c "
+        echo 'Testing training capabilities...' &&
+        cd /workspace/daa-compute &&
+        cargo test --release
+      "
+
+  # CLI Test
+  cli-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: ruv-fann-cli-test
+    volumes:
+      - .:/workspace:cached
+      - test-results:/test-results
+    networks:
+      - ruv-fann-network
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+    command: >
+      sh -c "
+        echo 'Testing CLI capabilities...' &&
+        ./bin/claude-flow --version &&
+        ./bin/claude-flow --help &&
+        ./bin/claude-flow mcp status &&
+        echo 'CLI tests completed'
+      "
+
+  # GitHub Integration Test
+  github-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: ruv-fann-github-test
+    volumes:
+      - .:/workspace:cached
+    networks:
+      - ruv-fann-network
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - CLAUDE_SWARM_ID=ruv-fann-test-agent
+    command: >
+      sh -c "
+        echo 'Testing GitHub integration...' &&
+        ./bin/claude-flow github status &&
+        ./bin/claude-flow github tasks &&
+        echo 'GitHub integration tests completed'
+      "
+
+  # Performance Monitor
+  performance-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+    container_name: ruv-fann-performance-monitor
+    volumes:
+      - .:/workspace:cached
+      - test-results:/test-results
+    networks:
+      - ruv-fann-network
+    command: >
+      sh -c "
+        echo 'Starting performance monitoring...' &&
+        while true; do
+          echo 'Performance metrics at $(date):' > /test-results/performance.log
+          docker stats --no-stream >> /test-results/performance.log 2>&1 || true
+          sleep 60
+        done
+      "
+    depends_on:
+      - ruv-fann-test
+      - mcp-server
+      - daa-orchestrator

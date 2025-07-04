@@ -109,7 +109,7 @@ class TestRunner {
     const args = [
       "test",
       "--allow-all",
-      "--unstable-temporal-api",
+      "--unstable-temporal",
     ];
 
     // Add coverage if enabled

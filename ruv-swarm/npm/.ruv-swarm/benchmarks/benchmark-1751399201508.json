@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-01T19:46:41.184Z",
+    "version": "0.2.0",
+    "testType": "comprehensive",
+    "iterations": 20,
+    "system": {
+      "platform": "linux",
+      "arch": "x64",
+      "nodeVersion": "v22.16.0"
+    }
+  },
+  "benchmarks": {
+    "wasmLoading": {
+      "time": 50,
+      "target": 100,
+      "status": "PASS"
+    },
+    "swarmInit": {
+      "times": [
+        6,
+        5,
+        5,
+        5,
+        5,
+        7,
+        6,
+        5,
+        5,
+        5,
+        5,
+        6,
+        5,
+        5,
+        5,
+        5,
+        6,
+        6,
+        5,
+        5
+      ],
+      "average": 5.35,
+      "min": 5,
+      "max": 7,
+      "target": 10,
+      "status": "PASS"
+    },
+    "agentSpawn": {
+      "times": [
+        3,
+        3,
+        4,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        5,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "average": 3.15,
+      "target": 5,
+      "status": "PASS"
+    },
+    "neuralProcessing": {
+      "times": [
+        20,
+        22,
+        20,
+        20,
+        20
+      ],
+      "average": 20.4,
+      "throughput": 49.01960784313726,
+      "target": 50,
+      "status": "PASS"
+    },
+    "memory": {
+      "heapUsed": 8702680,
+      "heapTotal": 11743232,
+      "external": 4740249,
+      "rss": 66838528,
+      "efficiency": "74.1"
+    }
+  },
+  "overallScore": 80
+}

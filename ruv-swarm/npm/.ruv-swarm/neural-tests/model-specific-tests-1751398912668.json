@@ -1,0 +1,320 @@
+{
+  "timestamp": "2025-07-01T19:41:52.668Z",
+  "results": {
+    "lstm": {
+      "sequentialMemory": {
+        "testCount": 3,
+        "averageAccuracy": 91.79752060601284,
+        "memoryRetention": 95.37113586335283
+      },
+      "generalization": {
+        "tests": [
+          {
+            "domain": "in-domain",
+            "accuracy": 87
+          },
+          {
+            "domain": "near-domain",
+            "accuracy": 80.81885884184112
+          },
+          {
+            "domain": "out-of-domain",
+            "accuracy": 68.55756690742015
+          }
+        ],
+        "robustness": 21.198198956988335
+      },
+      "memoryScaling": {
+        "measurements": [
+          {
+            "sequenceLength": 100,
+            "memoryUsage": 1536,
+            "efficiency": 100
+          },
+          {
+            "sequenceLength": 500,
+            "memoryUsage": 2119.2647600044256,
+            "efficiency": 72.47796636776957
+          },
+          {
+            "sequenceLength": 1000,
+            "memoryUsage": 2434.3959436202704,
+            "efficiency": 63.09573444801933
+          },
+          {
+            "sequenceLength": 5000,
+            "memoryUsage": 3358.8082911537495,
+            "efficiency": 45.73050519273264
+          }
+        ],
+        "scalingType": "linear"
+      }
+    },
+    "attention": {
+      "multiHead": {
+        "configurations": [
+          {
+            "heads": 16,
+            "accuracy": 97.47969160487509,
+            "focusQuality": 96.15623204969665,
+            "computeTime": 420.3762021994707
+          },
+          {
+            "heads": 8,
+            "accuracy": 91.31314960946426,
+            "focusQuality": 91.22668342418348,
+            "computeTime": 263.1087050533791
+          },
+          {
+            "heads": 4,
+            "accuracy": 88.80801757104612,
+            "focusQuality": 87.86731572949569,
+            "computeTime": 185.34401682517753
+          },
+          {
+            "heads": 1,
+            "accuracy": 86.09101707046018,
+            "focusQuality": 84.06064481993914,
+            "computeTime": 128.5816984018698
+          }
+        ],
+        "optimalHeads": 16,
+        "scalability": "linear"
+      },
+      "generalization": {
+        "tests": [
+          {
+            "domain": "in-domain",
+            "accuracy": 94
+          },
+          {
+            "domain": "near-domain",
+            "accuracy": 84.19566852526228
+          },
+          {
+            "domain": "out-of-domain",
+            "accuracy": 82.524425890118
+          }
+        ],
+        "robustness": 12.208057563704259
+      },
+      "memoryScaling": {
+        "measurements": [
+          {
+            "sequenceLength": 100,
+            "memoryUsage": 3328,
+            "efficiency": 100
+          },
+          {
+            "sequenceLength": 500,
+            "memoryUsage": 16640,
+            "efficiency": 20
+          },
+          {
+            "sequenceLength": 1000,
+            "memoryUsage": 33280,
+            "efficiency": 10
+          },
+          {
+            "sequenceLength": 5000,
+            "memoryUsage": 166400,
+            "efficiency": 2
+          }
+        ],
+        "scalingType": "quadratic"
+      }
+    },
+    "transformer": {
+      "parallelization": {
+        "batchTests": [
+          {
+            "batchSize": 128,
+            "processingTime": 356,
+            "efficiency": 3595.5056179775283,
+            "throughput": 359.55056179775283
+          },
+          {
+            "batchSize": 32,
+            "processingTime": 164,
+            "efficiency": 1951.219512195122,
+            "throughput": 195.1219512195122
+          },
+          {
+            "batchSize": 8,
+            "processingTime": 116,
+            "efficiency": 689.655172413793,
+            "throughput": 68.9655172413793
+          },
+          {
+            "batchSize": 1,
+            "processingTime": 102,
+            "efficiency": 98.0392156862745,
+            "throughput": 9.803921568627452
+          }
+        ],
+        "maxEfficiency": 3595.5056179775283,
+        "optimalBatch": 128
+      },
+      "generalization": {
+        "tests": [
+          {
+            "domain": "in-domain",
+            "accuracy": 94
+          },
+          {
+            "domain": "near-domain",
+            "accuracy": 88.59447540754024
+          },
+          {
+            "domain": "out-of-domain",
+            "accuracy": 79.68912983189247
+          }
+        ],
+        "robustness": 15.224329966071835
+      },
+      "memoryScaling": {
+        "measurements": [
+          {
+            "sequenceLength": 100,
+            "memoryUsage": 5120,
+            "efficiency": 100
+          },
+          {
+            "sequenceLength": 500,
+            "memoryUsage": 25600,
+            "efficiency": 20
+          },
+          {
+            "sequenceLength": 1000,
+            "memoryUsage": 51200,
+            "efficiency": 10
+          },
+          {
+            "sequenceLength": 5000,
+            "memoryUsage": 256000,
+            "efficiency": 2
+          }
+        ],
+        "scalingType": "quadratic"
+      }
+    },
+    "feedforward": {
+      "latency": {
+        "measurements": [
+          {
+            "inputSize": 10,
+            "latency": 0.6095961828391494,
+            "throughput": 1640.4302194652425
+          },
+          {
+            "inputSize": 100,
+            "latency": 0.6873211045219434,
+            "throughput": 1454.9240426649435
+          },
+          {
+            "inputSize": 1000,
+            "latency": 1.546958438739812,
+            "throughput": 646.4297779160912
+          },
+          {
+            "inputSize": 10000,
+            "latency": 10.516443807521979,
+            "throughput": 95.08917827191176
+          }
+        ],
+        "avgLatency": 3.340079883405721,
+        "p99Latency": 10.516443807521979
+      },
+      "generalization": {
+        "tests": [
+          {
+            "domain": "in-domain",
+            "accuracy": 89
+          },
+          {
+            "domain": "near-domain",
+            "accuracy": 82.72727720407485
+          },
+          {
+            "domain": "out-of-domain",
+            "accuracy": 70.26414665731983
+          }
+        ],
+        "robustness": 21.051520609753
+      },
+      "memoryScaling": {
+        "measurements": [
+          {
+            "sequenceLength": 100,
+            "memoryUsage": 704,
+            "efficiency": 100
+          },
+          {
+            "sequenceLength": 500,
+            "memoryUsage": 704,
+            "efficiency": 100
+          },
+          {
+            "sequenceLength": 1000,
+            "memoryUsage": 704,
+            "efficiency": 100
+          },
+          {
+            "sequenceLength": 5000,
+            "memoryUsage": 704,
+            "efficiency": 100
+          }
+        ],
+        "scalingType": "constant"
+      }
+    }
+  },
+  "summary": {
+    "lstm": {
+      "strengths": [
+        "Sequential memory retention",
+        "Temporal pattern recognition"
+      ],
+      "weaknesses": [
+        "Limited parallelization",
+        "Memory scaling"
+      ],
+      "bestFor": "Time-series and sequential data"
+    },
+    "attention": {
+      "strengths": [
+        "Multi-head focus",
+        "High accuracy",
+        "Flexible attention patterns"
+      ],
+      "weaknesses": [
+        "Quadratic memory scaling",
+        "Computational complexity"
+      ],
+      "bestFor": "Complex pattern recognition with global context"
+    },
+    "transformer": {
+      "strengths": [
+        "Excellent parallelization",
+        "Scalable architecture"
+      ],
+      "weaknesses": [
+        "High memory requirements",
+        "Complex implementation"
+      ],
+      "bestFor": "Large-scale parallel processing tasks"
+    },
+    "feedforward": {
+      "strengths": [
+        "Ultra-low latency",
+        "Constant memory usage",
+        "Simple implementation"
+      ],
+      "weaknesses": [
+        "No sequential modeling",
+        "Limited context awareness"
+      ],
+      "bestFor": "Real-time inference with resource constraints"
+    }
+  }
+}

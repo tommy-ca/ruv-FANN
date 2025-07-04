@@ -1,0 +1,287 @@
+{
+  "timestamp": "2025-07-01T19:39:13.060Z",
+  "duration": 23591,
+  "results": {
+    "lstm": {
+      "model": "lstm",
+      "iterations": 20,
+      "metrics": {
+        "trainingSuccess": true
+      },
+      "timings": {
+        "training": 3436,
+        "patternAnalysis": 1380,
+        "export": 1370
+      },
+      "memory": {
+        "totalMemory": 1536,
+        "peakMemory": 1843.1999999999998,
+        "efficiency": 85.83038826060377,
+        "layerCount": 8
+      },
+      "activations": {},
+      "patterns": {
+        "Features {": [],
+        "Focus Patterns": [
+          "Sequential attention",
+          "Parallel processing",
+          "Context switching"
+        ],
+        "Learned Behaviors": [
+          "Code completion",
+          "Error detection",
+          "Pattern recognition"
+        ],
+        "Strengths": [
+          "Long sequences",
+          "Context awareness",
+          "Multi-modal input"
+        ],
+        "inferenceSpeed": 129,
+        "memoryUsage": 446,
+        "energyEfficiency": 94.1
+      },
+      "architecture": {
+        "layers": 11,
+        "parameters": 1014412,
+        "accuracy": "87.34",
+        "loss": "0.0474"
+      },
+      "inference": {
+        "mean": 99.94893494998965,
+        "min": 91.60505461101683,
+        "max": 109.55691563134116,
+        "variance": 49.09408871551103,
+        "samples": 10
+      }
+    },
+    "attention": {
+      "model": "attention",
+      "iterations": 20,
+      "metrics": {
+        "trainingSuccess": true
+      },
+      "timings": {
+        "training": 3661,
+        "patternAnalysis": 1088,
+        "export": 1096
+      },
+      "memory": {
+        "totalMemory": 3328,
+        "peakMemory": 4992,
+        "efficiency": 93.38645596053638,
+        "layerCount": 10
+      },
+      "activations": {},
+      "patterns": {
+        "Features {": [],
+        "Focus Patterns": [
+          "Sequential attention",
+          "Parallel processing",
+          "Context switching"
+        ],
+        "Learned Behaviors": [
+          "Code completion",
+          "Error detection",
+          "Pattern recognition"
+        ],
+        "Strengths": [
+          "Long sequences",
+          "Context awareness",
+          "Multi-modal input"
+        ],
+        "inferenceSpeed": 55,
+        "memoryUsage": 447,
+        "energyEfficiency": 93.5
+      },
+      "architecture": {
+        "layers": 11,
+        "parameters": 889457,
+        "accuracy": "94.31",
+        "loss": "0.0197"
+      },
+      "inference": {
+        "mean": 147.30353361645336,
+        "min": 138.44502887716106,
+        "max": 163.6346387257998,
+        "variance": 51.06040816634969,
+        "samples": 10
+      }
+    },
+    "transformer": {
+      "model": "transformer",
+      "iterations": 20,
+      "metrics": {
+        "trainingSuccess": true
+      },
+      "timings": {
+        "training": 3127,
+        "patternAnalysis": 1351,
+        "export": 1419
+      },
+      "memory": {
+        "totalMemory": 5120,
+        "peakMemory": 10240,
+        "efficiency": 87.61173681961156,
+        "layerCount": 8
+      },
+      "activations": {},
+      "patterns": {
+        "Features {": [],
+        "Focus Patterns": [
+          "Sequential attention",
+          "Parallel processing",
+          "Context switching"
+        ],
+        "Learned Behaviors": [
+          "Code completion",
+          "Error detection",
+          "Pattern recognition"
+        ],
+        "Strengths": [
+          "Long sequences",
+          "Context awareness",
+          "Multi-modal input"
+        ],
+        "inferenceSpeed": 138,
+        "memoryUsage": 397,
+        "energyEfficiency": 87.9
+      },
+      "architecture": {
+        "layers": 9,
+        "parameters": 700234,
+        "accuracy": "94.27",
+        "loss": "0.0541"
+      },
+      "inference": {
+        "mean": 205.6325556574938,
+        "min": 188.80601981854002,
+        "max": 219.50760935558074,
+        "variance": 125.25194226353983,
+        "samples": 10
+      }
+    },
+    "feedforward": {
+      "model": "feedforward",
+      "iterations": 20,
+      "metrics": {
+        "trainingSuccess": true
+      },
+      "timings": {
+        "training": 3089,
+        "patternAnalysis": 1087,
+        "export": 1479
+      },
+      "memory": {
+        "totalMemory": 704,
+        "peakMemory": 774.4000000000001,
+        "efficiency": 85.72208142907205,
+        "layerCount": 7
+      },
+      "activations": {},
+      "patterns": {
+        "Features {": [],
+        "Focus Patterns": [
+          "Sequential attention",
+          "Parallel processing",
+          "Context switching"
+        ],
+        "Learned Behaviors": [
+          "Code completion",
+          "Error detection",
+          "Pattern recognition"
+        ],
+        "Strengths": [
+          "Long sequences",
+          "Context awareness",
+          "Multi-modal input"
+        ],
+        "inferenceSpeed": 127,
+        "memoryUsage": 546,
+        "energyEfficiency": 90.2
+      },
+      "architecture": {
+        "layers": 8,
+        "parameters": 685381,
+        "accuracy": "89.01",
+        "loss": "0.0231"
+      },
+      "inference": {
+        "mean": 303.5845855831444,
+        "min": 285.73972456331165,
+        "max": 324.1659938080102,
+        "variance": 112.19186104100356,
+        "samples": 10
+      }
+    }
+  },
+  "analysis": {
+    "performance": {
+      "lstm": {
+        "trainingTime": 3436,
+        "inferenceSpeed": 99.94893494998965,
+        "accuracy": 87.34,
+        "loss": 0.0474
+      },
+      "attention": {
+        "trainingTime": 3661,
+        "inferenceSpeed": 147.30353361645336,
+        "accuracy": 94.31,
+        "loss": 0.0197
+      },
+      "transformer": {
+        "trainingTime": 3127,
+        "inferenceSpeed": 205.6325556574938,
+        "accuracy": 94.27,
+        "loss": 0.0541
+      },
+      "feedforward": {
+        "trainingTime": 3089,
+        "inferenceSpeed": 303.5845855831444,
+        "accuracy": 89.01,
+        "loss": 0.0231
+      }
+    },
+    "memory": {
+      "lstm": {
+        "totalMemory": 1536,
+        "efficiency": 85.83038826060377
+      },
+      "attention": {
+        "totalMemory": 3328,
+        "efficiency": 93.38645596053638
+      },
+      "transformer": {
+        "totalMemory": 5120,
+        "efficiency": 87.61173681961156
+      },
+      "feedforward": {
+        "totalMemory": 704,
+        "efficiency": 85.72208142907205
+      }
+    },
+    "architecture": {
+      "lstm": {
+        "layers": 11,
+        "parameters": 1014412
+      },
+      "attention": {
+        "layers": 11,
+        "parameters": 889457
+      },
+      "transformer": {
+        "layers": 9,
+        "parameters": 700234
+      },
+      "feedforward": {
+        "layers": 8,
+        "parameters": 685381
+      }
+    },
+    "recommendations": [
+      "Best accuracy: attention (94.31%)",
+      "Fastest inference: feedforward (303.6 ops/sec)",
+      "Most memory efficient: attention (93.4%)"
+    ]
+  }
+}

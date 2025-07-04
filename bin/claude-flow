@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Check if Deno is installed
 function checkDeno() {
   try {
     const denoPath = process.env.PATH.includes('.deno/bin') ? 'deno' : path.join(os.homedir(), '.deno', 'bin', 'deno');
-    require('child_process').execSync(`${denoPath} --version`, { stdio: 'ignore' });
+    import('child_process').then(cp => cp.execSync(`${denoPath} --version`, { stdio: 'ignore' }));
     return denoPath;
   } catch {
     try {
-      require('child_process').execSync('deno --version', { stdio: 'ignore' });
+      import('child_process').then(cp => cp.execSync('deno --version', { stdio: 'ignore' }));
       return 'deno';
     } catch {
       return null;

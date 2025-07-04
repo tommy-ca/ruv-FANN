@@ -1,0 +1,9 @@
+{
+  "model": "lstm",
+  "iterations": 20,
+  "learningRate": 0.001,
+  "finalAccuracy": "89.2",
+  "finalLoss": "0.0204",
+  "timestamp": "2025-07-01T19:38:52.890Z",
+  "duration": 2000
+}

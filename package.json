@@ -6,11 +6,13 @@
   "bin": {
     "claude-flow": "./bin/claude-flow"
   },
+  "type": "module",
   "scripts": {
     "postinstall": "node scripts/install.js",
     "build": "PATH=\"/home/codespace/.deno/bin:$PATH\" deno compile --allow-all --no-check --output=bin/claude-flow src/cli/main.ts",
     "build:simple": "PATH=\"/home/codespace/.deno/bin:$PATH\" deno compile --allow-all --no-check --output=bin/claude-flow-simple src/cli/simple-cli.ts",
-    "test": "deno task test"
+    "test": "deno task test",
+    "test:integration": "node integration-test.js"
   },
   "keywords": [
     "claude",

@@ -1,28 +1,28 @@
 {
-  "timestamp": "2025-06-10T15:35:45.590Z",
+  "timestamp": "2025-07-04T16:18:19.661Z",
   "total": 3,
   "passed": 0,
   "failed": 3,
-  "duration": 21,
+  "duration": 18,
   "suites": [
     {
       "suite": "unit",
       "passed": false,
-      "duration": 8
+      "duration": 7
     },
     {
       "suite": "integration",
       "passed": false,
-      "duration": 7
+      "duration": 6
     },
     {
       "suite": "e2e",
       "passed": false,
-      "duration": 6
+      "duration": 5
     }
   ],
   "environment": {
-    "deno": "2.3.5",
+    "deno": "2.4.0",
     "v8": "13.7.152.6-rusty",
     "typescript": "5.8.3",
     "platform": "linux",
