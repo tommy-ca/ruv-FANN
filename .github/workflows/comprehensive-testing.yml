@@ -6,9 +6,16 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Add permissions for PR comments and issue write access
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 env:
   NODE_VERSION: '18'
   RUST_VERSION: '1.70.0'
+  CI: 'true'
 
 jobs:
   setup:
@@ -336,6 +343,7 @@ jobs:
       
       - name: Comment PR with results
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
@@ -353,12 +361,19 @@ jobs:
               summary += `❌ Error reading validation results: ${error.message}\n`;
             }
             
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: summary
-            });
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+              console.log('✅ Successfully posted PR comment');
+            } catch (error) {
+              console.log('⚠️ Failed to post PR comment (permissions issue):', error.message);
+              console.log('📄 Summary would have been:');
+              console.log(summary);
+            }
 
   deployment-gate:
     needs: comprehensive-validation
