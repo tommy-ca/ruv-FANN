@@ -5,7 +5,7 @@
 ### CVE-Pending: Supply Chain Attack Vulnerability in ruv-swarm
 
 **Affected Versions**: ruv-swarm v1.0.14 and earlier  
-**Fixed Version**: v1.0.15 (pending release)  
+**Fixed Version**: v1.0.15 (basic fix), v1.0.16 (secure features)  
 **Severity**: CRITICAL  
 **Impact**: Remote Code Execution  
 

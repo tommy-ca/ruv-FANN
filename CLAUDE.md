@@ -1,394 +1,121 @@
-# Claude Code Integration Guide for ruv-FANN
+# Claude Code Configuration - SPARC Development Environment (Batchtools Optimized)
 
 ## Project Overview
+This project uses the SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology for systematic Test-Driven Development with AI assistance through Claude-Flow orchestration.
 
-**ruv-FANN** is an advanced AI agent orchestration platform combining multiple cutting-edge technologies:
+**🚀 Batchtools Optimization Enabled**: This configuration includes optimized prompts and parallel processing capabilities for improved performance and efficiency.
 
-- **Claude-Flow**: Advanced AI agent orchestration system v1.0.71
-- **DAA (Decentralized Autonomous Architecture)**: Rust-based distributed system
-- **QUDAG (Quantum DAG)**: Blockchain/P2P networking protocol
-- **RUV-Swarm**: Multi-agent coordination and swarm intelligence
-- **MCP Integration**: Full Model Context Protocol implementation
-- **WASM Support**: WebAssembly modules for performance optimization
-- **Distributed Training**: Federated learning and gradient sharing
+## SPARC Development Commands
 
-## Architecture
+### Core SPARC Commands
+- `npx claude-flow sparc modes`: List all available SPARC development modes
+- `npx claude-flow sparc run <mode> "<task>"`: Execute specific SPARC mode for a task
+- `npx claude-flow sparc tdd "<feature>"`: Run complete TDD workflow using SPARC methodology
+- `npx claude-flow sparc info <mode>`: Get detailed information about a specific mode
 
-### Core Components
+### Batchtools Commands (Optimized)
+- `npx claude-flow sparc batch <modes> "<task>"`: Execute multiple SPARC modes in parallel
+- `npx claude-flow sparc pipeline "<task>"`: Execute full SPARC pipeline with parallel processing
+- `npx claude-flow sparc concurrent <mode> "<tasks-file>"`: Process multiple tasks concurrently
 
-1. **AI Agent Orchestration**
-   - Multi-agent spawning and coordination
-   - SPARC methodology implementation (17 modes)
-   - Memory management and persistence
-   - Task orchestration and workflow execution
+### Standard Build Commands
+- `npm run build`: Build the project
+- `npm run test`: Run the test suite
+- `npm run lint`: Run linter and format checks
+- `npm run typecheck`: Run TypeScript type checking
 
-2. **Distributed Systems**
-   - Rust-based DAA orchestrator
-   - P2P networking with QUDAG protocol
-   - Distributed training coordination
-   - Blockchain consensus mechanisms
+## SPARC Methodology Workflow (Batchtools Enhanced)
 
-3. **Runtime Environment**
-   - **Primary**: Deno (TypeScript/JavaScript)
-   - **Secondary**: Node.js compatibility
-   - **Performance**: Rust binaries
-   - **Web**: WebAssembly modules
-
-4. **Integration Layer**
-   - MCP server/client implementation
-   - GitHub API integration
-   - Claude API integration
-   - Terminal virtualization
-
-## Code Conventions
-
-### Language Standards
-- **TypeScript**: Strict mode, comprehensive typing
-- **Rust**: 2021 edition, clippy compliance
-- **JavaScript**: ES modules, async/await patterns
-- **WASM**: Rust-compiled with wasm-pack
-
-### Naming Conventions
-- **Files**: kebab-case (e.g., `agent-manager.ts`)
-- **Functions**: camelCase (e.g., `spawnAgent`)
-- **Variables**: camelCase (e.g., `agentConfig`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_AGENTS`)
-- **Classes**: PascalCase (e.g., `AgentManager`)
-- **Interfaces**: PascalCase with 'I' prefix (e.g., `IAgentConfig`)
-
-### Code Style
-- **Indentation**: 2 spaces
-- **Line Length**: 100 characters max
-- **Semicolons**: Always use in TypeScript/JavaScript
-- **Quotes**: Single quotes for strings, double quotes for JSX
-- **Trailing Commas**: Always in multi-line objects/arrays
-
-### Design Patterns
-- **Dependency Injection**: Constructor injection preferred
-- **Observer Pattern**: Event-driven architecture
-- **Factory Pattern**: Agent creation and configuration
-- **Singleton Pattern**: Global state management (sparingly)
-- **Strategy Pattern**: Multiple AI model support
-
-## Directory Structure
-
-```
-ruv-FANN/
-├── src/                          # TypeScript source code
-│   ├── cli/                      # Command-line interface
-│   ├── agents/                   # Agent management
-│   ├── memory/                   # Memory systems
-│   └── workflows/                # Workflow execution
-├── claude-code-flow/             # Main orchestration system
-│   ├── src/                      # Core implementation
-│   ├── mcp_config/               # MCP server configurations
-│   ├── .claude/                  # Claude integration
-│   └── bin/                      # Executable binaries
-├── daa-repository/               # Rust DAA implementation
-│   ├── src/                      # Rust source code
-│   ├── docker/                   # Containerization
-│   └── qudag/                    # Blockchain protocol
-├── ruv-swarm/                    # Swarm intelligence
-│   ├── src/                      # Rust implementation
-│   ├── target/                   # Compiled binaries
-│   └── wasm/                     # WebAssembly modules
-├── tests/                        # Test suites
-│   ├── unit/                     # Unit tests
-│   ├── integration/              # Integration tests
-│   └── e2e/                      # End-to-end tests
-├── memory/                       # Persistent memory
-├── docs/                         # Documentation
-└── scripts/                      # Build and utility scripts
-```
-
-## Development Workflow
-
-### Prerequisites
-1. **Deno**: Primary runtime environment
-   ```bash
-   curl -fsSL https://deno.land/x/install/install.sh | sh
-   ```
-
-2. **Rust**: System programming language
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-
-3. **Node.js**: Compatibility layer
-   ```bash
-   # Via nvm (recommended)
-   nvm install 20
-   ```
-
-4. **Docker**: Containerization
-   ```bash
-   # Install Docker Engine
-   curl -fsSL https://get.docker.com | sh
-   ```
-
-### Setup Process
-1. **Environment Setup**
-   ```bash
-   # Clone repository
-   git clone <repository-url>
-   cd ruv-FANN
-   
-   # Install dependencies
-   npm install
-   
-   # Build Rust components
-   cd daa-repository && cargo build --release
-   
-   # Build WASM modules
-   cd ruv-swarm && wasm-pack build --target web
-   ```
-
-2. **Configuration**
-   ```bash
-   # Initialize Claude integration
-   ./claude-code-flow/claude-code-flow/bin/claude-flow init --sparc
-   
-   # Configure MCP server
-   cp claude-code-flow/claude-code-flow/mcp_config/mcp.json .
-   
-   # Set environment variables
-   export CLAUDE_API_KEY="your-key"
-   export GITHUB_TOKEN="your-token"
-   ```
-
-3. **Testing**
-   ```bash
-   # Run comprehensive tests
-   ./scripts/test-all-capabilities.sh
-   
-   # Run specific test suites
-   deno test --allow-all tests/
-   cargo test --workspace
-   ```
-
-4. **Development Server**
-   ```bash
-   # Start MCP server
-   ./claude-code-flow/claude-code-flow/bin/claude-flow mcp start --port 3000
-   
-   # Start orchestration
-   ./claude-code-flow/claude-code-flow/bin/claude-flow start --ui
-   ```
-
-## Testing Strategy
-
-### Test Categories
-1. **Unit Tests**: Individual component testing
-2. **Integration Tests**: Multi-component interaction
-3. **E2E Tests**: Complete workflow validation
-4. **Performance Tests**: Load and stress testing
-5. **Security Tests**: Vulnerability assessment
-
-### Testing Commands
+### 1. Specification Phase (Parallel Analysis)
 ```bash
-# All tests
-npm test
-
-# Unit tests only
-deno test --allow-all tests/unit/
-
-# Integration tests
-deno test --allow-all tests/integration/
-
-# Rust tests
-cargo test --workspace
-
-# Docker-based testing
-docker-compose -f docker-compose.test.yml up --build
+# Create detailed specifications with concurrent requirements analysis
+npx claude-flow sparc run spec-pseudocode "Define user authentication requirements" --parallel
 ```
+**Batchtools Optimization**: Simultaneously analyze multiple requirement sources, validate constraints in parallel, and generate comprehensive specifications.
 
-## Important Considerations
+### 2. Pseudocode Phase (Concurrent Logic Design)
+```bash
+# Develop algorithmic logic with parallel pattern analysis
+npx claude-flow sparc run spec-pseudocode "Create authentication flow pseudocode" --batch-optimize
+```
+**Batchtools Optimization**: Process multiple algorithm patterns concurrently, validate logic flows in parallel, and optimize data structures simultaneously.
 
-### Security
-- **API Keys**: Never commit sensitive credentials
-- **Authentication**: Use token-based auth for MCP
-- **Network**: Secure communication channels
-- **Data**: Encrypt sensitive memory storage
-- **Containers**: Run with minimal privileges
+### 3. Architecture Phase (Parallel Component Design)
+```bash
+# Design system architecture with concurrent component analysis
+npx claude-flow sparc run architect "Design authentication service architecture" --parallel
+```
+**Batchtools Optimization**: Generate multiple architectural alternatives simultaneously, validate integration points in parallel, and create comprehensive documentation concurrently.
 
-### Performance
-- **Memory Management**: Efficient agent lifecycle
-- **Concurrency**: Async/await patterns
-- **Caching**: Redis for session management
-- **Load Balancing**: Distribute agent workloads
-- **Monitoring**: Real-time performance metrics
+### 4. Refinement Phase (Parallel TDD Implementation)
+```bash
+# Execute Test-Driven Development with parallel test generation
+npx claude-flow sparc tdd "implement user authentication system" --batch-tdd
+```
+**Batchtools Optimization**: Generate multiple test scenarios simultaneously, implement and validate code in parallel, and optimize performance concurrently.
 
-### Compatibility
-- **Multi-Platform**: Linux, macOS, Windows
-- **Multi-Runtime**: Deno, Node.js, Docker
-- **Multi-Language**: TypeScript, Rust, WASM
-- **Multi-Transport**: stdio, HTTP, WebSocket
+### 5. Completion Phase (Concurrent Integration)
+```bash
+# Integration with parallel validation and documentation
+npx claude-flow sparc run integration "integrate authentication with user management" --parallel
+```
+**Batchtools Optimization**: Run integration tests in parallel, generate documentation concurrently, and validate requirements simultaneously.
 
-## Command Categories
+## Batchtools Integration Features
 
-### Core Commands
-- `init`: Initialize project with Claude integration
-- `start`: Start orchestration system
-- `status`: Show system status
-- `config`: Configuration management
+### Parallel Processing Capabilities
+- **Concurrent File Operations**: Read, analyze, and modify multiple files simultaneously
+- **Parallel Code Analysis**: Analyze dependencies, patterns, and architecture concurrently
+- **Batch Test Generation**: Create comprehensive test suites in parallel
+- **Concurrent Documentation**: Generate multiple documentation formats simultaneously
 
-### Agent Management
-- `agent spawn <type>`: Create new AI agents
-- `agent list`: List active agents
-- `agent terminate <id>`: Stop specific agent
-- `agent info <id>`: Show agent details
+### Performance Optimizations
+- **Smart Batching**: Group related operations for optimal performance
+- **Pipeline Processing**: Chain dependent operations with parallel stages
+- **Resource Management**: Efficient utilization of system resources
+- **Error Resilience**: Robust error handling with parallel recovery
 
-### Memory Operations
-- `memory query <pattern>`: Search memory
-- `memory store <key> <value>`: Store information
-- `memory export <file>`: Export memory data
-- `memory import <file>`: Import memory data
+## Performance Benchmarks
 
-### SPARC Development
-- `sparc modes`: List available modes
-- `sparc run <mode> <task>`: Execute SPARC mode
-- `sparc tdd <feature>`: Test-driven development
-- `sparc architect <system>`: System architecture
+### Batchtools Performance Improvements
+- **File Operations**: Up to 300% faster with parallel processing
+- **Code Analysis**: 250% improvement with concurrent pattern recognition
+- **Test Generation**: 400% faster with parallel test creation
+- **Documentation**: 200% improvement with concurrent content generation
+- **Memory Operations**: 180% faster with batched read/write operations
 
-### MCP Integration
-- `mcp start`: Start MCP server
-- `mcp status`: Check server status
-- `mcp tools`: List available tools
-- `mcp config`: Show configuration
+## Code Style and Best Practices (Batchtools Enhanced)
 
-### Swarm Coordination
-- `swarm create <config>`: Create swarm
-- `swarm join <id>`: Join existing swarm
-- `swarm coordinate`: Multi-agent coordination
-- `swarm status`: Show swarm health
+### SPARC Development Principles with Batchtools
+- **Modular Design**: Keep files under 500 lines, optimize with parallel analysis
+- **Environment Safety**: Never hardcode secrets, validate with concurrent checks
+- **Test-First**: Always write tests before implementation using parallel generation
+- **Clean Architecture**: Separate concerns with concurrent validation
+- **Parallel Documentation**: Maintain clear, up-to-date documentation with concurrent updates
 
-## Dependencies
+### Batchtools Best Practices
+- **Parallel Operations**: Use batchtools for independent tasks
+- **Concurrent Validation**: Validate multiple aspects simultaneously
+- **Batch Processing**: Group similar operations for efficiency
+- **Pipeline Optimization**: Chain operations with parallel stages
+- **Resource Management**: Monitor and optimize resource usage
 
-### Core Dependencies
-- **@anthropic/claude-cli**: Claude API integration
-- **commander**: CLI framework
-- **express**: HTTP server
-- **socket.io**: WebSocket communication
-- **redis**: Session management
-- **postgresql**: Data persistence
+## Important Notes (Enhanced)
 
-### Rust Dependencies
-- **tokio**: Async runtime
-- **serde**: Serialization
-- **reqwest**: HTTP client
-- **sqlx**: Database access
-- **wasm-bindgen**: WebAssembly bindings
+- Always run tests before committing with parallel execution (`npm run test --parallel`)
+- Use SPARC memory system with concurrent operations to maintain context across sessions
+- Follow the Red-Green-Refactor cycle with parallel test generation during TDD phases
+- Document architectural decisions with concurrent validation in memory
+- Regular security reviews with parallel analysis for authentication or data handling code
+- Claude Code slash commands provide quick access to batchtools-optimized SPARC modes
+- Monitor system resources during parallel operations for optimal performance
 
-### Development Dependencies
-- **typescript**: Type checking
-- **deno**: Runtime environment
-- **cargo**: Rust build system
-- **wasm-pack**: WebAssembly toolchain
-- **docker**: Containerization
+For more information about SPARC methodology and batchtools optimization, see: 
+- SPARC Guide: https://github.com/ruvnet/claude-code-flow/docs/sparc.md
+- Batchtools Documentation: https://github.com/ruvnet/claude-code-flow/docs/batchtools.md
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Deno Not Found**
-   ```bash
-   # Install Deno
-   curl -fsSL https://deno.land/x/install/install.sh | sh
-   export PATH="$HOME/.deno/bin:$PATH"
-   ```
-
-2. **MCP Server Won't Start**
-   ```bash
-   # Check port availability
-   lsof -i :3000
-   
-   # Try different port
-   ./claude-code-flow/claude-code-flow/bin/claude-flow mcp start --port 3001
-   ```
-
-3. **Rust Build Failures**
-   ```bash
-   # Update Rust toolchain
-   rustup update
-   
-   # Clean and rebuild
-   cargo clean && cargo build --release
-   ```
-
-4. **WASM Compilation Issues**
-   ```bash
-   # Install wasm-pack
-   cargo install wasm-pack
-   
-   # Build with target
-   wasm-pack build --target web
-   ```
-
-5. **Memory Issues**
-   ```bash
-   # Clear memory cache
-   ./claude-code-flow/claude-code-flow/bin/claude-flow memory cleanup
-   
-   # Restart services
-   ./claude-code-flow/claude-code-flow/bin/claude-flow restart
-   ```
-
-## Integration Points
-
-### Claude Code Integration
-- **Commands**: Available in `.claude/commands/`
-- **Memory**: Persistent across sessions
-- **Configuration**: `.claude/settings.local.json`
-- **Templates**: Pre-configured workflows
-
-### GitHub Integration
-- **Actions**: Automated CI/CD pipelines
-- **Issues**: Task management
-- **Pull Requests**: Code review
-- **Releases**: Version management
-
-### Docker Integration
-- **Multi-stage builds**: Optimized images
-- **Development**: Hot reload support
-- **Production**: Minimal footprint
-- **Testing**: Isolated environments
-
-## Advanced Features
-
-### Distributed Training
-- **Federated Learning**: Privacy-preserving ML
-- **Gradient Sharing**: P2P coordination
-- **Model Aggregation**: Consensus mechanisms
-- **Performance Monitoring**: Training metrics
-
-### Blockchain Integration
-- **QUDAG Protocol**: Quantum-resistant consensus
-- **Smart Contracts**: Automated execution
-- **P2P Networking**: Decentralized communication
-- **Cryptographic Security**: Advanced encryption
-
-### AI Agent Orchestration
-- **Multi-Model Support**: Various AI providers
-- **Context Management**: Conversation history
-- **Task Scheduling**: Intelligent workload distribution
-- **Performance Optimization**: Resource allocation
-
-## Version Information
-
-- **ruv-FANN**: v1.0.0
-- **Claude-Flow**: v1.0.71
-- **DAA**: v0.1.3
-- **RUV-Swarm**: v1.0.5
-- **QUDAG**: v0.1.0
-
-## Support and Resources
-
-- **Documentation**: `/docs/` directory
-- **Examples**: `/examples/` directory
-- **Issues**: GitHub issue tracker
-- **Discussions**: GitHub discussions
-- **Wiki**: Comprehensive guides
-
----
-
-*This integration guide is automatically updated. Last updated: 2025-07-04*
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
