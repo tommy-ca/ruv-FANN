@@ -171,7 +171,7 @@ proptest! {
             }
             
             // Query by status
-            let filtered = storage.list_agents_by_status(&query_status).await.unwrap();
+            let filtered = storage.list_agents_by_status(query_status).await.unwrap();
             
             // Property: All returned agents must have the queried status
             for agent in &filtered {

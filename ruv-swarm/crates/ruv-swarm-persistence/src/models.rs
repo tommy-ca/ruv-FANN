@@ -59,9 +59,9 @@ pub enum AgentStatus {
     Shutdown,
 }
 
-impl ToString for AgentStatus {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for AgentStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let status_str = match self {
             AgentStatus::Initializing => "initializing",
             AgentStatus::Active => "active",
             AgentStatus::Idle => "idle",
@@ -69,8 +69,8 @@ impl ToString for AgentStatus {
             AgentStatus::Paused => "paused",
             AgentStatus::Error => "error",
             AgentStatus::Shutdown => "shutdown",
-        }
-        .to_string()
+        };
+        write!(f, "{}", status_str)
     }
 }
 
