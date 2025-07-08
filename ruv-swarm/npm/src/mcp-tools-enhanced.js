@@ -427,10 +427,11 @@ class EnhancedMCPTools {
         return;
       }
 
-      const existingSwarms = this.persistence.getActiveSwarms();
-      console.log(`📦 Loading ${existingSwarms.length} existing swarms from database...`);
+      const existingSwarms = await this.persistence.getActiveSwarms();
+      const swarmsArray = Array.isArray(existingSwarms) ? existingSwarms : [];
+      console.log(`📦 Loading ${swarmsArray.length} existing swarms from database...`);
 
-      for (const swarmData of existingSwarms) {
+      for (const swarmData of swarmsArray) {
         try {
           // Create in-memory swarm instance with existing ID
           const swarm = await this.ruvSwarm.createSwarm({

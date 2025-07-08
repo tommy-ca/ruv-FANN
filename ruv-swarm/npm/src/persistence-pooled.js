@@ -276,8 +276,15 @@ class SwarmPersistencePooled {
   async createSwarm(swarm) {
     await this.ensureInitialized();
     
-    return this.trackOperation(() => this.withRetry(() => 
-      this.pool.write(`
+    return this.trackOperation(() => this.withRetry(async () => {
+      // Check if swarm already exists
+      const existing = await this.pool.read('SELECT id FROM swarms WHERE id = ?', [swarm.id]);
+      if (existing && existing.length > 0) {
+        // Return existing swarm info instead of failing
+        return { id: swarm.id, changes: 0, lastInsertRowid: null };
+      }
+      
+      return this.pool.write(`
         INSERT INTO swarms (id, name, topology, max_agents, strategy, metadata)
         VALUES (?, ?, ?, ?, ?, ?)
       `, [
@@ -287,8 +294,8 @@ class SwarmPersistencePooled {
         swarm.maxAgents,
         swarm.strategy,
         JSON.stringify(swarm.metadata || {})
-      ])
-    ));
+      ]);
+    }));
   }
   
   async getActiveSwarms() {
