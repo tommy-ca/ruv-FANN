@@ -115,9 +115,10 @@ class RuvSwarm {
       }
 
       // Pre-load neural networks if enabled
-      if (enableNeuralNetworks && instance.features.neural_networks) {
+      if (enableNeuralNetworks) {
         try {
           await instance.wasmLoader.loadModule('neural');
+          instance.features.neural_networks = true;
           console.log('🧠 Neural network capabilities loaded');
         } catch (error) {
           console.warn('⚠️ Neural network module not available:', error.message);
