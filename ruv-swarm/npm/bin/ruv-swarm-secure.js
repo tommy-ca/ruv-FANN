@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Clean, modular ruv-swarm CLI with Claude Code integration
- * Uses modular architecture for better maintainability and remote execution
+ * Production-ready ruv-swarm MCP server with security and stability
+ * Combines security fixes from Issue #107 with crash protection
  */
 
+import { spawn } from 'child_process';
 import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
@@ -28,6 +29,16 @@ async function getVersion() {
         return 'unknown';
     }
 }
+
+// Stability configuration
+const MAX_RESTARTS = 10;
+const RESTART_DELAY = 1000; // 1 second
+const RESTART_RESET_TIME = 300000; // 5 minutes
+
+let restartCount = 0;
+let lastRestartTime = 0;
+let isStabilityMode = false;
+let childProcess = null;
 
 // Input validation constants and functions
 const VALID_TOPOLOGIES = ['mesh', 'hierarchical', 'ring', 'star'];
@@ -147,6 +158,11 @@ function logValidationError(error, command) {
     console.log(`\n💡 For help with valid parameters, run: ruv-swarm help`);
 }
 
+function stabilityLog(message) {
+    const timestamp = new Date().toISOString();
+    console.error(`[${timestamp}] [STABILITY] ${message}`);
+}
+
 let globalRuvSwarm = null;
 let globalMCPTools = null;
 let globalLogger = null;
@@ -168,15 +184,26 @@ async function initializeLogger() {
             }
         });
         
-        // Set up global error handlers - NEVER crash MCP server
+        // Set up global error handlers with stability
         process.on('uncaughtException', (error) => {
-            globalLogger.error('Uncaught exception (non-fatal for MCP)', { error });
-            // Don't exit - keep MCP server running
+            globalLogger.fatal('Uncaught exception', { error });
+            if (isStabilityMode) {
+                stabilityLog(`Uncaught exception: ${error.message}`);
+                stabilityLog('Attempting graceful recovery...');
+                setTimeout(() => process.exit(1), 1000);
+            } else {
+                process.exit(1);
+            }
         });
         
         process.on('unhandledRejection', (reason, promise) => {
-            globalLogger.error('Unhandled rejection (non-fatal for MCP)', { reason, promise });
-            // Don't exit - keep MCP server running
+            globalLogger.fatal('Unhandled rejection', { reason, promise });
+            if (isStabilityMode) {
+                stabilityLog(`Unhandled rejection: ${reason}`);
+                stabilityLog('Attempting graceful recovery...');
+            } else {
+                process.exit(1);
+            }
         });
     }
     return globalLogger;
@@ -375,18 +402,15 @@ async function handleClaudeInvoke(args) {
         return;
     }
     
-    // Security: validate prompt for dangerous patterns (non-fatal)
+    // Security: validate prompt for dangerous patterns
     try {
         CommandSanitizer.validateArgument(prompt.trim());
     } catch (error) {
         if (error instanceof SecurityError) {
             console.error('❌ Security validation failed:', error.message);
-            console.error('⚠️  Continuing with reduced security for MCP stability');
-            // Continue execution despite security validation failure
-        } else {
-            console.error('⚠️  Security validation error (non-fatal):', error.message);
-            // Don't throw - keep MCP server stable
+            return;
         }
+        throw error;
     }
     
     console.log('🚀 Invoking Claude Code with ruv-swarm integration...');
@@ -404,8 +428,7 @@ async function handleClaudeInvoke(args) {
     } catch (error) {
         console.error('❌ Claude invocation failed:', error.message);
         console.error('Make sure Claude Code CLI is installed and in your PATH');
-        console.error('⚠️  MCP server continuing despite Claude invocation failure');
-        // Don't exit - keep MCP server running
+        process.exit(1);
     }
 }
 
@@ -484,6 +507,13 @@ async function handleMcp(args) {
 
 async function startMcpServer(args) {
     const protocol = args.find(arg => arg.startsWith('--protocol='))?.split('=')[1] || 'stdio';
+    const enableStability = args.includes('--stability') || process.env.MCP_STABILITY === 'true';
+    
+    if (enableStability) {
+        isStabilityMode = true;
+        stabilityLog('Starting MCP server with stability mode enabled');
+        return startStableMcpServer(args);
+    }
     
     // Initialize logger first
     const logger = await initializeLogger();
@@ -566,23 +596,8 @@ async function startMcpServer(args) {
                                 try {
                                     process.stdout.write(JSON.stringify(response) + '\n');
                                 } catch (writeError) {
-                                    // Handle JSON serialization errors gracefully
-                                    logger.error('Failed to serialize response', { writeError });
-                                    try {
-                                        // Send minimal error response instead of crashing
-                                        const fallbackResponse = {
-                                            jsonrpc: '2.0',
-                                            error: {
-                                                code: -32603,
-                                                message: 'Response serialization failed'
-                                            },
-                                            id: response.id
-                                        };
-                                        process.stdout.write(JSON.stringify(fallbackResponse) + '\n');
-                                    } catch (fallbackError) {
-                                        logger.error('Fallback response also failed', { fallbackError });
-                                        // Even if this fails, don't crash the server
-                                    }
+                                    logger.error('Failed to write response to stdout', { writeError, response });
+                                    process.exit(1);
                                 }
                             }).catch(error => {
                                 logger.endOperation(opId, false, { error });
@@ -600,27 +615,22 @@ async function startMcpServer(args) {
                                 process.stdout.write(JSON.stringify(errorResponse) + '\n');
                             });
                         } catch (error) {
-                            logger.error('JSON parse error (non-fatal)', { 
+                            logger.error('JSON parse error', { 
                                 error, 
                                 line: line.substring(0, 100),
                                 messageId 
                             });
                             
-                            try {
-                                const errorResponse = {
-                                    jsonrpc: '2.0',
-                                    error: {
-                                        code: -32700,
-                                        message: 'Parse error (MCP server stable)',
-                                        data: error.message || 'Invalid JSON'
-                                    },
-                                    id: null
-                                };
-                                process.stdout.write(JSON.stringify(errorResponse) + '\n');
-                            } catch (responseError) {
-                                logger.error('Failed to send parse error response (non-fatal)', { responseError });
-                                // Don't crash even if we can't send error response
-                            }
+                            const errorResponse = {
+                                jsonrpc: '2.0',
+                                error: {
+                                    code: -32700,
+                                    message: 'Parse error',
+                                    data: error.message
+                                },
+                                id: null
+                            };
+                            process.stdout.write(JSON.stringify(errorResponse) + '\n');
                         }
                     }
                 }
@@ -645,10 +655,9 @@ async function startMcpServer(args) {
             
             process.stdin.on('error', (error) => {
                 logger.logConnection('failed', sessionId, { error });
-                logger.error('MCP: stdin error (attempting to continue)', { error });
-                // Don't exit on stdin errors - try to keep MCP server running
-                // clearInterval(monitorInterval);
-                // process.exit(1);
+                logger.error('MCP: stdin error, shutting down...', { error });
+                clearInterval(monitorInterval);
+                process.exit(1);
             });
             
             // Handle process termination signals
@@ -665,13 +674,14 @@ async function startMcpServer(args) {
             });
             
             // Send initialization message
+            const version = await getVersion();
             const initMessage = {
                 jsonrpc: '2.0',
                 method: 'server.initialized',
                 params: {
                     serverInfo: {
                         name: 'ruv-swarm',
-                        version: await getVersion(),
+                        version: version,
                         capabilities: {
                             tools: true,
                             prompts: false,
@@ -682,30 +692,135 @@ async function startMcpServer(args) {
             };
             process.stdout.write(JSON.stringify(initMessage) + '\n');
             
-            // Heartbeat mechanism removed for Claude Code compatibility
+            // Implement heartbeat mechanism
+            let lastActivity = Date.now();
+            const heartbeatInterval = 30000; // 30 seconds
+            const heartbeatTimeout = 90000; // 90 seconds
+            
+            // Update activity on any received message
+            const originalOnData = process.stdin._events.data;
+            process.stdin.on('data', () => {
+                lastActivity = Date.now();
+            });
+            
+            // Check for connection health
+            const heartbeatChecker = setInterval(() => {
+                const timeSinceLastActivity = Date.now() - lastActivity;
+                
+                if (timeSinceLastActivity > heartbeatTimeout) {
+                    logger.error('MCP: Connection timeout - no activity for', timeSinceLastActivity, 'ms');
+                    logger.logConnection('timeout', sessionId, {
+                        lastActivity: new Date(lastActivity).toISOString(),
+                        timeout: heartbeatTimeout
+                    });
+                    clearInterval(monitorInterval);
+                    clearInterval(heartbeatChecker);
+                    process.exit(1);
+                } else if (timeSinceLastActivity > heartbeatInterval) {
+                    logger.debug('MCP: Connection idle for', timeSinceLastActivity, 'ms');
+                }
+            }, 5000); // Check every 5 seconds
+            
+            // Clean up heartbeat on exit
+            process.on('exit', () => {
+                clearInterval(heartbeatChecker);
+            });
             
         } else {
             logger.error('WebSocket protocol not yet implemented', { protocol });
-            console.log('❌ WebSocket protocol not yet implemented in clean version');
+            console.log('❌ WebSocket protocol not yet implemented in production version');
             console.log('Use stdio mode for Claude Code integration');
         }
     } catch (error) {
-        logger.error('Failed to start MCP server', { error, protocol });
+        logger.fatal('Failed to start MCP server', { error, protocol });
         console.error('❌ Failed to start MCP server:', error.message);
-        // Don't exit - log error and continue
-        console.error('⚠️  MCP server will attempt to continue despite initialization error');
+        process.exit(1);
     }
+}
+
+async function startStableMcpServer(args) {
+    const now = Date.now();
+    
+    // Reset restart count if it's been more than 5 minutes
+    if (now - lastRestartTime > RESTART_RESET_TIME) {
+        restartCount = 0;
+    }
+    
+    if (restartCount >= MAX_RESTARTS) {
+        stabilityLog(`Maximum restarts (${MAX_RESTARTS}) reached. Server may have persistent issues.`);
+        stabilityLog('Please check logs and restart manually if needed.');
+        return;
+    }
+    
+    restartCount++;
+    lastRestartTime = now;
+    
+    stabilityLog(`Starting MCP server (attempt ${restartCount}/${MAX_RESTARTS})`);
+    
+    // Create new process args without --stability flag
+    const processArgs = ['mcp', 'start', ...args.filter(arg => arg !== '--stability')];
+    
+    childProcess = spawn('node', [__filename, ...processArgs], {
+        stdio: ['inherit', 'inherit', 'inherit'],
+        env: { ...process.env, MCP_STABILITY: 'false' }
+    });
+    
+    childProcess.on('exit', (code, signal) => {
+        if (code === 0) {
+            stabilityLog('MCP server exited normally');
+            return;
+        }
+        
+        stabilityLog(`MCP server crashed with code ${code} and signal ${signal}`);
+        stabilityLog(`Restarting in ${RESTART_DELAY}ms...`);
+        
+        setTimeout(() => {
+            startStableMcpServer(args);
+        }, RESTART_DELAY);
+    });
+    
+    childProcess.on('error', (error) => {
+        stabilityLog(`Failed to start MCP server: ${error.message}`);
+        stabilityLog(`Restarting in ${RESTART_DELAY}ms...`);
+        
+        setTimeout(() => {
+            startStableMcpServer(args);
+        }, RESTART_DELAY);
+    });
+    
+    // Handle process termination signals
+    process.on('SIGTERM', () => {
+        stabilityLog('Received SIGTERM, shutting down...');
+        if (childProcess) {
+            childProcess.kill('SIGTERM');
+        }
+        process.exit(0);
+    });
+    
+    process.on('SIGINT', () => {
+        stabilityLog('Received SIGINT, shutting down...');
+        if (childProcess) {
+            childProcess.kill('SIGINT');
+        }
+        process.exit(0);
+    });
 }
 
 async function getMcpStatus() {
     console.log('🔍 MCP Server Status:');
     console.log('   Protocol: stdio (for Claude Code integration)');
     console.log('   Status: Ready to start');
-    console.log('   Usage: npx ruv-swarm mcp start');
+    console.log('   Usage: npx ruv-swarm mcp start [--stability]');
+    console.log('   Stability: Auto-restart on crashes (use --stability flag)');
 }
 
 async function stopMcpServer() {
-    console.log('✅ MCP server stopped (stdio mode exits automatically)');
+    if (childProcess) {
+        stabilityLog('Stopping MCP server...');
+        childProcess.kill('SIGTERM');
+        childProcess = null;
+    }
+    console.log('✅ MCP server stopped');
 }
 
 async function listMcpTools() {
@@ -732,18 +847,23 @@ function showMcpHelp() {
 Usage: ruv-swarm mcp <subcommand> [options]
 
 Subcommands:
-  start [--protocol=stdio]    Start MCP server (stdio for Claude Code)
-  status                      Show MCP server status
-  stop                        Stop MCP server
-  tools                       List available MCP tools
-  help                        Show this help message
+  start [--protocol=stdio] [--stability]  Start MCP server
+  status                                  Show MCP server status
+  stop                                   Stop MCP server
+  tools                                  List available MCP tools
+  help                                   Show this help message
+
+Options:
+  --stability                            Enable auto-restart on crashes
+  --protocol=stdio                       Use stdio protocol (default)
 
 Examples:
   ruv-swarm mcp start                    # Start stdio MCP server
+  ruv-swarm mcp start --stability        # Start with crash protection
   ruv-swarm mcp tools                    # List available tools
   
 For Claude Code integration:
-  claude mcp add ruv-swarm npx ruv-swarm mcp start
+  claude mcp add ruv-swarm npx ruv-swarm mcp start --stability
 `);
 }
 
@@ -796,423 +916,34 @@ ruv-swarm is a powerful WASM-powered neural swarm orchestration system that enha
 4. Train neural patterns for better results`
             }]
         },
-        'swarm://docs/topologies': {
+        'swarm://docs/stability': {
             contents: [{
                 uri,
                 mimeType: 'text/markdown',
-                text: `# Swarm Topologies
+                text: `# Stability Features
 
-## Available Topologies
+## Auto-Restart Protection
+The production version includes built-in crash protection:
 
-### 1. Mesh
-- **Description**: Fully connected network where all agents communicate
-- **Best for**: Complex problems requiring diverse perspectives
-- **Characteristics**: High coordination, maximum information sharing
+- **Maximum restarts**: 10 attempts
+- **Restart delay**: 1 second between attempts
+- **Reset window**: 5 minutes (restart count resets)
+- **Graceful shutdown**: SIGTERM/SIGINT handling
 
-### 2. Hierarchical
-- **Description**: Tree-like structure with clear command chain
-- **Best for**: Large projects with clear subtasks
-- **Characteristics**: Efficient delegation, clear responsibilities
+## Usage
+\`\`\`bash
+# Enable stability mode
+ruv-swarm mcp start --stability
 
-### 3. Ring
-- **Description**: Circular arrangement with sequential processing
-- **Best for**: Pipeline tasks, sequential workflows
-- **Characteristics**: Low overhead, predictable flow
-
-### 4. Star
-- **Description**: Central coordinator with peripheral agents
-- **Best for**: Simple coordination tasks
-- **Characteristics**: Minimal complexity, central control
-
-## Choosing a Topology
-
-Consider:
-- Task complexity
-- Number of agents
-- Communication needs
-- Performance requirements`
-            }]
-        },
-        'swarm://docs/agent-types': {
-            contents: [{
-                uri,
-                mimeType: 'text/markdown',
-                text: `# Agent Types Guide
-
-## Available Agent Types
-
-### 1. Researcher
-- **Cognitive Pattern**: Divergent thinking
-- **Capabilities**: Information gathering, analysis, exploration
-- **Best for**: Research tasks, documentation review, learning
-
-### 2. Coder
-- **Cognitive Pattern**: Convergent thinking
-- **Capabilities**: Implementation, debugging, optimization
-- **Best for**: Writing code, fixing bugs, refactoring
-
-### 3. Analyst
-- **Cognitive Pattern**: Systems thinking
-- **Capabilities**: Pattern recognition, data analysis, insights
-- **Best for**: Architecture design, performance analysis
-
-### 4. Optimizer
-- **Cognitive Pattern**: Critical thinking
-- **Capabilities**: Performance tuning, efficiency improvements
-- **Best for**: Optimization tasks, bottleneck resolution
-
-### 5. Coordinator
-- **Cognitive Pattern**: Lateral thinking
-- **Capabilities**: Task management, delegation, synthesis
-- **Best for**: Project management, integration tasks
-
-### 6. Architect
-- **Cognitive Pattern**: Abstract thinking
-- **Capabilities**: System design, high-level planning
-- **Best for**: Architecture decisions, design patterns
-
-### 7. Tester
-- **Cognitive Pattern**: Critical evaluation
-- **Capabilities**: Quality assurance, edge case finding
-- **Best for**: Testing, validation, quality control`
-            }]
-        },
-        'swarm://docs/daa-guide': {
-            contents: [{
-                uri,
-                mimeType: 'text/markdown',
-                text: `# DAA Integration Guide
-
-## Decentralized Autonomous Agents
-
-DAA extends ruv-swarm with autonomous learning and adaptation capabilities.
-
-## Key Features
-
-1. **Autonomous Learning**: Agents learn from experience
-2. **Knowledge Sharing**: Cross-agent knowledge transfer
-3. **Adaptive Workflows**: Self-optimizing execution
-4. **Meta-Learning**: Transfer learning across domains
-
-## Using DAA Tools
-
-### Initialize DAA
-\`\`\`javascript
-mcp__ruv-swarm__daa_init {
-  enableLearning: true,
-  enableCoordination: true,
-  persistenceMode: "auto"
-}
+# For Claude Code integration
+claude mcp add ruv-swarm npx ruv-swarm mcp start --stability
 \`\`\`
 
-### Create Autonomous Agent
-\`\`\`javascript
-mcp__ruv-swarm__daa_agent_create {
-  id: "auto-001",
-  capabilities: ["learning", "optimization"],
-  cognitivePattern: "adaptive",
-  learningRate: 0.001
-}
-\`\`\`
-
-### Execute Workflow
-\`\`\`javascript
-mcp__ruv-swarm__daa_workflow_execute {
-  workflowId: "api-development",
-  agentIds: ["auto-001", "auto-002"],
-  parallelExecution: true
-}
-\`\`\`
-
-## Best Practices
-
-1. Start with low learning rates
-2. Enable knowledge sharing for complex tasks
-3. Monitor performance metrics regularly
-4. Use meta-learning for cross-domain tasks`
-            }]
-        },
-        'swarm://examples/rest-api': {
-            contents: [{
-                uri,
-                mimeType: 'text/markdown',
-                text: `# REST API Example
-
-## Building a Complete REST API with ruv-swarm
-
-### Step 1: Initialize Swarm
-\`\`\`javascript
-[BatchTool]:
-  mcp__ruv-swarm__swarm_init { topology: "hierarchical", maxAgents: 6 }
-  mcp__ruv-swarm__agent_spawn { type: "architect", name: "API Designer" }
-  mcp__ruv-swarm__agent_spawn { type: "coder", name: "Backend Dev" }
-  mcp__ruv-swarm__agent_spawn { type: "analyst", name: "DB Expert" }
-  mcp__ruv-swarm__agent_spawn { type: "tester", name: "QA Engineer" }
-  mcp__ruv-swarm__agent_spawn { type: "coordinator", name: "Project Lead" }
-\`\`\`
-
-### Step 2: Design Architecture
-\`\`\`javascript
-TodoWrite { todos: [
-  { id: "design", content: "Design API architecture", priority: "high" },
-  { id: "auth", content: "Implement authentication", priority: "high" },
-  { id: "crud", content: "Build CRUD endpoints", priority: "medium" },
-  { id: "tests", content: "Write tests", priority: "medium" }
-]}
-\`\`\`
-
-### Step 3: Implementation
-\`\`\`javascript
-[BatchTool]:
-  Bash "mkdir -p api/{src,tests,docs}"
-  Write "api/package.json" { ... }
-  Write "api/src/server.js" { ... }
-  Write "api/src/routes/auth.js" { ... }
-\`\`\`
-
-### Step 4: Testing
-\`\`\`javascript
-mcp__ruv-swarm__task_orchestrate {
-  task: "Run comprehensive tests",
-  strategy: "parallel"
-}
-\`\`\`
-
-## Complete Working Example
-
-See the full implementation in the ruv-swarm examples directory.`
-            }]
-        },
-        'swarm://examples/neural-training': {
-            contents: [{
-                uri,
-                mimeType: 'text/markdown',
-                text: `# Neural Training Example
-
-## Training Neural Agents for Specific Tasks
-
-### Step 1: Initialize Neural Network
-\`\`\`javascript
-mcp__ruv-swarm__neural_status { agentId: "coder-001" }
-\`\`\`
-
-### Step 2: Prepare Training Data
-\`\`\`javascript
-mcp__ruv-swarm__neural_train {
-  agentId: "coder-001",
-  iterations: 50
-}
-\`\`\`
-
-### Step 3: Monitor Training Progress
-\`\`\`javascript
-mcp__ruv-swarm__swarm_monitor {
-  duration: 30,
-  interval: 1
-}
-\`\`\`
-
-### Step 4: Analyze Patterns
-\`\`\`javascript
-mcp__ruv-swarm__neural_patterns {
-  pattern: "all"
-}
-\`\`\`
-
-## Training Tips
-
-1. Start with small iteration counts
-2. Monitor performance metrics
-3. Adjust learning rates based on results
-4. Use cognitive patterns that match your task
-
-## Advanced Training
-
-For complex tasks, combine multiple cognitive patterns:
-- Convergent for focused problem-solving
-- Divergent for creative solutions
-- Systems for architectural decisions`
-            }]
-        },
-        'swarm://schemas/swarm-config': {
-            contents: [{
-                uri,
-                mimeType: 'application/json',
-                text: JSON.stringify({
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "title": "Swarm Configuration",
-                    "type": "object",
-                    "properties": {
-                        "topology": {
-                            "type": "string",
-                            "enum": ["mesh", "hierarchical", "ring", "star"],
-                            "description": "Swarm topology type"
-                        },
-                        "maxAgents": {
-                            "type": "integer",
-                            "minimum": 1,
-                            "maximum": 100,
-                            "default": 5,
-                            "description": "Maximum number of agents"
-                        },
-                        "strategy": {
-                            "type": "string",
-                            "enum": ["balanced", "specialized", "adaptive"],
-                            "default": "balanced",
-                            "description": "Distribution strategy"
-                        },
-                        "enableNeuralNetworks": {
-                            "type": "boolean",
-                            "default": true,
-                            "description": "Enable neural network features"
-                        },
-                        "memoryPersistence": {
-                            "type": "boolean",
-                            "default": true,
-                            "description": "Enable persistent memory"
-                        }
-                    },
-                    "required": ["topology"]
-                }, null, 2)
-            }]
-        },
-        'swarm://schemas/agent-config': {
-            contents: [{
-                uri,
-                mimeType: 'application/json',
-                text: JSON.stringify({
-                    "$schema": "http://json-schema.org/draft-07/schema#",
-                    "title": "Agent Configuration",
-                    "type": "object",
-                    "properties": {
-                        "type": {
-                            "type": "string",
-                            "enum": ["researcher", "coder", "analyst", "optimizer", "coordinator", "architect", "tester"],
-                            "description": "Agent type"
-                        },
-                        "name": {
-                            "type": "string",
-                            "maxLength": 100,
-                            "description": "Custom agent name"
-                        },
-                        "capabilities": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "Agent capabilities"
-                        },
-                        "cognitivePattern": {
-                            "type": "string",
-                            "enum": ["convergent", "divergent", "lateral", "systems", "critical", "abstract"],
-                            "description": "Cognitive thinking pattern"
-                        },
-                        "learningRate": {
-                            "type": "number",
-                            "minimum": 0,
-                            "maximum": 1,
-                            "default": 0.001,
-                            "description": "Learning rate for neural network"
-                        }
-                    },
-                    "required": ["type"]
-                }, null, 2)
-            }]
-        },
-        'swarm://performance/benchmarks': {
-            contents: [{
-                uri,
-                mimeType: 'application/json',
-                text: JSON.stringify({
-                    "benchmarks": {
-                        "wasm_load_time": {
-                            "target": "200ms",
-                            "achieved": "98ms",
-                            "improvement": "51%"
-                        },
-                        "agent_spawn_time": {
-                            "target": "50ms",
-                            "achieved": "12ms",
-                            "improvement": "76%"
-                        },
-                        "memory_usage_10_agents": {
-                            "target": "50MB",
-                            "achieved": "18.5MB",
-                            "improvement": "63%"
-                        },
-                        "cross_boundary_latency": {
-                            "target": "0.5ms",
-                            "achieved": "0.15ms",
-                            "improvement": "70%"
-                        },
-                        "token_processing": {
-                            "target": "10K/sec",
-                            "achieved": "42.5K/sec",
-                            "improvement": "325%"
-                        }
-                    },
-                    "swe_bench_solve_rate": "84.8%",
-                    "token_reduction": "32.3%",
-                    "speed_improvement": "2.8-4.4x"
-                }, null, 2)
-            }]
-        },
-        'swarm://hooks/available': {
-            contents: [{
-                uri,
-                mimeType: 'text/markdown',
-                text: `# Available Claude Code Hooks
-
-## Pre-Operation Hooks
-
-### pre-task
-- **Purpose**: Initialize agent context before tasks
-- **Usage**: \`npx ruv-swarm hook pre-task --description "task"\`
-- **Features**: Auto-spawn agents, load context, optimize topology
-
-### pre-edit
-- **Purpose**: Prepare for file edits
-- **Usage**: \`npx ruv-swarm hook pre-edit --file "path"\`
-- **Features**: Auto-assign agents, validate permissions
-
-### pre-search
-- **Purpose**: Optimize search operations
-- **Usage**: \`npx ruv-swarm hook pre-search --query "search"\`
-- **Features**: Cache results, suggest alternatives
-
-## Post-Operation Hooks
-
-### post-edit
-- **Purpose**: Process file after editing
-- **Usage**: \`npx ruv-swarm hook post-edit --file "path"\`
-- **Features**: Auto-format, update memory, train neural patterns
-
-### post-task
-- **Purpose**: Finalize task execution
-- **Usage**: \`npx ruv-swarm hook post-task --task-id "id"\`
-- **Features**: Analyze performance, update metrics
-
-### notification
-- **Purpose**: Share updates across swarm
-- **Usage**: \`npx ruv-swarm hook notification --message "update"\`
-- **Features**: Broadcast to agents, update memory
-
-## Session Hooks
-
-### session-start
-- **Purpose**: Initialize session
-- **Usage**: \`npx ruv-swarm hook session-start\`
-- **Features**: Restore context, load memory
-
-### session-end
-- **Purpose**: Clean up session
-- **Usage**: \`npx ruv-swarm hook session-end\`
-- **Features**: Save state, generate summary
-
-### session-restore
-- **Purpose**: Restore previous session
-- **Usage**: \`npx ruv-swarm hook session-restore --session-id "id"\`
-- **Features**: Load memory, restore agent states`
+## Features
+- Automatic process restart on crashes
+- Proper signal handling
+- Detailed logging of restart attempts
+- Circuit breaker pattern to prevent infinite loops`
             }]
         }
     };
@@ -1245,6 +976,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
         
         switch (request.method) {
             case 'initialize':
+                const version = await getVersion();
                 response.result = {
                     protocolVersion: '2024-11-05',
                     capabilities: {
@@ -1256,7 +988,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                     },
                     serverInfo: {
                         name: 'ruv-swarm',
-                        version: await getVersion()
+                        version: version
                     }
                 };
                 break;
@@ -1526,57 +1258,9 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                             mimeType: 'text/markdown'
                         },
                         {
-                            uri: 'swarm://docs/topologies',
-                            name: 'Swarm Topologies',
-                            description: 'Understanding mesh, hierarchical, ring, and star topologies',
-                            mimeType: 'text/markdown'
-                        },
-                        {
-                            uri: 'swarm://docs/agent-types',
-                            name: 'Agent Types Guide',
-                            description: 'Detailed guide on all agent types and their capabilities',
-                            mimeType: 'text/markdown'
-                        },
-                        {
-                            uri: 'swarm://docs/daa-guide',
-                            name: 'DAA Integration Guide',
-                            description: 'Using Decentralized Autonomous Agents effectively',
-                            mimeType: 'text/markdown'
-                        },
-                        {
-                            uri: 'swarm://examples/rest-api',
-                            name: 'REST API Example',
-                            description: 'Complete example of building a REST API with ruv-swarm',
-                            mimeType: 'text/markdown'
-                        },
-                        {
-                            uri: 'swarm://examples/neural-training',
-                            name: 'Neural Training Example',
-                            description: 'How to train neural agents for specific tasks',
-                            mimeType: 'text/markdown'
-                        },
-                        {
-                            uri: 'swarm://schemas/swarm-config',
-                            name: 'Swarm Configuration Schema',
-                            description: 'JSON schema for swarm configuration',
-                            mimeType: 'application/json'
-                        },
-                        {
-                            uri: 'swarm://schemas/agent-config',
-                            name: 'Agent Configuration Schema',
-                            description: 'JSON schema for agent configuration',
-                            mimeType: 'application/json'
-                        },
-                        {
-                            uri: 'swarm://performance/benchmarks',
-                            name: 'Performance Benchmarks',
-                            description: 'Latest performance benchmark results',
-                            mimeType: 'application/json'
-                        },
-                        {
-                            uri: 'swarm://hooks/available',
-                            name: 'Available Hooks',
-                            description: 'List of all available Claude Code hooks',
+                            uri: 'swarm://docs/stability',
+                            name: 'Stability Features',
+                            description: 'Auto-restart and crash protection features',
                             mimeType: 'text/markdown'
                         }
                     ]
@@ -1596,12 +1280,10 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                 };
         }
     } catch (error) {
-        // Enhanced error handling to prevent MCP crashes
-        logger.error('MCP request handler error (non-fatal)', { error, method: request.method });
         response.error = {
             code: -32603,
-            message: 'Internal error (MCP server stable)',
-            data: error.message || 'Unknown error occurred'
+            message: 'Internal error',
+            data: error.message
         };
     }
     
@@ -1649,8 +1331,7 @@ Examples:
         }
     } catch (error) {
         console.error('❌ Neural command error:', error.message);
-        console.error('⚠️  MCP server continuing despite neural command failure');
-        // Don't exit - keep MCP server running
+        process.exit(1);
     }
 }
 
@@ -1678,8 +1359,7 @@ Examples:
         }
     } catch (error) {
         console.error('❌ Benchmark command error:', error.message);
-        console.error('⚠️  MCP server continuing despite benchmark command failure');
-        // Don't exit - keep MCP server running
+        process.exit(1);
     }
 }
 
@@ -1710,8 +1390,7 @@ Examples:
         }
     } catch (error) {
         console.error('❌ Performance command error:', error.message);
-        console.error('⚠️  MCP server continuing despite performance command failure');
-        // Don't exit - keep MCP server running
+        process.exit(1);
     }
 }
 
@@ -1723,7 +1402,7 @@ async function handleDiagnose(args) {
 async function showHelp() {
     const version = await getVersion();
     console.log(`
-🐝 ruv-swarm v${version} - Enhanced WASM-powered neural swarm orchestration
+🐝 ruv-swarm v${version} - Production-ready WASM-powered neural swarm orchestration
 
 Usage: ruv-swarm <command> [options]
 
@@ -1739,6 +1418,8 @@ Commands:
   status [--verbose]              Show swarm status
   monitor [duration]              Monitor swarm activity
   mcp <subcommand>                MCP server management
+    Options for mcp start:
+      --stability                   Enable auto-restart on crashes
   hook <type> [options]           Claude Code hooks integration
   claude-invoke <prompt>          Invoke Claude with swarm integration
   neural <subcommand>             Neural network training and analysis
@@ -1751,32 +1432,32 @@ Commands:
 Examples:
   ruv-swarm init mesh 5 --claude                    # Create CLAUDE.md (fails if exists)
   ruv-swarm init mesh 5 --claude --force            # Overwrite CLAUDE.md (creates backup)
-  ruv-swarm init mesh 5 --claude --merge            # Merge with existing CLAUDE.md
-  ruv-swarm init mesh 5 --claude --force --no-backup # Overwrite CLAUDE.md (no backup)
-  ruv-swarm init mesh 5 --claude --no-interactive   # Non-interactive mode
   ruv-swarm spawn researcher "AI Research Specialist"
   ruv-swarm orchestrate "Build a REST API with authentication"
-  ruv-swarm mcp start
+  ruv-swarm mcp start --stability                   # Start with crash protection
   ruv-swarm hook pre-edit --file app.js --ensure-coordination
   ruv-swarm claude-invoke "Create a development swarm for my project"
-  ruv-swarm neural status
-  ruv-swarm benchmark run --iterations 10
-  ruv-swarm performance analyze --task-id recent
 
-Validation Rules:
-  Topologies: mesh, hierarchical, ring, star
-  Max Agents: 1-100 (integers only)
-  Agent Types: researcher, coder, analyst, optimizer, coordinator, architect, tester
-  Agent Names: 1-100 characters, alphanumeric + spaces/hyphens/underscores/periods
-  Task Descriptions: 1-1000 characters, non-empty
+🔒 Security Features:
+  • Input validation and sanitization
+  • Explicit permission control for Claude invocation
+  • Command injection prevention
+  • WASM integrity verification
 
-Modular Features:
+🛡️ Stability Features:
+  • Auto-restart on crashes (--stability flag)
+  • Circuit breaker pattern
+  • Graceful shutdown handling
+  • Process supervision
+
+Production Features:
   📚 Automatic documentation generation
   🌐 Cross-platform remote execution support
   🤖 Seamless Claude Code MCP integration
   🔧 Advanced hooks for automation
   🧠 Neural pattern learning
   💾 Cross-session memory persistence
+  🛡️ Security and stability hardening
 
 For detailed documentation, check .claude/commands/ after running init --claude
 `);
@@ -1836,15 +1517,20 @@ async function main() {
             case 'version':
                 const version = await getVersion();
                 console.log('ruv-swarm v' + version);
-                console.log('Enhanced WASM-powered neural swarm orchestration');
-                console.log('Security Enhanced Edition');
+                console.log('Production-ready WASM-powered neural swarm orchestration');
+                console.log('Security & Stability Enhanced Edition');
                 console.log('\n🔒 Security Features:');
-                console.log('   • Explicit permission control for Claude invocation');
                 console.log('   • Input validation and sanitization');
-                console.log('   • User confirmation for dangerous operations');
+                console.log('   • Explicit permission control for Claude invocation');
                 console.log('   • Command injection prevention');
-                console.log('\n🛡️  Security Status: All vulnerabilities from Issue #107 resolved');
-                console.log('💡 For legacy behavior, use: ruv-swarm-legacy');
+                console.log('   • WASM integrity verification');
+                console.log('\n🛡️ Stability Features:');
+                console.log('   • Auto-restart on crashes (use --stability flag)');
+                console.log('   • Circuit breaker pattern');
+                console.log('   • Graceful shutdown handling');
+                console.log('   • Process supervision');
+                console.log('\n✅ Security Status: All vulnerabilities from Issue #107 resolved');
+                console.log('🚀 Production Status: Ready for deployment');
                 break;
             case 'help':
             default:
@@ -1856,28 +1542,33 @@ async function main() {
         if (process.argv.includes('--debug')) {
             console.error(error.stack);
         }
-        console.error('⚠️  MCP server continuing despite main command failure');
-        // Don't exit - keep MCP server running
+        process.exit(1);
     }
 }
 
-// Error handling - NEVER crash MCP server
+// Enhanced error handling with stability features
 process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception (non-fatal for MCP):', error.message);
+    console.error('❌ Uncaught Exception:', error.message);
     if (process.argv.includes('--debug')) {
         console.error(error.stack);
     }
-    console.error('⚠️  MCP server continuing despite uncaught exception');
-    // Don't exit - keep MCP server running
+    if (isStabilityMode) {
+        stabilityLog(`Uncaught exception: ${error.message}`);
+        stabilityLog('Stability mode will handle restart...');
+    }
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection (non-fatal for MCP):', reason);
+    console.error('❌ Unhandled Rejection:', reason);
     if (process.argv.includes('--debug')) {
         console.error('Promise:', promise);
     }
-    console.error('⚠️  MCP server continuing despite unhandled rejection');
-    // Don't exit - keep MCP server running
+    if (isStabilityMode) {
+        stabilityLog(`Unhandled rejection: ${reason}`);
+        stabilityLog('Stability mode will handle restart...');
+    }
+    process.exit(1);
 });
 
 // In ES modules, this file is always the main module when run directly
