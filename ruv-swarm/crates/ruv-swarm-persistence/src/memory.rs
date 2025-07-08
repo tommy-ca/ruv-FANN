@@ -210,11 +210,18 @@ impl Storage for MemoryStorage {
 
     async fn get_events_since(&self, timestamp: i64) -> Result<Vec<EventModel>, Self::Error> {
         let events = self.events.read();
-        let since_events: Vec<_> = events
+        let mut since_events: Vec<_> = events
             .iter()
             .filter(|e| e.timestamp.timestamp() >= timestamp)
             .cloned()
             .collect();
+        
+        // Sort by timestamp (with full precision) then by id for deterministic ordering
+        since_events.sort_by(|a, b| {
+            a.timestamp.cmp(&b.timestamp)
+                .then_with(|| a.id.cmp(&b.id))
+        });
+        
         Ok(since_events)
     }
 

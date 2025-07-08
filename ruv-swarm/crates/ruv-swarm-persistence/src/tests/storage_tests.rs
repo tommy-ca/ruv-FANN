@@ -384,6 +384,6 @@ async fn test_maintenance_operations() {
     storage.vacuum().await.unwrap();
     storage.checkpoint().await.unwrap();
 
-    let size = storage.get_storage_size().await.unwrap();
-    assert!(size >= 0); // Storage size should be non-negative
+    // Verify get_storage_size call succeeds (returns size appropriate for storage type)
+    let _size = storage.get_storage_size().await.unwrap();
 }
