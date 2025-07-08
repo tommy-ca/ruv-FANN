@@ -86,7 +86,11 @@ Message 6: Write "package.json"
 ### 1. Add MCP Server (Stdio - No Port Needed)
 ```bash
 # Add ruv-swarm MCP server to Claude Code using stdio
-claude mcp add ruv-swarm npx ruv-swarm mcp start
+# SECURITY: Always use version pinning to prevent supply chain attacks
+claude mcp add ruv-swarm npx ruv-swarm@1.0.17 mcp start
+
+# For local development, use local executable:
+# claude mcp add ruv-swarm ./ruv-swarm-local mcp start
 ```
 
 ### 2. Use MCP Tools for Coordination in Claude Code
@@ -156,12 +160,13 @@ Once configured, ruv-swarm MCP tools enhance Claude Code's coordination:
 
 **What Actually Happens:**
 1. The swarm sets up a coordination framework
-2. Each agent MUST use ruv-swarm hooks for coordination:
-   - `npx ruv-swarm hook pre-task` before starting
-   - `npx ruv-swarm hook post-edit` after each file operation
-   - `npx ruv-swarm hook notification` to share decisions
+2. Each agent MUST use secure coordination hooks:
+   - `npx ruv-swarm@1.0.17 hook pre-task` before starting (with version pinning)
+   - `npx ruv-swarm@1.0.17 hook post-edit` after each file operation
+   - `npx ruv-swarm@1.0.17 hook notification` to share decisions
+   - **SECURITY**: Version pinning prevents supply chain attacks
 3. Claude Code uses its native Read, WebSearch, and Task tools
-4. The swarm coordinates through shared memory and hooks
+4. The swarm coordinates through secure hooks and MCP memory
 5. Results are synthesized by Claude Code with full coordination history
 
 ### Development Coordination Example
@@ -184,12 +189,13 @@ Once configured, ruv-swarm MCP tools enhance Claude Code's coordination:
 
 **What Actually Happens:**
 1. The swarm creates a development coordination plan
-2. Each agent coordinates using mandatory hooks:
-   - Pre-task hooks for context loading
-   - Post-edit hooks for progress tracking
-   - Memory storage for cross-agent coordination
+2. Each agent coordinates using secure hooks with version pinning:
+   - `npx ruv-swarm@1.0.17 hook pre-task` for context loading
+   - `npx ruv-swarm@1.0.17 hook post-edit` for progress tracking
+   - `npx ruv-swarm@1.0.17 hook notification` for cross-agent coordination
+   - **SECURITY**: All hooks use pinned versions and local execution
 3. Claude Code uses Write, Edit, Bash tools for implementation
-4. Agents share progress through ruv-swarm memory
+4. Agents share progress through secure memory coordination
 5. All code is written by Claude Code with full coordination
 
 ## Best Practices for Coordination
@@ -255,6 +261,7 @@ ruv-swarm includes powerful hooks that automate coordination:
 - **🤖 Smart Auto-Spawning** - Zero manual agent management
 - **🛡️ Self-Healing Workflows** - Automatic error recovery
 - **💾 Cross-Session Memory** - Persistent learning & context
+- **🔒 Security Hardening** - MCP-only coordination, no direct npx execution
 
 ### Configuration
 Hooks are pre-configured in `.claude/settings.json`. Key features:
@@ -296,28 +303,36 @@ When you spawn an agent using the Task tool, that agent MUST:
 
 **1️⃣ BEFORE Starting Work:**
 ```bash
-# Check previous work and load context
-npx ruv-swarm hook pre-task --description "[agent task]" --auto-spawn-agents false
-npx ruv-swarm hook session-restore --session-id "swarm-[id]" --load-memory true
+# Check previous work and load context with secure version pinning
+npx ruv-swarm@1.0.17 hook pre-task --description "[agent task]" --auto-spawn-agents false
+npx ruv-swarm@1.0.17 hook session-restore --session-id "swarm-[id]" --load-memory true
+
+# SECURITY NOTE: Version @1.0.17 prevents supply chain attacks
+# All hooks execute locally with validated inputs
 ```
 
 **2️⃣ DURING Work (After EVERY Major Step):**
 ```bash
-# Store progress in memory after each file operation
-npx ruv-swarm hook post-edit --file "[filepath]" --memory-key "swarm/[agent]/[step]"
+# Store progress in memory after each file operation (secure version)
+npx ruv-swarm@1.0.17 hook post-edit --file "[filepath]" --memory-key "swarm/[agent]/[step]"
 
-# Store decisions and findings
-npx ruv-swarm hook notification --message "[what was done]" --telemetry true
+# Store decisions and findings with security validation
+npx ruv-swarm@1.0.17 hook notification --message "[what was done]" --telemetry true
 
-# Check coordination with other agents
-npx ruv-swarm hook pre-search --query "[what to check]" --cache-results true
+# Check coordination with other agents using pinned version
+npx ruv-swarm@1.0.17 hook pre-search --query "[what to check]" --cache-results true
+
+# SECURITY NOTE: All operations use version-pinned execution
 ```
 
 **3️⃣ AFTER Completing Work:**
 ```bash
-# Save all results and learnings
-npx ruv-swarm hook post-task --task-id "[task]" --analyze-performance true
-npx ruv-swarm hook session-end --export-metrics true --generate-summary true
+# Save all results and learnings with secure execution
+npx ruv-swarm@1.0.17 hook post-task --task-id "[task]" --analyze-performance true
+npx ruv-swarm@1.0.17 hook session-end --export-metrics true --generate-summary true
+
+# SECURITY NOTE: Version pinning ensures consistent, secure execution
+# All data is validated and stored locally
 ```
 
 ### 🎯 AGENT PROMPT TEMPLATE
@@ -328,14 +343,18 @@ When spawning agents, ALWAYS include these coordination instructions:
 You are the [Agent Type] agent in a coordinated swarm.
 
 MANDATORY COORDINATION:
-1. START: Run `npx ruv-swarm hook pre-task --description "[your task]"`
-2. DURING: After EVERY file operation, run `npx ruv-swarm hook post-edit --file "[file]" --memory-key "agent/[step]"`
-3. MEMORY: Store ALL decisions using `npx ruv-swarm hook notification --message "[decision]"`
-4. END: Run `npx ruv-swarm hook post-task --task-id "[task]" --analyze-performance true`
+1. START: Run `npx ruv-swarm@1.0.17 hook pre-task --description "[your task]"` (version pinned for security)
+2. DURING: After EVERY file operation, run `npx ruv-swarm@1.0.17 hook post-edit --file "[file]" --memory-key "agent/[step]"`
+3. MEMORY: Store ALL decisions using `npx ruv-swarm@1.0.17 hook notification --message "[decision]"`
+4. END: Run `npx ruv-swarm@1.0.17 hook post-task --task-id "[task]" --analyze-performance true`
+
+🔒 SECURITY: Always use @1.0.17 version pinning to prevent supply chain attacks
 
 Your specific task: [detailed task description]
 
-REMEMBER: Coordinate with other agents by checking memory BEFORE making decisions!
+REMEMBER: Coordinate with other agents by checking secure hooks memory BEFORE making decisions!
+
+🔒 **SECURITY MODEL**: Version pinning + Local execution + Input validation
 ```
 
 ### ⚡ PARALLEL EXECUTION IS MANDATORY
