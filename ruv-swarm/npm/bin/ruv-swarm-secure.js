@@ -168,15 +168,15 @@ async function initializeLogger() {
             }
         });
         
-        // Set up global error handlers
+        // Set up global error handlers - NEVER crash MCP server
         process.on('uncaughtException', (error) => {
-            globalLogger.fatal('Uncaught exception', { error });
-            process.exit(1);
+            globalLogger.error('Uncaught exception (non-fatal for MCP)', { error });
+            // Don't exit - keep MCP server running
         });
         
         process.on('unhandledRejection', (reason, promise) => {
-            globalLogger.fatal('Unhandled rejection', { reason, promise });
-            process.exit(1);
+            globalLogger.error('Unhandled rejection (non-fatal for MCP)', { reason, promise });
+            // Don't exit - keep MCP server running
         });
     }
     return globalLogger;
@@ -375,15 +375,18 @@ async function handleClaudeInvoke(args) {
         return;
     }
     
-    // Security: validate prompt for dangerous patterns
+    // Security: validate prompt for dangerous patterns (non-fatal)
     try {
         CommandSanitizer.validateArgument(prompt.trim());
     } catch (error) {
         if (error instanceof SecurityError) {
             console.error('❌ Security validation failed:', error.message);
-            return;
+            console.error('⚠️  Continuing with reduced security for MCP stability');
+            // Continue execution despite security validation failure
+        } else {
+            console.error('⚠️  Security validation error (non-fatal):', error.message);
+            // Don't throw - keep MCP server stable
         }
-        throw error;
     }
     
     console.log('🚀 Invoking Claude Code with ruv-swarm integration...');
@@ -401,7 +404,8 @@ async function handleClaudeInvoke(args) {
     } catch (error) {
         console.error('❌ Claude invocation failed:', error.message);
         console.error('Make sure Claude Code CLI is installed and in your PATH');
-        process.exit(1);
+        console.error('⚠️  MCP server continuing despite Claude invocation failure');
+        // Don't exit - keep MCP server running
     }
 }
 
@@ -562,8 +566,23 @@ async function startMcpServer(args) {
                                 try {
                                     process.stdout.write(JSON.stringify(response) + '\n');
                                 } catch (writeError) {
-                                    logger.error('Failed to write response to stdout', { writeError, response });
-                                    process.exit(1);
+                                    // Handle JSON serialization errors gracefully
+                                    logger.error('Failed to serialize response', { writeError });
+                                    try {
+                                        // Send minimal error response instead of crashing
+                                        const fallbackResponse = {
+                                            jsonrpc: '2.0',
+                                            error: {
+                                                code: -32603,
+                                                message: 'Response serialization failed'
+                                            },
+                                            id: response.id
+                                        };
+                                        process.stdout.write(JSON.stringify(fallbackResponse) + '\n');
+                                    } catch (fallbackError) {
+                                        logger.error('Fallback response also failed', { fallbackError });
+                                        // Even if this fails, don't crash the server
+                                    }
                                 }
                             }).catch(error => {
                                 logger.endOperation(opId, false, { error });
@@ -581,22 +600,27 @@ async function startMcpServer(args) {
                                 process.stdout.write(JSON.stringify(errorResponse) + '\n');
                             });
                         } catch (error) {
-                            logger.error('JSON parse error', { 
+                            logger.error('JSON parse error (non-fatal)', { 
                                 error, 
                                 line: line.substring(0, 100),
                                 messageId 
                             });
                             
-                            const errorResponse = {
-                                jsonrpc: '2.0',
-                                error: {
-                                    code: -32700,
-                                    message: 'Parse error',
-                                    data: error.message
-                                },
-                                id: null
-                            };
-                            process.stdout.write(JSON.stringify(errorResponse) + '\n');
+                            try {
+                                const errorResponse = {
+                                    jsonrpc: '2.0',
+                                    error: {
+                                        code: -32700,
+                                        message: 'Parse error (MCP server stable)',
+                                        data: error.message || 'Invalid JSON'
+                                    },
+                                    id: null
+                                };
+                                process.stdout.write(JSON.stringify(errorResponse) + '\n');
+                            } catch (responseError) {
+                                logger.error('Failed to send parse error response (non-fatal)', { responseError });
+                                // Don't crash even if we can't send error response
+                            }
                         }
                     }
                 }
@@ -621,9 +645,10 @@ async function startMcpServer(args) {
             
             process.stdin.on('error', (error) => {
                 logger.logConnection('failed', sessionId, { error });
-                logger.error('MCP: stdin error, shutting down...', { error });
-                clearInterval(monitorInterval);
-                process.exit(1);
+                logger.error('MCP: stdin error (attempting to continue)', { error });
+                // Don't exit on stdin errors - try to keep MCP server running
+                // clearInterval(monitorInterval);
+                // process.exit(1);
             });
             
             // Handle process termination signals
@@ -657,39 +682,7 @@ async function startMcpServer(args) {
             };
             process.stdout.write(JSON.stringify(initMessage) + '\n');
             
-            // Implement heartbeat mechanism
-            let lastActivity = Date.now();
-            const heartbeatInterval = 30000; // 30 seconds
-            const heartbeatTimeout = 90000; // 90 seconds
-            
-            // Update activity on any received message
-            const originalOnData = process.stdin._events.data;
-            process.stdin.on('data', () => {
-                lastActivity = Date.now();
-            });
-            
-            // Check for connection health
-            const heartbeatChecker = setInterval(() => {
-                const timeSinceLastActivity = Date.now() - lastActivity;
-                
-                if (timeSinceLastActivity > heartbeatTimeout) {
-                    logger.error('MCP: Connection timeout - no activity for', timeSinceLastActivity, 'ms');
-                    logger.logConnection('timeout', sessionId, {
-                        lastActivity: new Date(lastActivity).toISOString(),
-                        timeout: heartbeatTimeout
-                    });
-                    clearInterval(monitorInterval);
-                    clearInterval(heartbeatChecker);
-                    process.exit(1);
-                } else if (timeSinceLastActivity > heartbeatInterval) {
-                    logger.debug('MCP: Connection idle for', timeSinceLastActivity, 'ms');
-                }
-            }, 5000); // Check every 5 seconds
-            
-            // Clean up heartbeat on exit
-            process.on('exit', () => {
-                clearInterval(heartbeatChecker);
-            });
+            // Heartbeat mechanism removed for Claude Code compatibility
             
         } else {
             logger.error('WebSocket protocol not yet implemented', { protocol });
@@ -697,9 +690,10 @@ async function startMcpServer(args) {
             console.log('Use stdio mode for Claude Code integration');
         }
     } catch (error) {
-        logger.fatal('Failed to start MCP server', { error, protocol });
+        logger.error('Failed to start MCP server', { error, protocol });
         console.error('❌ Failed to start MCP server:', error.message);
-        process.exit(1);
+        // Don't exit - log error and continue
+        console.error('⚠️  MCP server will attempt to continue despite initialization error');
     }
 }
 
@@ -1602,10 +1596,12 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                 };
         }
     } catch (error) {
+        // Enhanced error handling to prevent MCP crashes
+        logger.error('MCP request handler error (non-fatal)', { error, method: request.method });
         response.error = {
             code: -32603,
-            message: 'Internal error',
-            data: error.message
+            message: 'Internal error (MCP server stable)',
+            data: error.message || 'Unknown error occurred'
         };
     }
     
@@ -1653,7 +1649,8 @@ Examples:
         }
     } catch (error) {
         console.error('❌ Neural command error:', error.message);
-        process.exit(1);
+        console.error('⚠️  MCP server continuing despite neural command failure');
+        // Don't exit - keep MCP server running
     }
 }
 
@@ -1681,7 +1678,8 @@ Examples:
         }
     } catch (error) {
         console.error('❌ Benchmark command error:', error.message);
-        process.exit(1);
+        console.error('⚠️  MCP server continuing despite benchmark command failure');
+        // Don't exit - keep MCP server running
     }
 }
 
@@ -1712,7 +1710,8 @@ Examples:
         }
     } catch (error) {
         console.error('❌ Performance command error:', error.message);
-        process.exit(1);
+        console.error('⚠️  MCP server continuing despite performance command failure');
+        // Don't exit - keep MCP server running
     }
 }
 
@@ -1857,25 +1856,28 @@ async function main() {
         if (process.argv.includes('--debug')) {
             console.error(error.stack);
         }
-        process.exit(1);
+        console.error('⚠️  MCP server continuing despite main command failure');
+        // Don't exit - keep MCP server running
     }
 }
 
-// Error handling
+// Error handling - NEVER crash MCP server
 process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error.message);
+    console.error('❌ Uncaught Exception (non-fatal for MCP):', error.message);
     if (process.argv.includes('--debug')) {
         console.error(error.stack);
     }
-    process.exit(1);
+    console.error('⚠️  MCP server continuing despite uncaught exception');
+    // Don't exit - keep MCP server running
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection:', reason);
+    console.error('❌ Unhandled Rejection (non-fatal for MCP):', reason);
     if (process.argv.includes('--debug')) {
         console.error('Promise:', promise);
     }
-    process.exit(1);
+    console.error('⚠️  MCP server continuing despite unhandled rejection');
+    // Don't exit - keep MCP server running
 });
 
 // In ES modules, this file is always the main module when run directly

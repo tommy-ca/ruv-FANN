@@ -19,5 +19,9 @@ node_modules
 *.swn
 .venv/
 
-# Ignore polyglot benchmark directory
+# Ignore polyglot benchmark directories
 polyglot-benchmark/
+polyglot-benchmarks/
+
+# Ignore merge script
+merge_script.sh
