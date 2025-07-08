@@ -84,7 +84,7 @@ class ClaudeIntegrationCore {
   }
 
   /**
-     * Invoke Claude with a prompt (automatically includes --dangerously-skip-permissions)
+     * Invoke Claude with a prompt (user must provide permissions flag if needed)
      */
   async invokeClaudeWithPrompt(prompt) {
     if (!prompt || !prompt.trim()) {
@@ -95,7 +95,9 @@ class ClaudeIntegrationCore {
       throw new Error('Claude Code CLI not found');
     }
 
-    const claudeCommand = `claude "${ prompt.trim() }" --dangerously-skip-permissions`;
+    // SECURITY: No longer automatically adding --dangerously-skip-permissions
+    // Users must explicitly provide it if needed
+    const claudeCommand = `claude "${ prompt.trim() }"`;
 
     try {
       execSync(claudeCommand, { stdio: 'inherit', cwd: this.workingDir });

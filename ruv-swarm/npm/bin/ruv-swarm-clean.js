@@ -348,23 +348,19 @@ async function handleOrchestrate(args) {
 }
 
 async function handleClaudeInvoke(args) {
-    const filteredArgs = args.filter(arg => 
-        !arg.includes('--skip-permissions') && 
-        !arg.includes('--dangerously-skip-permissions')
-    );
-    
-    const prompt = filteredArgs.join(' ');
+    // SECURITY: Allow all args including permission flags if user explicitly provides them
+    const prompt = args.join(' ');
     
     if (!prompt.trim()) {
         console.log('❌ No prompt provided');
         console.log('Usage: ruv-swarm claude-invoke "your swarm prompt"');
-        console.log('Note: --dangerously-skip-permissions is automatically included');
+        console.log('Note: Add --dangerously-skip-permissions flag if needed for automated execution');
         return;
     }
     
     console.log('🚀 Invoking Claude Code with ruv-swarm integration...');
     console.log('Prompt: ' + prompt.trim());
-    console.log('⚠️  Automatically using --dangerously-skip-permissions for seamless execution');
+    // SECURITY: No longer automatically using dangerous permissions
     
     try {
         await invokeClaudeWithSwarm(prompt, {
@@ -373,6 +369,9 @@ async function handleClaudeInvoke(args) {
     } catch (error) {
         console.error('❌ Claude invocation failed:', error.message);
         console.error('Make sure Claude Code CLI is installed and in your PATH');
+        if (error.message.includes('permission')) {
+            console.error('💡 Tip: You may need to add --dangerously-skip-permissions flag');
+        }
         process.exit(1);
     }
 }
