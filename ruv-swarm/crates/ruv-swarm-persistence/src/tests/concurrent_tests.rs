@@ -297,8 +297,33 @@ async fn test_concurrent_updates_optimistic_locking() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_event_sourcing_at_scale() {
+    // SQLite performance benchmark
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use tempfile::NamedTempFile;
+        let temp_file = NamedTempFile::new().unwrap();
+        let sqlite_storage = Arc::new(SqliteStorage::new(temp_file.path().to_str().unwrap()).await.unwrap());
+        
+        let sqlite_test_count = 5000; // Reasonable for CI while still showing performance
+        let start = std::time::Instant::now();
+        
+        for i in 0..sqlite_test_count {
+            let event = EventModel::new(
+                format!("sqlite-perf-{}", i),
+                serde_json::json!({"data": i, "type": "performance_test"}),
+            );
+            sqlite_storage.store_event(&event).await.unwrap();
+        }
+        
+        let duration = start.elapsed();
+        let sqlite_events_per_sec = sqlite_test_count as f64 / duration.as_secs_f64();
+        println!("SQLite Performance: {} events in {:?} ({:.0} events/sec)", 
+            sqlite_test_count, duration, sqlite_events_per_sec);
+    }
+    
+    // Memory storage large-scale test
     let storage = Arc::new(MemoryStorage::new());
-    let event_count = 10_000; // Full scale test
+    let event_count = 100_000; // Large-scale test
     let agent_count = 10;
     
     // Create agents
