@@ -51,7 +51,7 @@ export class MCPServer {
                 },
                 serverInfo: {
                     name: 'ruv-swarm',
-                    version: '1.0.15'
+                    version: '1.0.16'
                 }
             }
         });
@@ -79,7 +79,7 @@ export class MCPServer {
                         },
                         serverInfo: {
                             name: 'ruv-swarm',
-                            version: '1.0.15'
+                            version: '1.0.16'
                         }
                     }
                 });
