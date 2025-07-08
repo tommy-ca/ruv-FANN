@@ -5,7 +5,7 @@
  */
 
 import { WasmModuleLoader } from './wasm-loader.js';
-import { SwarmPersistence } from './persistence.js';
+import { SwarmPersistencePooled } from './persistence-pooled.js';
 import { getContainer } from './singleton-container.js';
 // import { NeuralAgentFactory } from './neural-agent.js';
 // import path from 'path';
@@ -103,13 +103,25 @@ class RuvSwarm {
       // Detect and enable features
       await instance.detectFeatures(useSIMD);
 
-      // Initialize persistence if enabled
+      // Initialize pooled persistence if enabled
       if (enablePersistence) {
         try {
-          instance.persistence = new SwarmPersistence();
-          console.log('💾 Persistence layer initialized');
+          // Configure pool settings based on environment or defaults
+          const poolOptions = {
+            maxReaders: parseInt(process.env.POOL_MAX_READERS) || 6,
+            maxWorkers: parseInt(process.env.POOL_MAX_WORKERS) || 3,
+            mmapSize: parseInt(process.env.POOL_MMAP_SIZE) || 268435456, // 256MB
+            cacheSize: parseInt(process.env.POOL_CACHE_SIZE) || -64000, // 64MB
+            enableBackup: process.env.POOL_ENABLE_BACKUP === 'true',
+            healthCheckInterval: 60000, // 1 minute
+          };
+          
+          instance.persistence = new SwarmPersistencePooled(undefined, poolOptions);
+          await instance.persistence.initialize();
+          console.log('💾 High-availability pooled persistence layer initialized');
+          console.log(`📊 Pool configuration: ${poolOptions.maxReaders} readers, ${poolOptions.maxWorkers} workers`);
         } catch (error) {
-          console.warn('⚠️ Persistence not available:', error.message);
+          console.warn('⚠️ Pooled persistence not available:', error.message);
           instance.persistence = null;
         }
       }
