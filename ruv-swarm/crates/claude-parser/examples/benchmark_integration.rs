@@ -5,18 +5,46 @@ use std::process::Stdio;
 use tokio::io::BufReader;
 use tokio::process::Command;
 
+/// Validates that an instance ID contains only safe characters
+fn validate_instance_id(instance_id: &str) -> Result<String, Box<dyn std::error::Error>> {
+    // Only allow alphanumeric characters, hyphens, underscores, and double underscores
+    if !instance_id.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        return Err("Invalid instance ID: only alphanumeric characters, hyphens, and underscores are allowed".into());
+    }
+    
+    // Validate length to prevent buffer overflow attacks
+    if instance_id.len() > 256 {
+        return Err("Invalid instance ID: maximum length is 256 characters".into());
+    }
+    
+    // Ensure it doesn't start with special characters that could be interpreted as flags
+    if instance_id.starts_with('-') {
+        return Err("Invalid instance ID: cannot start with hyphen".into());
+    }
+    
+    Ok(instance_id.to_string())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example: Running Claude on a SWE-Bench instance
     let instance_id = "django__django-11099";
+    
+    // Validate instance ID to prevent command injection
+    let safe_instance_id = validate_instance_id(instance_id)?;
 
-    println!("Executing Claude on SWE-Bench instance: {}", instance_id);
+    println!("Executing Claude on SWE-Bench instance: {}", safe_instance_id);
 
     // Launch Claude process with stream-json output
+    // SECURITY: Using separate arguments prevents command injection (CVE-2024-24576)
     let mut child = Command::new("claude")
-        .arg(format!("solve SWE-bench instance {}", instance_id))
+        .arg("solve")
+        .arg("SWE-bench")
+        .arg("instance")
+        .arg(&safe_instance_id)
         .arg("-p")
-        .arg("--dangerously-skip-permissions")
+        // NOTE: --dangerously-skip-permissions removed for security
+        // Users must explicitly add if needed
         .arg("--output-format")
         .arg("stream-json")
         .arg("--verbose")

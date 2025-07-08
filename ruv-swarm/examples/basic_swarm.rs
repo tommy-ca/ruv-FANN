@@ -11,7 +11,6 @@ use ruv_swarm_core::{
     topology::TopologyType,
 };
 use std::time::Duration;
-use tokio::time::timeout;
 
 #[tokio::main]
 async fn main() -> Result<()> {

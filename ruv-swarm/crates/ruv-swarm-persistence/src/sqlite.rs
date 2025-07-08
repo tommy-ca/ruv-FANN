@@ -37,8 +37,11 @@ impl SqliteStorage {
             path: path.to_string(),
         };
 
-        // Initialize schema
-        storage.init_schema().await?;
+        // Initialize schema using proper migration system
+        storage.init_schema_with_migrations().await?;
+        
+        // Configure SQLite settings after schema initialization
+        storage.configure_sqlite().await?;
 
         info!("SQLite storage initialized at: {}", path);
         Ok(storage)
@@ -51,13 +54,42 @@ impl SqliteStorage {
             .map_err(|e| StorageError::Pool(e.to_string()))
     }
 
-    /// Initialize database schema
+    /// Initialize database schema using proper migration system
+    async fn init_schema_with_migrations(&self) -> Result<(), StorageError> {
+        let conn = self.get_conn()?;
+        let manager = crate::migrations::MigrationManager::new();
+        
+        // Run migrations to ensure proper versioning
+        manager.migrate(&conn)?;
+        
+        debug!("Schema initialized via migrations");
+        Ok(())
+    }
+    
+    /// Legacy schema initialization (deprecated)
+    #[allow(dead_code)]
     async fn init_schema(&self) -> Result<(), StorageError> {
         let conn = self.get_conn()?;
 
         conn.execute_batch(include_str!("../sql/schema.sql"))
             .map_err(|e| StorageError::Migration(format!("Schema initialization failed: {}", e)))?;
 
+        Ok(())
+    }
+    
+    /// Configure SQLite settings after schema initialization
+    async fn configure_sqlite(&self) -> Result<(), StorageError> {
+        let conn = self.get_conn()?;
+        
+        // Configure SQLite settings using execute_batch (similar to schema initialization)
+        conn.execute_batch(
+            r#"
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            "#
+        ).map_err(|e| StorageError::Database(format!("Failed to configure SQLite: {}", e)))?;
+            
+        debug!("SQLite configuration complete: WAL mode enabled, synchronous=NORMAL");
         Ok(())
     }
 }
@@ -153,11 +185,11 @@ impl Storage for SqliteStorage {
             .execute("DELETE FROM agents WHERE id = ?1", params![id])
             .map_err(|e| StorageError::Database(e.to_string()))?;
 
-        if rows == 0 {
-            return Err(StorageError::NotFound(format!("Agent {} not found", id)));
+        if rows > 0 {
+            debug!("Deleted agent: {}", id);
+        } else {
+            debug!("Agent {} not found, delete is idempotent", id);
         }
-
-        debug!("Deleted agent: {}", id);
         Ok(())
     }
 
@@ -208,7 +240,7 @@ impl Storage for SqliteStorage {
                 task.id,
                 task.task_type,
                 task.priority as i32,
-                serde_json::to_string(&task.status)?,
+                serde_json::to_value(&task.status)?.as_str().unwrap(),
                 task.assigned_to,
                 serde_json::to_string(&task.payload)?,
                 task.created_at.timestamp(),
@@ -252,7 +284,7 @@ impl Storage for SqliteStorage {
                     task.id,
                     task.task_type,
                     task.priority as i32,
-                    serde_json::to_string(&task.status)?,
+                    serde_json::to_value(&task.status)?.as_str().unwrap(),
                     task.assigned_to,
                     serde_json::to_string(&task.payload)?,
                     task.updated_at.timestamp(),
@@ -416,7 +448,7 @@ impl Storage for SqliteStorage {
         let mut stmt = conn
             .prepare(
                 "SELECT data FROM events 
-                 WHERE timestamp > ?1 
+                 WHERE timestamp >= ?1 
                  ORDER BY timestamp ASC",
             )
             .map_err(|e| StorageError::Database(e.to_string()))?;
