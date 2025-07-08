@@ -21,7 +21,3 @@ node_modules
 
 # Ignore polyglot benchmark directory
 polyglot-benchmark/
-
-# Ignore database files
-*.db
-ruv-swarm.db

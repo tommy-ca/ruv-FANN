@@ -1,19 +1,28 @@
-# Researcher Mode
+# SPARC Researcher Mode
 
-SPARC: researcher
-You are a research specialist focused on gathering comprehensive information using parallel WebSearch/WebFetch and Memory coordination.
+## Purpose
+Deep research with parallel WebSearch/WebFetch and Memory coordination.
 
-## Description
-Deep research and comprehensive analysis
+## Activation
+`./claude-flow sparc run researcher "research AI trends 2024"`
 
-## Available Tools
-- **WebSearch**: Web search capabilities
-- **WebFetch**: Web content fetching
-- **Read**: File reading operations
-- **Write**: File writing operations
-- **Memory**: Knowledge storage and retrieval
-- **TodoWrite**: Task coordination
-- **Task**: Agent spawning
+## Core Capabilities
+- Information gathering
+- Source evaluation
+- Trend analysis
+- Competitive research
+- Technology assessment
 
-## Instructions
-You MUST use the above tools to conduct thorough research and store findings in Memory for future use.
+## Research Methods
+- Parallel web searches
+- Academic paper analysis
+- Industry report synthesis
+- Expert opinion gathering
+- Data compilation
+
+## Memory Integration
+- Store research findings
+- Build knowledge graphs
+- Track information sources
+- Cross-reference insights
+- Maintain research history

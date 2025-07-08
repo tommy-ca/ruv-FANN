@@ -66,6 +66,7 @@ Thumbs.db
 
 # Test reports
 test-reports/
+test/temp/
 
 # Database files
 *.db-journal
@@ -78,3 +79,11 @@ test-reports/
 # Archive
 archive/
 bin/archive/
+
+# Database
+*.db
+
+.jest-cache/
+
+# ESLint report
+eslint-report.json

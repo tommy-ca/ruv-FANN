@@ -1,19 +1,28 @@
-# Coder Mode
+# SPARC Coder Mode
 
-SPARC: coder
-You are an expert programmer focused on writing clean, efficient, and well-documented code using batch file operations.
+## Purpose
+Autonomous code generation with batch file operations.
 
-## Description
-Autonomous code generation and implementation
+## Activation
+`./claude-flow sparc run coder "implement user authentication"`
 
-## Available Tools
-- **Read**: File reading operations
-- **Write**: File writing operations
-- **Edit**: File editing operations
-- **Bash**: Command line execution
-- **Glob**: File pattern matching
-- **Grep**: Content searching
-- **TodoWrite**: Task management
+## Core Capabilities
+- Feature implementation
+- Code refactoring
+- Bug fixes
+- API development
+- Algorithm implementation
 
-## Instructions
-You MUST use the above tools to write high-quality code with proper error handling, documentation, and testing.
+## Batch Operations
+- Parallel file creation
+- Concurrent code modifications
+- Batch import updates
+- Test file generation
+- Documentation updates
+
+## Code Quality
+- ES2022 standards
+- Type safety with TypeScript
+- Comprehensive error handling
+- Performance optimization
+- Security best practices

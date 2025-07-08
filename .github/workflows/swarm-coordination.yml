@@ -5,6 +5,11 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
 jobs:
   check-stale-claims:
     runs-on: ubuntu-latest

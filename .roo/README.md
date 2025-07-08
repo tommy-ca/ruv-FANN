@@ -1,83 +1,56 @@
-# ruv-swarm MCP Integration
+# .roo Directory - SPARC Development Environment
 
-This directory contains the Model Context Protocol (MCP) configuration for ruv-swarm integration with Claude Code.
+This directory contains the SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) development environment configuration and templates.
 
-## Configuration Files
+## Directory Structure
 
-### mcp.json
-Contains the complete MCP server configuration for ruv-swarm with:
-- stdio protocol for seamless Claude Code communication
-- 12 comprehensive swarm orchestration tools
-- WebAssembly-powered neural network operations
-- Cognitive diversity agent management
-
-## Setup Instructions
-
-The ruv-swarm MCP server has been added to Claude with:
-
-```bash
-claude mcp add ruv-swarm npx -- ruv-swarm mcp start --protocol=stdio
+```
+.roo/
+├── README.md           # This file
+├── templates/          # Template files for common patterns
+├── workflows/          # Predefined SPARC workflows
+│   └── basic-tdd.json  # Basic TDD workflow
+├── modes/              # Custom mode definitions (optional)
+└── configs/            # Configuration files
 ```
 
-### Verify Installation
+## SPARC Methodology
+
+SPARC is a systematic approach to software development:
+
+1. **Specification**: Define clear requirements and constraints
+2. **Pseudocode**: Create detailed logic flows and algorithms  
+3. **Architecture**: Design system structure and components
+4. **Refinement**: Implement, test, and optimize using TDD
+5. **Completion**: Integrate, document, and validate
+
+## Usage with Claude-Flow
+
+Use the claude-flow SPARC commands to leverage this environment:
 
 ```bash
-# List configured MCP servers
-claude mcp list
+# List available modes
+claude-flow sparc modes
 
-# Get server details
-claude mcp get ruv-swarm
+# Run specific mode
+claude-flow sparc run code "implement user authentication"
+
+# Execute full TDD workflow  
+claude-flow sparc tdd "payment processing system"
+
+# Use custom workflow
+claude-flow sparc workflow .roo/workflows/basic-tdd.json
 ```
 
-### Available MCP Tools
+## Configuration
 
-🔧 **Swarm Management**
-- `swarm_init` - Initialize swarm topology (mesh, hierarchical, ring, star)
-- `swarm_status` - Get current swarm status and agent information
-- `swarm_monitor` - Monitor swarm activity in real-time
+The main configuration is in `.roomodes` at the project root. This directory provides additional templates and workflows to support the SPARC development process.
 
-🤖 **Agent Operations**
-- `agent_spawn` - Spawn new agents with specified capabilities
-- `agent_list` - List all active agents in the swarm
-- `agent_metrics` - Get performance metrics for agents
+## Customization
 
-📋 **Task Management**
-- `task_orchestrate` - Orchestrate distributed tasks across the swarm
-- `task_status` - Check progress of running tasks
-- `task_results` - Retrieve results from completed tasks
+You can customize this environment by:
+- Adding new workflow templates to `workflows/`
+- Creating mode-specific templates in `templates/`
+- Adding project-specific configurations in `configs/`
 
-🔬 **Analytics**
-- `benchmark_run` - Execute performance benchmarks
-- `features_detect` - Detect runtime features and capabilities
-- `memory_usage` - Get current memory usage statistics
-
-## Usage
-
-Once configured, Claude Code can directly interact with ruv-swarm through MCP tools for:
-- Distributed agent orchestration
-- Neural network swarm operations
-- Real-time performance monitoring
-- Cognitive diversity task distribution
-
-## Technical Details
-
-- **Protocol**: stdio (JSON-RPC 2024-11-05)
-- **Command**: `npx ruv-swarm mcp start --protocol=stdio`
-- **Working Directory**: `/workspaces/ruv-FANN/ruv-swarm/npm`
-- **Performance**: Sub-millisecond WASM initialization
-- **Architecture**: Distributed multi-agent system with cognitive diversity
-
-## Troubleshooting
-
-If the MCP server isn't responding:
-
-1. Ensure ruv-swarm is installed: `npm install -g ruv-swarm`
-2. Verify MCP configuration: `claude mcp get ruv-swarm`
-3. Check server logs: `npx ruv-swarm mcp status`
-4. Restart Claude Code if needed
-
-## Resources
-
-- [ruv-swarm Documentation](https://github.com/ruvnet/ruv-FANN/tree/main/ruv-swarm)
-- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/)
-- [Claude Code Integration Guide](https://github.com/ruvnet/ruv-FANN/tree/main/ruv-swarm/npm#claude-code-integration)
+For more information, see: https://github.com/ruvnet/claude-code-flow/docs/sparc.md
