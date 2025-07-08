@@ -263,19 +263,27 @@ mod property_tests {
                 .offset(offset)
                 .build();
 
+            // Destructure tuple returned by parameterized query builder
+            let (query_sql, params) = query;
+
             // Verify query structure
-            assert!(query.starts_with("SELECT * FROM"));
-            assert!(query.contains(&table));
-            assert!(query.contains("WHERE"));
-            assert!(query.contains(&field1));
-            assert!(query.contains(&value1));
-            assert!(query.contains(&field2));
-            assert!(query.contains(&value2));
-            assert!(query.contains("ORDER BY"));
-            assert!(query.contains(&order_field));
-            assert!(query.contains(if desc { "DESC" } else { "ASC" }));
-            assert!(query.contains(&format!("LIMIT {}", limit)));
-            assert!(query.contains(&format!("OFFSET {}", offset)));
+            assert!(query_sql.starts_with("SELECT * FROM"));
+            assert!(query_sql.contains(&table));
+            assert!(query_sql.contains("WHERE"));
+            assert!(query_sql.contains(&field1));
+            assert!(query_sql.contains(&field2));
+            assert!(query_sql.contains("ORDER BY"));
+            assert!(query_sql.contains(&order_field));
+            assert!(query_sql.contains(if desc { "DESC" } else { "ASC" }));
+            assert!(query_sql.contains(&format!("LIMIT {}", limit)));
+            assert!(query_sql.contains(&format!("OFFSET {}", offset)));
+            
+            // Verify parameters are properly set (should have ? placeholders instead of direct values)
+            assert!(!query_sql.contains(&value1), "SQL should use ? placeholders, not direct values");
+            assert!(!query_sql.contains(&value2), "SQL should use ? placeholders, not direct values");
+            assert_eq!(params.len(), 2, "Should have 2 parameter values");
+            assert!(params.contains(&value1), "Parameters should contain value1");
+            assert!(params.contains(&value2), "Parameters should contain value2");
         }
 
         #[test]
@@ -291,14 +299,14 @@ mod property_tests {
                 builder = builder.where_eq(field, value);
             }
 
-            let query = builder.build();
+            let (query_sql, _params) = builder.build();
 
             if conditions.is_empty() {
-                assert!(!query.contains("WHERE"));
+                assert!(!query_sql.contains("WHERE"));
             } else {
-                assert!(query.contains("WHERE"));
+                assert!(query_sql.contains("WHERE"));
                 // Count ANDs - should be one less than number of conditions
-                let and_count = query.matches(" AND ").count();
+                let and_count = query_sql.matches(" AND ").count();
                 assert_eq!(and_count, conditions.len().saturating_sub(1));
             }
         }
