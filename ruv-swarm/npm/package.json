@@ -1,6 +1,6 @@
 {
   "name": "ruv-swarm",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "High-performance neural network swarm orchestration in WebAssembly",
   "main": "src/index.js",
   "module": "src/index.js",
@@ -28,7 +28,7 @@
     "build": "npm run build:wasm && npm run build:types",
     "build:wasm": "echo 'WASM build handled by Rust workspace'",
     "build:types": "echo 'TypeScript definitions generated'",
-    "postinstall": "node -e \"console.log('ruv-swarm v1.0.14 installed successfully!')\"",
+    "postinstall": "node -e \"console.log('ruv-swarm v1.0.15 installed - SECURITY UPDATE: See SECURITY.md for important information')\"",
     "lint": "echo 'Linting handled by main workspace'",
     "prepare": "npm run build"
   },
@@ -70,7 +70,7 @@
   "mcp": {
     "server": {
       "name": "ruv-swarm",
-      "version": "1.0.14",
+      "version": "1.0.15",
       "description": "High-performance swarm coordination MCP server",
       "command": "npx",
       "args": [

@@ -1,0 +1,29 @@
+# Archive files containing vulnerable code
+bin/archive/
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+
+# Docker files
+docker/
+Dockerfile
+docker-compose.yml
+
+# Development files
+.gitignore
+.eslintrc
+.prettierrc
+
+# Documentation source
+docs/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/

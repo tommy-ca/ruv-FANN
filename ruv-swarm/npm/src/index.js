@@ -1,6 +1,6 @@
 /**
  * ruv-swarm: High-performance neural network swarm orchestration
- * Version: 1.0.14
+ * Version: 1.0.15
  * 
  * Main entry point for ruv-swarm npm package
  * Provides coordination between Claude-Flow and WASM swarm engine
@@ -13,7 +13,7 @@ import { SwarmPersistence } from './persistence.js';
 import { HookSystem } from './hooks/index.js';
 
 // Version info
-export const VERSION = '1.0.14';
+export const VERSION = '1.0.15';
 export const BUILD_DATE = new Date().toISOString();
 
 /**
