@@ -1,7 +1,55 @@
 //! RUV-Swarm MCP (Model Context Protocol) Server
 //!
-//! Provides MCP server integration for RUV-Swarm, enabling Claude and other
-//! MCP-compatible clients to interact with the swarm orchestration system.
+//! This crate provides a comprehensive MCP server implementation for RUV-Swarm,
+//! enabling Claude Code and other MCP-compatible clients to interact with the
+//! swarm orchestration system through a standardized JSON-RPC 2.0 interface.
+//!
+//! ## Features
+//!
+//! - **Complete MCP Implementation**: Full JSON-RPC 2.0 and WebSocket support
+//! - **11 Comprehensive Tools**: Agent spawning, task orchestration, monitoring
+//! - **Real-time Event Streaming**: Live updates on swarm activity
+//! - **Session Management**: Secure session handling with metadata support
+//! - **Performance Metrics**: Built-in performance monitoring and optimization
+//! - **Extensible Architecture**: Easy to add new tools and capabilities
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use std::sync::Arc;
+//! use ruv_swarm_core::SwarmConfig;
+//! use ruv_swarm_mcp::{orchestrator::SwarmOrchestrator, McpConfig, McpServer};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> anyhow::Result<()> {
+//! // Create swarm orchestrator
+//! let orchestrator = Arc::new(SwarmOrchestrator::new(SwarmConfig::default()));
+//!
+//! // Configure MCP server
+//! let config = McpConfig::default();
+//!
+//! // Create and start server
+//! let server = McpServer::new(orchestrator, config);
+//! // server.start().await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Available Tools
+//!
+//! The server provides the following MCP tools:
+//!
+//! - `ruv-swarm.spawn` - Spawn new agents
+//! - `ruv-swarm.orchestrate` - Orchestrate complex tasks
+//! - `ruv-swarm.query` - Query swarm state
+//! - `ruv-swarm.monitor` - Monitor swarm activity
+//! - `ruv-swarm.optimize` - Optimize performance
+//! - `ruv-swarm.memory.store` - Store session data
+//! - `ruv-swarm.memory.get` - Retrieve session data
+//! - `ruv-swarm.task.create` - Create new tasks
+//! - `ruv-swarm.workflow.execute` - Execute workflows
+//! - `ruv-swarm.agent.list` - List active agents
+//! - `ruv-swarm.agent.metrics` - Get agent metrics
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -32,15 +80,31 @@ use crate::handlers::RequestHandler;
 use crate::tools::ToolRegistry;
 
 /// MCP Server configuration
+/// 
+/// This struct defines the configuration options for the MCP server,
+/// including network settings, connection limits, and debug options.
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use ruv_swarm_mcp::McpConfig;
+/// 
+/// let config = McpConfig {
+///     bind_addr: "127.0.0.1:3000".parse().unwrap(),
+///     max_connections: 100,
+///     request_timeout_secs: 300,
+///     debug: true,
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpConfig {
-    /// Server bind address
+    /// Server bind address (IP and port)
     pub bind_addr: SocketAddr,
-    /// Maximum concurrent connections
+    /// Maximum concurrent connections allowed
     pub max_connections: usize,
-    /// Request timeout in seconds
+    /// Request timeout in seconds (300 = 5 minutes)
     pub request_timeout_secs: u64,
-    /// Enable debug logging
+    /// Enable debug logging for troubleshooting
     pub debug: bool,
 }
 
@@ -76,12 +140,48 @@ pub struct Session {
 }
 
 /// MCP Server
+/// 
+/// The main MCP server that handles WebSocket connections and JSON-RPC requests.
+/// This server implements the Model Context Protocol specification and provides
+/// access to swarm orchestration capabilities through standardized tools.
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use std::sync::Arc;
+/// use ruv_swarm_core::SwarmConfig;
+/// use ruv_swarm_mcp::{orchestrator::SwarmOrchestrator, McpConfig, McpServer};
+/// 
+/// # #[tokio::main]
+/// # async fn main() -> anyhow::Result<()> {
+/// let orchestrator = Arc::new(SwarmOrchestrator::new(SwarmConfig::default()));
+/// let config = McpConfig::default();
+/// let server = McpServer::new(orchestrator, config);
+/// 
+/// // Start the server
+/// // server.start().await?;
+/// # Ok(())
+/// # }
+/// ```
 pub struct McpServer {
     state: Arc<McpServerState>,
 }
 
 impl McpServer {
     /// Create a new MCP server
+    /// 
+    /// Creates a new MCP server instance with the provided orchestrator and configuration.
+    /// The server will automatically register all available tools and initialize the
+    /// session management system.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `orchestrator` - The swarm orchestrator instance to use
+    /// * `config` - Server configuration options
+    /// 
+    /// # Returns
+    /// 
+    /// A new `McpServer` instance ready to start serving requests
     pub fn new(orchestrator: Arc<SwarmOrchestrator>, config: McpConfig) -> Self {
         let tools = Arc::new(ToolRegistry::new());
 
@@ -99,6 +199,32 @@ impl McpServer {
     }
 
     /// Start the MCP server
+    /// 
+    /// Starts the MCP server and begins listening for connections on the configured
+    /// bind address. This method will block until the server is stopped.
+    /// 
+    /// # Returns
+    /// 
+    /// Returns `Ok(())` if the server starts successfully, or an error if there's
+    /// an issue binding to the address or starting the server.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust,no_run
+    /// # use std::sync::Arc;
+    /// # use ruv_swarm_core::SwarmConfig;
+    /// # use ruv_swarm_mcp::{orchestrator::SwarmOrchestrator, McpConfig, McpServer};
+    /// # #[tokio::main]
+    /// # async fn main() -> anyhow::Result<()> {
+    /// let orchestrator = Arc::new(SwarmOrchestrator::new(SwarmConfig::default()));
+    /// let config = McpConfig::default();
+    /// let server = McpServer::new(orchestrator, config);
+    /// 
+    /// // This will block until the server is stopped
+    /// server.start().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn start(&self) -> anyhow::Result<()> {
         let app = self.build_router();
         let addr = self.state.config.bind_addr;
@@ -217,7 +343,7 @@ async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<McpServe
                         Err(e) => {
                             error!("Error handling request: {}", e);
                             let error_response =
-                                McpResponse::error(None, -32603, format!("Internal error: {}", e));
+                                McpResponse::error(None, -32603, format!("Internal error: {e}"));
                             if let Ok(json) = serde_json::to_string(&error_response) {
                                 let _ = tx.send(axum::extract::ws::Message::Text(json)).await;
                             }
@@ -297,17 +423,4 @@ pub struct McpError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_mcp_server_creation() {
-        use ruv_swarm_core::SwarmConfig;
-        let config = SwarmConfig::default();
-        let orchestrator = Arc::new(SwarmOrchestrator::new(config));
-        let mcp_config = McpConfig::default();
-
-        let server = McpServer::new(orchestrator, mcp_config);
-        assert!(server.state.tools.count() > 0);
-    }
-}
+mod tests;

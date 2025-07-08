@@ -170,7 +170,7 @@ impl RequestHandler {
                 request.id,
                 -32602,
                 "TOOL_NOT_FOUND",
-                &format!("Unknown tool: {}", tool_name),
+                &format!("Unknown tool: {tool_name}"),
                 vec![
                     "Check the tool name spelling",
                     "Use tools/list to see available tools",
@@ -301,7 +301,7 @@ impl RequestHandler {
                 id,
                 -32602,
                 "VALIDATION_ERROR",
-                &format!("Invalid agent_type: '{}'. Must be one of: researcher, coder, analyst, tester, reviewer, documenter", agent_type_str),
+                &format!("Invalid agent_type: '{agent_type_str}'. Must be one of: researcher, coder, analyst, tester, reviewer, documenter"),
                 vec![
                     "Check the agent_type parameter spelling",
                     "Valid types: researcher, coder, analyst, tester, reviewer, documenter",
@@ -805,7 +805,8 @@ impl RequestHandler {
                 "response_time": metrics.get("response_time").unwrap_or(&json!({})),
                 "error_rate": metrics.get("error_rate").unwrap_or(&json!({})),
             }),
-            "all" | _ => metrics,
+            "all" => metrics,
+            _ => metrics,
         };
 
         let result = json!({
