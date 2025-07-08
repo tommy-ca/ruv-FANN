@@ -107,10 +107,10 @@ class EnhancedMCPTools {
     try {
       await this.persistence.initialize();
       this.persistenceReady = true;
-      this.logger.log('info', 'Pooled persistence layer initialized successfully');
+      this.logger.info('Pooled persistence layer initialized successfully');
     } catch (error) {
       this.persistenceReady = false;
-      this.logger.log('error', 'Failed to initialize pooled persistence', { error: error.message });
+      this.logger.error('Failed to initialize pooled persistence', { error: error.message });
     }
   }
 
