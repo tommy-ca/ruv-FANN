@@ -1,12 +1,6 @@
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
 
--- Enable WAL mode for better concurrency
-PRAGMA journal_mode = WAL;
-
--- Set synchronous mode for performance
-PRAGMA synchronous = NORMAL;
-
 -- Agents table
 CREATE TABLE IF NOT EXISTS agents (
     id TEXT PRIMARY KEY NOT NULL,
@@ -117,7 +111,3 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     name TEXT NOT NULL,
     applied_at INTEGER NOT NULL
 );
-
--- Insert initial schema version
-INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) 
-VALUES (1, 'initial_schema', strftime('%s', 'now'));

@@ -51,6 +51,8 @@ pub struct Swarm {
     task_queue: Vec<Task>,
     task_assignments: HashMap<TaskId, AgentId>,
     agent_loads: HashMap<AgentId, usize>,
+    /// Coordinator agent ID for star topology
+    star_coordinator: Option<AgentId>,
 }
 
 impl Swarm {
@@ -63,10 +65,15 @@ impl Swarm {
             task_queue: Vec::new(),
             task_assignments: HashMap::new(),
             agent_loads: HashMap::new(),
+            star_coordinator: None,
         }
     }
 
     /// Register an agent with the swarm
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the maximum number of agents has been reached.
     pub fn register_agent(&mut self, agent: DynamicAgent) -> Result<()> {
         if self.agents.len() >= self.config.max_agents {
             return Err(SwarmError::ResourceExhausted {
@@ -90,9 +97,12 @@ impl Swarm {
                 }
             }
             TopologyType::Star => {
-                // Connect to the first agent (coordinator)
-                if let Some(coordinator) = self.agents.keys().next() {
-                    if coordinator != &agent_id {
+                // First agent becomes the coordinator
+                if self.star_coordinator.is_none() {
+                    self.star_coordinator = Some(agent_id.clone());
+                } else {
+                    // Connect new agent to the coordinator
+                    if let Some(coordinator) = &self.star_coordinator {
                         self.topology
                             .add_connection(agent_id.clone(), coordinator.clone());
                     }
@@ -105,6 +115,10 @@ impl Swarm {
     }
 
     /// Remove an agent from the swarm
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the agent is not found in the swarm.
     pub fn unregister_agent(&mut self, agent_id: &AgentId) -> Result<()> {
         self.agents
             .remove(agent_id)
@@ -122,16 +136,44 @@ impl Swarm {
             }
         }
 
+        // Handle star topology coordinator removal
+        if self.config.topology_type == TopologyType::Star {
+            if let Some(ref coordinator) = self.star_coordinator {
+                if coordinator == agent_id {
+                    // If coordinator is removed, elect a new one and reconnect all agents
+                    self.star_coordinator = self.agents.keys().next().cloned();
+                    
+                    if let Some(new_coordinator) = &self.star_coordinator {
+                        // Reconnect all agents to the new coordinator
+                        for agent in self.agents.keys() {
+                            if agent != new_coordinator {
+                                self.topology.add_connection(agent.clone(), new_coordinator.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
     /// Submit a task to the swarm
+    /// 
+    /// # Errors
+    /// 
+    /// Currently does not return errors, but may in future implementations.
     pub fn submit_task(&mut self, task: Task) -> Result<()> {
         self.task_queue.push(task);
         Ok(())
     }
 
     /// Assign tasks to agents based on distribution strategy
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if task assignment fails.
+    #[allow(clippy::unused_async)]
     pub async fn distribute_tasks(&mut self) -> Result<Vec<(TaskId, AgentId)>> {
         let mut assignments = Vec::new();
         let mut tasks_to_assign = Vec::new();
@@ -142,7 +184,7 @@ impl Swarm {
         }
 
         for task in tasks_to_assign {
-            if let Some(agent_id) = self.select_agent_for_task(&task)? {
+            if let Some(agent_id) = self.select_agent_for_task(&task) {
                 let task_id = task.id.clone();
 
                 // Assign task to agent
@@ -167,7 +209,7 @@ impl Swarm {
     }
 
     /// Select an agent for a task based on distribution strategy
-    fn select_agent_for_task(&self, task: &Task) -> Result<Option<AgentId>> {
+    fn select_agent_for_task(&self, task: &Task) -> Option<AgentId> {
         let available_agents: Vec<&AgentId> = self
             .agents
             .iter()
@@ -176,7 +218,7 @@ impl Swarm {
             .collect();
 
         if available_agents.is_empty() {
-            return Ok(None);
+            return None;
         }
 
         let selected = match self.config.distribution_strategy {
@@ -205,7 +247,7 @@ impl Swarm {
             }
         };
 
-        Ok(selected.cloned())
+        selected.cloned()
     }
 
     /// Get the status of all agents
@@ -237,6 +279,10 @@ impl Swarm {
     }
 
     /// Start all agents
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if any agent fails to start.
     pub async fn start_all_agents(&mut self) -> Result<()> {
         for (id, agent) in &mut self.agents {
             agent.start().await.map_err(|e| {
@@ -247,6 +293,10 @@ impl Swarm {
     }
 
     /// Shutdown all agents
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if any agent fails to shutdown.
     pub async fn shutdown_all_agents(&mut self) -> Result<()> {
         for (id, agent) in &mut self.agents {
             agent.shutdown().await.map_err(|e| {

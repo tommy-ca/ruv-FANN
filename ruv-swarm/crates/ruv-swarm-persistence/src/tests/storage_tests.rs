@@ -305,8 +305,8 @@ async fn test_list_agents_by_status() {
     }
 
     // Query by status
-    let running_agents = storage.list_agents_by_status("running").await.unwrap();
-    assert_eq!(running_agents.len(), 2);
+    let busy_agents = storage.list_agents_by_status("busy").await.unwrap();
+    assert_eq!(busy_agents.len(), 2);
 
     let idle_agents = storage.list_agents_by_status("idle").await.unwrap();
     assert_eq!(idle_agents.len(), 1);
@@ -385,5 +385,5 @@ async fn test_maintenance_operations() {
     storage.checkpoint().await.unwrap();
 
     let size = storage.get_storage_size().await.unwrap();
-    assert!(size >= 0);
+    assert!(size >= 0); // Storage size should be non-negative
 }

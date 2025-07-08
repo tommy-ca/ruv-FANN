@@ -69,10 +69,11 @@ impl Storage for MemoryStorage {
 
     async fn delete_agent(&self, id: &str) -> Result<(), Self::Error> {
         let mut agents = self.agents.write();
-        if agents.remove(id).is_none() {
-            return Err(StorageError::NotFound(format!("Agent {} not found", id)));
+        if agents.remove(id).is_some() {
+            debug!("Deleted agent from memory: {}", id);
+        } else {
+            debug!("Agent {} not found, delete is idempotent", id);
         }
-        debug!("Deleted agent from memory: {}", id);
         Ok(())
     }
 
@@ -211,7 +212,7 @@ impl Storage for MemoryStorage {
         let events = self.events.read();
         let since_events: Vec<_> = events
             .iter()
-            .filter(|e| e.timestamp.timestamp() > timestamp)
+            .filter(|e| e.timestamp.timestamp() >= timestamp)
             .cloned()
             .collect();
         Ok(since_events)

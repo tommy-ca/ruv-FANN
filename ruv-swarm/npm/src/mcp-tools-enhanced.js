@@ -20,6 +20,7 @@ import {
 } from './errors.js';
 import { ValidationUtils } from './schemas.js';
 import { DAA_MCPTools } from './mcp-daa-tools.js';
+import { Logger } from './logger.js';
 
 /**
  * Enhanced MCP Tools with comprehensive error handling and logging
@@ -34,6 +35,16 @@ class EnhancedMCPTools {
     this.errorContext = new ErrorContext();
     this.errorLog = [];
     this.maxErrorLogSize = 1000;
+
+    // Initialize logger
+    this.logger = new Logger({
+      name: 'mcp-tools',
+      enableStderr: process.env.MCP_MODE === 'stdio',
+      level: process.env.LOG_LEVEL || 'INFO',
+      metadata: {
+        component: 'mcp-tools-enhanced',
+      },
+    });
 
     // Initialize DAA tools integration
     this.daaTools = new DAA_MCPTools(this);
@@ -108,15 +119,15 @@ class EnhancedMCPTools {
       this.errorLog.shift();
     }
 
-    // Log to console with appropriate level
+    // Log to logger with appropriate level
     if (errorLog.severity === 'critical') {
-      console.error('🚨 CRITICAL MCP Error:', errorLog);
+      this.logger.fatal('CRITICAL MCP Error', errorLog);
     } else if (errorLog.severity === 'high') {
-      console.error('❌ MCP Error:', errorLog);
+      this.logger.error('MCP Error', errorLog);
     } else if (errorLog.severity === 'medium') {
-      console.warn('⚠️ MCP Warning:', errorLog);
+      this.logger.warn('MCP Warning', errorLog);
     } else {
-      console.log('ℹ️ MCP Info:', errorLog);
+      this.logger.info('MCP Info', errorLog);
     }
 
     // Clear context for next operation
@@ -226,6 +237,106 @@ class EnhancedMCPTools {
     return stats;
   }
 
+  /**
+   * 🔧 CRITICAL FIX: Integrate hook notifications with MCP memory system
+   */
+  async integrateHookNotifications(hookInstance) {
+    if (!hookInstance || !this.persistence) {
+      console.warn('⚠️ Cannot integrate hook notifications - missing components');
+      return false;
+    }
+
+    try {
+      // Get all notifications from hook runtime memory
+      const runtimeNotifications = hookInstance.sessionData.notifications || [];
+
+      // Store each notification in persistent database
+      for (const notification of runtimeNotifications) {
+        const agentId = notification.agentId || 'hook-system';
+        const memoryKey = `notifications/${notification.type}/${notification.timestamp}`;
+
+        await this.persistence.storeAgentMemory(agentId, memoryKey, {
+          ...notification,
+          source: 'hook-integration',
+          integratedAt: Date.now(),
+        });
+      }
+
+      console.log(`🔗 Integrated ${runtimeNotifications.length} hook notifications into MCP memory`);
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to integrate hook notifications:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 🔧 CRITICAL FIX: Retrieve cross-agent notifications for coordinated decision making
+   */
+  async getCrossAgentNotifications(agentId = null, type = null, since = null) {
+    if (!this.persistence) {
+      return [];
+    }
+
+    try {
+      const allAgents = agentId ? [agentId] : await this.getActiveAgentIds();
+      console.log('🔍 Debug: Target agents for notification retrieval:', allAgents);
+      const notifications = [];
+
+      for (const agent of allAgents) {
+        const memories = await this.persistence.getAllMemory(agent);
+        console.log(`🔍 Debug: Agent ${agent} has ${memories.length} memories`);
+
+        const agentNotifications = memories
+          .filter(memory => {
+            const isNotification = memory.key.startsWith('notifications/');
+            console.log(`🔍 Debug: Key ${memory.key} is notification: ${isNotification}`);
+            return isNotification;
+          })
+          .filter(memory => !type || memory.value.type === type)
+          .filter(memory => !since || memory.value.timestamp > since)
+          .map(memory => ({
+            ...memory.value,
+            agentId: agent,
+            memoryKey: memory.key,
+          }));
+
+        console.log(`🔍 Debug: Agent ${agent} has ${agentNotifications.length} notification memories`);
+        notifications.push(...agentNotifications);
+      }
+
+      return notifications.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('❌ Failed to retrieve cross-agent notifications:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of active agent IDs from database
+   */
+  async getActiveAgentIds() {
+    try {
+      const swarms = await this.persistence.getActiveSwarms();
+      console.log(`🔍 Debug: Found ${swarms.length} active swarms`);
+      const agentIds = [];
+
+      for (const swarm of swarms) {
+        // Get ALL agents (not just active) for cross-agent notifications
+        const agents = await this.persistence.getSwarmAgents(swarm.id, 'all');
+        console.log(`🔍 Debug: Swarm ${swarm.id} has ${agents.length} total agents`);
+        agentIds.push(...agents.map(a => a.id));
+      }
+
+      const uniqueAgentIds = [...new Set(agentIds)]; // Remove duplicates
+      console.log('🔍 Debug: Total unique active agent IDs:', uniqueAgentIds);
+      return uniqueAgentIds;
+    } catch (error) {
+      console.error('❌ Failed to get active agent IDs:', error.message);
+      return [];
+    }
+  }
+
   async initialize(ruvSwarmInstance = null) {
     // If instance provided, use it and load existing swarms
     if (ruvSwarmInstance) {
@@ -308,10 +419,14 @@ class EnhancedMCPTools {
   async swarm_init(params) {
     const startTime = performance.now();
     const toolName = 'swarm_init';
+    const operationId = this.logger.startOperation('swarm_init', { params });
 
     try {
+      this.logger.info('Initializing swarm', { params });
+
       // Validate and sanitize input parameters
       const validatedParams = this.validateToolParams(params, toolName);
+      this.logger.debug('Parameters validated', { validatedParams });
 
       // Add operation context
       this.errorContext.set('operation', 'swarm_initialization');
@@ -320,8 +435,11 @@ class EnhancedMCPTools {
       // Ensure we have a RuvSwarm instance (but don't re-initialize)
       if (!this.ruvSwarm) {
         try {
+          this.logger.debug('RuvSwarm not initialized, initializing now');
           await this.initialize();
+          this.logger.debug('RuvSwarm initialized successfully');
         } catch (error) {
+          this.logger.error('Failed to initialize RuvSwarm', { error });
           throw ErrorFactory.createError('wasm',
             'Failed to initialize RuvSwarm WASM module',
             { operation: 'initialization', originalError: error },
@@ -338,6 +456,14 @@ class EnhancedMCPTools {
         enableForecasting,
       } = validatedParams;
 
+      this.logger.debug('Creating swarm instance', {
+        topology,
+        strategy,
+        maxAgents,
+        enableCognitiveDiversity,
+        enableNeuralAgents,
+      });
+
       const swarm = await this.ruvSwarm.createSwarm({
         name: `${topology}-swarm-${Date.now()}`,
         topology,
@@ -346,6 +472,8 @@ class EnhancedMCPTools {
         enableCognitiveDiversity,
         enableNeuralAgents,
       });
+
+      this.logger.info('Swarm created successfully', { swarmId: swarm.id });
 
       // Enable forecasting if requested and available
       if (enableForecasting && this.ruvSwarm.features.forecasting) {
@@ -373,6 +501,7 @@ class EnhancedMCPTools {
 
       // Store in both memory and persistent database
       this.activeSwarms.set(swarm.id, swarm);
+      this.logger.debug('Swarm stored in memory', { swarmId: swarm.id, activeSwarms: this.activeSwarms.size });
 
       // Only create in DB if it doesn't exist
       try {
@@ -384,16 +513,23 @@ class EnhancedMCPTools {
           strategy,
           metadata: { features: result.features, performance: result.performance },
         });
+        this.logger.debug('Swarm persisted to database', { swarmId: swarm.id });
       } catch (error) {
         if (!error.message.includes('UNIQUE constraint failed')) {
+          this.logger.error('Failed to persist swarm', { error, swarmId: swarm.id });
           throw error;
+        } else {
+          this.logger.debug('Swarm already exists in database', { swarmId: swarm.id });
         }
       }
       this.recordToolMetrics('swarm_init', startTime, 'success');
+      this.logger.endOperation(operationId, true, { swarmId: swarm.id });
 
       return result;
     } catch (error) {
       this.recordToolMetrics('swarm_init', startTime, 'error', error.message);
+      this.logger.endOperation(operationId, false, { error });
+      this.logger.error('Swarm initialization failed', { error, params });
 
       // Enhanced error handling with specific error types
       let handledError = error;
@@ -428,10 +564,14 @@ class EnhancedMCPTools {
   async agent_spawn(params) {
     const startTime = performance.now();
     const toolName = 'agent_spawn';
+    const operationId = this.logger.startOperation('agent_spawn', { params });
 
     try {
+      this.logger.info('Spawning agent', { params });
+
       // Validate and sanitize input parameters
       const validatedParams = this.validateToolParams(params, toolName);
+      this.logger.debug('Agent parameters validated', { validatedParams });
 
       // Add operation context
       this.errorContext.set('operation', 'agent_spawning');
@@ -500,7 +640,7 @@ class EnhancedMCPTools {
 
       // Store agent in database
       try {
-        this.persistence.createAgent({
+        await this.persistence.createAgent({
           id: agent.id,
           swarmId: swarm.id,
           name: agent.name,
@@ -509,7 +649,34 @@ class EnhancedMCPTools {
           neuralConfig: agent.neuralConfig || {},
         });
       } catch (error) {
-        if (!error.message.includes('UNIQUE constraint failed')) {
+        if (error.message.includes('UNIQUE constraint failed')) {
+          this.logger.warn('Agent already exists in database, updating existing record', {
+            agentId: agent.id,
+            swarmId: swarm.id,
+            error: error.message,
+          });
+          // Optionally update the existing agent record
+          try {
+            await this.persistence.updateAgent(agent.id, {
+              swarmId: swarm.id,
+              name: agent.name,
+              type: agent.type,
+              capabilities: agent.capabilities || [],
+              neuralConfig: agent.neuralConfig || {},
+              updatedAt: new Date().toISOString(),
+            });
+          } catch (updateError) {
+            this.logger.error('Failed to update existing agent record', {
+              agentId: agent.id,
+              error: updateError.message,
+            });
+          }
+        } else {
+          this.logger.error('Failed to persist agent', {
+            agentId: agent.id,
+            swarmId: swarm.id,
+            error: error.message,
+          });
           throw error;
         }
       }
@@ -586,6 +753,30 @@ class EnhancedMCPTools {
         estimatedDuration,
         requiredCapabilities: requiredCapabilities || [],
       });
+
+      // Persist task to database
+      try {
+        await this.persistence.createTask({
+          id: taskInstance.id,
+          swarmId: swarm.id,
+          description: task,
+          status: 'orchestrated',
+          priority: priority || 'medium',
+          strategy: strategy || 'adaptive',
+          assignedAgents: JSON.stringify(taskInstance.assignedAgents),
+          metadata: JSON.stringify({
+            requiredCapabilities: requiredCapabilities || [],
+            estimatedDuration: estimatedDuration || 30000,
+            startTime,
+          }),
+        });
+      } catch (persistError) {
+        this.logger.warn('Failed to persist task', {
+          taskId: taskInstance.id,
+          error: persistError.message,
+        });
+        // Continue execution even if persistence fails
+      }
 
       const result = {
         taskId: taskInstance.id,
@@ -1213,6 +1404,31 @@ class EnhancedMCPTools {
         available_mb: (jsMemory?.limit || 0) / (1024 * 1024),
       };
 
+      // Persist memory usage snapshot
+      try {
+        await this.persistence.recordMetric('system', 'memory', 'total_mb', summary.total_mb);
+        await this.persistence.recordMetric('system', 'memory', 'wasm_mb', summary.wasm_mb);
+        await this.persistence.recordMetric('system', 'memory', 'javascript_mb', summary.javascript_mb);
+        await this.persistence.recordMetric('system', 'memory', 'available_mb', summary.available_mb);
+
+        // Store detailed memory snapshot if heap info available
+        if (jsMemory?.heapUsed) {
+          await this.persistence.recordMetric('system', 'memory', 'heap_used_mb', jsMemory.heapUsed / (1024 * 1024));
+          await this.persistence.recordMetric('system', 'memory', 'heap_total_mb', jsMemory.heapTotal / (1024 * 1024));
+          await this.persistence.recordMetric('system', 'memory', 'external_mb', (jsMemory.external || 0) / (1024 * 1024));
+        }
+
+        this.logger.debug('Memory usage snapshot persisted', {
+          totalMb: summary.total_mb,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        this.logger.warn('Failed to persist memory usage metrics', {
+          error: error.message,
+        });
+        // Continue execution even if persistence fails
+      }
+
       if (detail === 'detailed') {
         const detailed = {
           ...summary,
@@ -1440,22 +1656,55 @@ class EnhancedMCPTools {
         last_trained: new Date().toISOString(),
       };
 
-      // Try to update neural network, but don't fail if it doesn't work
+      // Persist neural network state after training
       try {
-        this.persistence.updateNeuralNetwork(neuralNetwork.id, {
+        await this.persistence.updateNeuralNetwork(neuralNetwork.id, {
           performance_metrics: performanceMetrics,
-          weights: { trained: true, iterations },
+          weights: {
+            trained: true,
+            iterations,
+            timestamp: new Date().toISOString(),
+            // Store actual weight values if available from WASM
+            values: this.ruvSwarm.wasmLoader.modules.get('core')?.get_neural_weights?.(neuralNetwork.id) || {},
+          },
+          training_history: trainingResults,
+        });
+
+        this.logger.info('Neural network state persisted successfully', {
+          networkId: neuralNetwork.id,
+          agentId,
+          iterations,
+          finalAccuracy: currentAccuracy,
         });
       } catch (error) {
-        console.warn('Failed to update neural network in database:', error.message);
+        this.logger.error('Failed to persist neural network state', {
+          networkId: neuralNetwork.id,
+          agentId,
+          error: error.message,
+        });
+        // Continue execution but warn about persistence failure
       }
 
-      // Record training metrics
+      // Record training metrics with proper error handling
       try {
-        this.persistence.recordMetric('agent', agentId, 'neural_training_loss', currentLoss);
-        this.persistence.recordMetric('agent', agentId, 'neural_training_accuracy', currentAccuracy);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_loss', currentLoss);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_accuracy', currentAccuracy);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_iterations', iterations);
+        await this.persistence.recordMetric('agent', agentId, 'neural_training_time_ms', performance.now() - startTime);
+
+        this.logger.debug('Training metrics recorded', {
+          agentId,
+          metrics: {
+            loss: currentLoss,
+            accuracy: currentAccuracy,
+            iterations,
+          },
+        });
       } catch (error) {
-        console.warn('Failed to record training metrics:', error.message);
+        this.logger.warn('Failed to record training metrics', {
+          agentId,
+          error: error.message,
+        });
       }
 
       const result = {

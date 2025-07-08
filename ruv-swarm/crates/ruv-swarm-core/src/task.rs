@@ -98,37 +98,39 @@ impl Task {
     }
 
     /// Set task priority
+    #[must_use]
     pub fn with_priority(mut self, priority: TaskPriority) -> Self {
         self.priority = priority;
         self
     }
 
     /// Set task payload
+    #[must_use]
     pub fn with_payload(mut self, payload: TaskPayload) -> Self {
         self.payload = payload;
         self
     }
 
     /// Add required capability
+    #[must_use]
     pub fn require_capability(mut self, capability: impl Into<String>) -> Self {
         self.required_capabilities.push(capability.into());
         self
     }
 
     /// Set timeout
+    #[must_use]
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = Some(timeout_ms);
         self
     }
-
+    
     /// Check if task can be retried
-    #[inline]
     pub fn can_retry(&self) -> bool {
         self.retry_count < self.max_retries
     }
-
+    
     /// Increment retry count
-    #[inline]
     pub fn increment_retry(&mut self) {
         self.retry_count += 1;
     }
@@ -200,12 +202,14 @@ impl TaskResult {
     }
 
     /// Set task ID
+    #[must_use]
     pub fn with_task_id(mut self, task_id: TaskId) -> Self {
         self.task_id = task_id;
         self
     }
 
     /// Set execution time
+    #[must_use]
     pub fn with_execution_time(mut self, time_ms: u64) -> Self {
         self.execution_time_ms = time_ms;
         self

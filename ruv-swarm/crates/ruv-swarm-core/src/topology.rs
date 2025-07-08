@@ -72,19 +72,19 @@ impl Topology {
     }
 
     /// Create a star topology with a central coordinator
-    pub fn star(center: AgentId, agents: &[AgentId]) -> Self {
+    pub fn star(center: &str, agents: &[AgentId]) -> Self {
         let mut topology = Topology::new(TopologyType::Star);
 
         // Center connects to all agents
         let center_connections: HashSet<AgentId> = agents.iter().cloned().collect();
         topology
             .connections
-            .insert(center.clone(), center_connections);
+            .insert(center.to_string(), center_connections);
 
         // All agents connect only to center
         for agent in agents {
             let mut connections = HashSet::new();
-            connections.insert(center.clone());
+            connections.insert(center.to_string());
             topology.connections.insert(agent.clone(), connections);
         }
 
@@ -186,9 +186,8 @@ impl Topology {
         }
 
         // Use BFS to check connectivity
-        let start = match self.connections.keys().next() {
-            Some(agent) => agent,
-            None => return true, // Empty graph is considered fully connected
+        let Some(start) = self.connections.keys().next() else {
+            return true; // Empty graph is considered fully connected
         };
         let mut visited = HashSet::new();
         let mut queue = vec![start.clone()];

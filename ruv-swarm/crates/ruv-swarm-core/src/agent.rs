@@ -177,6 +177,7 @@ impl CognitivePattern {
     }
 
     /// Get complementary pattern
+    #[must_use]
     pub fn complement(&self) -> CognitivePattern {
         match self {
             CognitivePattern::Convergent => CognitivePattern::Divergent,
@@ -376,12 +377,22 @@ impl DynamicAgent {
     }
 
     /// Start the agent
+    /// 
+    /// # Errors
+    /// 
+    /// Currently does not return errors, but may in future implementations.
+    #[allow(clippy::unused_async)]
     pub async fn start(&mut self) -> crate::error::Result<()> {
         self.status = AgentStatus::Running;
         Ok(())
     }
 
     /// Shutdown the agent
+    /// 
+    /// # Errors
+    /// 
+    /// Currently does not return errors, but may in future implementations.
+    #[allow(clippy::unused_async)]
     pub async fn shutdown(&mut self) -> crate::error::Result<()> {
         self.status = AgentStatus::Offline;
         Ok(())
@@ -405,6 +416,139 @@ impl AgentProcessor for DefaultProcessor {
 #[async_trait]
 trait AgentProcessor: Send + Sync {
     async fn process_dynamic(&mut self, input: serde_json::Value) -> Result<serde_json::Value>;
+}
+
+/// Agent capability description
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Capability {
+    /// Capability name
+    pub name: String,
+    /// Capability version
+    pub version: String,
+}
+
+impl Capability {
+    /// Create a new capability
+    pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            version: version.into(),
+        }
+    }
+}
+
+#[cfg(test)]
+/// Mock agent for testing
+pub struct MockAgent {
+    id: String,
+    status: AgentStatus,
+    capabilities: Vec<Capability>,
+    process_result: Option<crate::error::Result<crate::task::TaskResult>>,
+}
+
+#[cfg(test)]
+impl MockAgent {
+    /// Create a new mock agent
+    pub fn new(id: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            status: AgentStatus::Idle,
+            capabilities: Vec::new(),
+            process_result: None,
+        }
+    }
+
+    /// Set capabilities for the mock agent
+    #[must_use]
+    pub fn with_capabilities(mut self, capabilities: Vec<Capability>) -> Self {
+        self.capabilities = capabilities;
+        self
+    }
+
+    /// Set the process result for the mock agent
+    #[must_use]
+    pub fn with_process_result(mut self, result: crate::error::Result<crate::task::TaskResult>) -> Self {
+        self.process_result = Some(result);
+        self
+    }
+
+    /// Get agent ID
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Get agent status
+    pub fn status(&self) -> AgentStatus {
+        self.status
+    }
+
+    /// Get agent capabilities
+    pub fn capabilities(&self) -> &[Capability] {
+        &self.capabilities
+    }
+
+    /// Check if agent can handle a task
+    pub fn can_handle(&self, task: &crate::task::Task) -> bool {
+        task.required_capabilities
+            .iter()
+            .all(|cap| self.capabilities.iter().any(|c| &c.name == cap))
+    }
+
+    /// Start the agent
+    /// 
+    /// # Errors
+    /// 
+    /// Currently does not return errors, but may in future implementations.
+    #[allow(clippy::unused_async)]
+    pub async fn start(&mut self) -> crate::error::Result<()> {
+        self.status = AgentStatus::Running;
+        Ok(())
+    }
+
+    /// Shutdown the agent
+    /// 
+    /// # Errors
+    /// 
+    /// Currently does not return errors, but may in future implementations.
+    #[allow(clippy::unused_async)]
+    pub async fn shutdown(&mut self) -> crate::error::Result<()> {
+        self.status = AgentStatus::Offline;
+        Ok(())
+    }
+
+    /// Process a task
+    /// 
+    /// # Errors
+    /// 
+    /// Returns the configured result if set via `with_process_result`, otherwise returns success.
+    #[allow(clippy::unused_async)]
+    pub async fn process(&mut self, _task: crate::task::Task) -> crate::error::Result<crate::task::TaskResult> {
+        if let Some(result) = &self.process_result {
+            result.clone()
+        } else {
+            Ok(crate::task::TaskResult::success("Mock processing complete"))
+        }
+    }
+
+    /// Get agent metrics
+    pub fn metrics(&self) -> AgentMetrics {
+        AgentMetrics::default()
+    }
+    
+    /// Health check for the agent
+    /// 
+    /// # Errors
+    /// 
+    /// Currently does not return errors, but may in future implementations.
+    #[allow(clippy::unused_async)]
+    pub async fn health_check(&self) -> crate::error::Result<HealthStatus> {
+        Ok(HealthStatus::Healthy)
+    }
+    
+    /// Get agent metadata
+    pub fn metadata(&self) -> AgentMetadata {
+        AgentMetadata::default()
+    }
 }
 
 /// Agent communication message

@@ -105,6 +105,40 @@ export class DAA_MCPTools {
         swarmId = 'daa-default-swarm';
       }
 
+      // Persist DAA agent to database
+      if (this.mcpTools?.persistence) {
+        try {
+          await this.mcpTools.persistence.createAgent({
+            id: agent.id,
+            swarmId: swarmId || 'daa-default-swarm',
+            name: `DAA-${agent.id}`,
+            type: 'daa',
+            capabilities: Array.from(agent.capabilities || capabilities),
+            neuralConfig: {
+              cognitivePattern: agent.cognitivePattern || cognitivePattern,
+              learningRate,
+              enableMemory,
+              daaEnabled: true,
+            },
+            metadata: {
+              createdAt: new Date().toISOString(),
+              autonomousMode: true,
+            },
+          });
+
+          this.mcpTools.logger?.info('DAA agent persisted successfully', {
+            agentId: agent.id,
+            swarmId,
+          });
+        } catch (persistError) {
+          this.mcpTools.logger?.warn('Failed to persist DAA agent', {
+            agentId: agent.id,
+            error: persistError.message,
+          });
+          // Continue execution even if persistence fails
+        }
+      }
+
       const result = {
         agent_id: agent.id,
         swarm_id: swarmId,
@@ -293,7 +327,7 @@ export class DAA_MCPTools {
 
       const sourceId = source_agent || sourceAgentId;
       const targetIds = target_agents || targetAgentIds || [];
-      
+
       if (!sourceId || targetIds.length === 0) {
         throw new Error('Source and target agent IDs are required');
       }
@@ -392,9 +426,9 @@ export class DAA_MCPTools {
         agentId,
         pattern,
         action,
-        analyze = false
+        analyze = false,
       } = params;
-      
+
       const id = agent_id || agentId;
       const shouldAnalyze = action === 'analyze' || analyze;
 

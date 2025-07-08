@@ -307,17 +307,17 @@ if "%1"=="research" (
     try {
       const scripts = [
         {
-          name: this.packageName,
+          name: `${this.packageName}-wrapper`,
           content: this.generateBashWrapper(),
           mode: 0o755,
         },
         {
-          name: `${this.packageName }.bat`,
+          name: `${this.packageName}-wrapper.bat`,
           content: this.generateBatchWrapper(),
           mode: 0o644,
         },
         {
-          name: `${this.packageName }.ps1`,
+          name: `${this.packageName}-wrapper.ps1`,
           content: this.generatePowerShellWrapper(),
           mode: 0o755,
         },
