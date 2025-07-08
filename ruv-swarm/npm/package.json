@@ -7,7 +7,8 @@
   "types": "src/index.d.ts",
   "type": "module",
   "bin": {
-    "ruv-swarm": "bin/ruv-swarm-clean.js"
+    "ruv-swarm": "bin/ruv-swarm-secure.js",
+    "ruv-swarm-legacy": "bin/ruv-swarm-clean.js"
   },
   "publishConfig": {
     "access": "public",

@@ -114,8 +114,8 @@ async function generateReport(args, logger) {
 }
 
 async function startMonitoring(args, logger) {
-  const duration = parseInt(args.find(arg => arg.startsWith('--duration='))?.split('=')[1] || '60');
-  const interval = parseInt(args.find(arg => arg.startsWith('--interval='))?.split('=')[1] || '1000');
+  const duration = parseInt(args.find(arg => arg.startsWith('--duration='))?.split('=')[1] || '60', 10);
+  const interval = parseInt(args.find(arg => arg.startsWith('--interval='))?.split('=')[1] || '1000', 10);
 
   logger.info('Starting system monitoring...', { duration, interval });
 

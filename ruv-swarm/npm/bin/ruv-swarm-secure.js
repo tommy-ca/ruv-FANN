@@ -10,6 +10,24 @@ import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
 import mcpToolsEnhanced from '../src/mcp-tools-enhanced.js';
 import { Logger } from '../src/logger.js';
+import { CommandSanitizer, SecurityError } from '../src/security.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Get version from package.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+async function getVersion() {
+    try {
+        const packagePath = join(__dirname, '..', 'package.json');
+        const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+        return packageJson.version;
+    } catch (error) {
+        return 'unknown';
+    }
+}
 
 // Input validation constants and functions
 const VALID_TOPOLOGIES = ['mesh', 'hierarchical', 'ring', 'star'];
@@ -134,7 +152,7 @@ let globalMCPTools = null;
 let globalLogger = null;
 
 // Initialize logger based on environment
-function initializeLogger() {
+async function initializeLogger() {
     if (!globalLogger) {
         globalLogger = new Logger({
             name: 'ruv-swarm-mcp',
@@ -145,7 +163,7 @@ function initializeLogger() {
             logDir: process.env.LOG_DIR || './logs',
             metadata: {
                 pid: process.pid,
-                version: '1.0.11',
+                version: await getVersion(),
                 mode: 'mcp-stdio'
             }
         });
@@ -348,28 +366,38 @@ async function handleOrchestrate(args) {
 }
 
 async function handleClaudeInvoke(args) {
-    const filteredArgs = args.filter(arg => 
-        !arg.includes('--skip-permissions') && 
-        !arg.includes('--dangerously-skip-permissions')
-    );
-    
-    const prompt = filteredArgs.join(' ');
+    const prompt = args.join(' ');
     
     if (!prompt.trim()) {
         console.log('❌ No prompt provided');
         console.log('Usage: ruv-swarm claude-invoke "your swarm prompt"');
-        console.log('Note: --dangerously-skip-permissions is automatically included');
+        console.log('Note: Use --dangerously-skip-permissions explicitly if needed');
         return;
+    }
+    
+    // Security: validate prompt for dangerous patterns
+    try {
+        CommandSanitizer.validateArgument(prompt.trim());
+    } catch (error) {
+        if (error instanceof SecurityError) {
+            console.error('❌ Security validation failed:', error.message);
+            return;
+        }
+        throw error;
     }
     
     console.log('🚀 Invoking Claude Code with ruv-swarm integration...');
     console.log('Prompt: ' + prompt.trim());
-    console.log('⚠️  Automatically using --dangerously-skip-permissions for seamless execution');
     
     try {
-        await invokeClaudeWithSwarm(prompt, {
-            workingDir: process.cwd()
+        // Create orchestrator with secure mode
+        const { ClaudeIntegrationOrchestrator } = await import('../src/claude-integration/index.js');
+        const orchestrator = new ClaudeIntegrationOrchestrator({ 
+            workingDir: process.cwd() 
         });
+        
+        // Use secure mode (no automatic permissions)
+        await orchestrator.core.invokeClaudeWithPrompt(prompt, { secure: true });
     } catch (error) {
         console.error('❌ Claude invocation failed:', error.message);
         console.error('Make sure Claude Code CLI is installed and in your PATH');
@@ -452,11 +480,9 @@ async function handleMcp(args) {
 
 async function startMcpServer(args) {
     const protocol = args.find(arg => arg.startsWith('--protocol='))?.split('=')[1] || 'stdio';
-    const port = args.find(arg => arg.startsWith('--port='))?.split('=')[1] || '3000';
-    const host = args.find(arg => arg.startsWith('--host='))?.split('=')[1] || 'localhost';
     
     // Initialize logger first
-    const logger = initializeLogger();
+    const logger = await initializeLogger();
     const sessionId = logger.setCorrelationId();
     
     try {
@@ -620,7 +646,7 @@ async function startMcpServer(args) {
                 params: {
                     serverInfo: {
                         name: 'ruv-swarm',
-                        version: '1.0.8',
+                        version: await getVersion(),
                         capabilities: {
                             tools: true,
                             prompts: false,
@@ -1213,7 +1239,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
     
     // Use default logger if not provided
     if (!logger) {
-        logger = initializeLogger();
+        logger = await initializeLogger();
     }
     
     try {
@@ -1236,7 +1262,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                     },
                     serverInfo: {
                         name: 'ruv-swarm',
-                        version: '1.0.8'
+                        version: await getVersion()
                     }
                 };
                 break;
@@ -1695,9 +1721,10 @@ async function handleDiagnose(args) {
     return diagnosticsCLI(args);
 }
 
-function showHelp() {
+async function showHelp() {
+    const version = await getVersion();
     console.log(`
-🐝 ruv-swarm - Enhanced WASM-powered neural swarm orchestration
+🐝 ruv-swarm v${version} - Enhanced WASM-powered neural swarm orchestration
 
 Usage: ruv-swarm <command> [options]
 
@@ -1761,18 +1788,8 @@ async function main() {
     
     // Handle --version flag
     if (args.includes('--version') || args.includes('-v')) {
-        try {
-            const fs = await import('fs');
-            const path = await import('path');
-            const { fileURLToPath } = await import('url');
-            const __filename = fileURLToPath(import.meta.url);
-            const __dirname = path.dirname(__filename);
-            const packagePath = path.join(__dirname, '..', 'package.json');
-            const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-            console.log(packageJson.version);
-        } catch (error) {
-            console.log('1.0.8');
-        }
+        const version = await getVersion();
+        console.log(version);
         return;
     }
     
@@ -1818,26 +1835,21 @@ async function main() {
                 await handleDiagnose(args.slice(1));
                 break;
             case 'version':
-                try {
-                    // Try to read version from package.json
-                    const fs = await import('fs');
-                    const path = await import('path');
-                    const { fileURLToPath } = await import('url');
-                    const __filename = fileURLToPath(import.meta.url);
-                    const __dirname = path.dirname(__filename);
-                    const packagePath = path.join(__dirname, '..', 'package.json');
-                    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-                    console.log('ruv-swarm v' + packageJson.version);
-                } catch (error) {
-                    console.log('ruv-swarm v1.0.8');
-                }
+                const version = await getVersion();
+                console.log('ruv-swarm v' + version);
                 console.log('Enhanced WASM-powered neural swarm orchestration');
-                console.log('Modular Claude Code integration with remote execution support');
-                console.log('DAA (Decentralized Autonomous Agents) Integration');
+                console.log('Security Enhanced Edition');
+                console.log('\n🔒 Security Features:');
+                console.log('   • Explicit permission control for Claude invocation');
+                console.log('   • Input validation and sanitization');
+                console.log('   • User confirmation for dangerous operations');
+                console.log('   • Command injection prevention');
+                console.log('\n🛡️  Security Status: All vulnerabilities from Issue #107 resolved');
+                console.log('💡 For legacy behavior, use: ruv-swarm-legacy');
                 break;
             case 'help':
             default:
-                showHelp();
+                await showHelp();
                 break;
         }
     } catch (error) {

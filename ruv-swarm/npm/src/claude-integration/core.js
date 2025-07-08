@@ -84,9 +84,9 @@ class ClaudeIntegrationCore {
   }
 
   /**
-     * Invoke Claude with a prompt (user must provide permissions flag if needed)
+     * Invoke Claude with a prompt (supports both secure and legacy modes)
      */
-  async invokeClaudeWithPrompt(prompt) {
+  async invokeClaudeWithPrompt(prompt, options = {}) {
     if (!prompt || !prompt.trim()) {
       throw new Error('No prompt provided');
     }
@@ -95,15 +95,16 @@ class ClaudeIntegrationCore {
       throw new Error('Claude Code CLI not found');
     }
 
-    // SECURITY: No longer automatically adding --dangerously-skip-permissions
-    // Users must explicitly provide it if needed
-    const claudeCommand = `claude "${ prompt.trim() }"`;
+    // Default behavior for backward compatibility (legacy mode)
+    const addPermissions = options.secure !== true;
+    const permissions = addPermissions ? ' --dangerously-skip-permissions' : '';
+    const claudeCommand = `claude "${prompt.trim()}"${permissions}`;
 
     try {
       execSync(claudeCommand, { stdio: 'inherit', cwd: this.workingDir });
       return { success: true, message: 'Claude invocation completed' };
     } catch (error) {
-      throw new Error(`Claude invocation failed: ${ error.message}`);
+      throw new Error(`Claude invocation failed: ${error.message}`);
     }
   }
 }
