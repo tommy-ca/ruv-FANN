@@ -304,7 +304,7 @@ async fn test_event_sourcing_at_scale() {
         let temp_file = NamedTempFile::new().unwrap();
         let sqlite_storage = Arc::new(SqliteStorage::new(temp_file.path().to_str().unwrap()).await.unwrap());
         
-        let sqlite_test_count = 5000; // Reasonable for CI while still showing performance
+        let sqlite_test_count = 30_000; // Performance benchmark and regression baseline
         let start = std::time::Instant::now();
         
         for i in 0..sqlite_test_count {
@@ -321,9 +321,9 @@ async fn test_event_sourcing_at_scale() {
             sqlite_test_count, duration, sqlite_events_per_sec);
     }
     
-    // Memory storage large-scale test
+    // Memory storage performance test (same scale as SQLite for comparison)
     let storage = Arc::new(MemoryStorage::new());
-    let event_count = 100_000; // Large-scale test
+    let event_count = 30_000; // Performance benchmark and regression baseline
     let agent_count = 10;
     
     // Create agents
