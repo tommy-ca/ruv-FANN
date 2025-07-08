@@ -34,6 +34,7 @@ export class DAA_MCPTools {
       } = params;
 
       const result = {
+        success: true,
         initialized: true,
         features: {
           autonomousLearning: enableLearning,
@@ -140,14 +141,16 @@ export class DAA_MCPTools {
       }
 
       const result = {
-        agent_id: agent.id,
+        agent: {
+          id: agent.id,
+          cognitive_pattern: agent.cognitivePattern || cognitivePattern,
+          capabilities: Array.from(agent.capabilities || capabilities),
+          status: 'active',
+          created_at: new Date().toISOString(),
+        },
         swarm_id: swarmId,
-        cognitive_pattern: agent.cognitivePattern || cognitivePattern,
-        capabilities: Array.from(agent.capabilities || capabilities),
         learning_enabled: learningRate > 0,
         memory_enabled: enableMemory,
-        status: 'active',
-        created_at: new Date().toISOString(),
       };
 
       if (this.mcpTools?.recordToolMetrics) {

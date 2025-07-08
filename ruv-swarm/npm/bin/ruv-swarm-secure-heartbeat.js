@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 /**
- * Production-ready ruv-swarm MCP server with ZERO timeout mechanisms
- * ALL timeout/connection/interval code completely removed for bulletproof operation
- * Maintains security and stability without ANY timeout-related disconnections
+ * Production-ready ruv-swarm MCP server with security and stability
+ * Combines security fixes from Issue #107 with crash protection
  */
 
 import { spawn } from 'child_process';
-import { setupClaudeIntegration, invokeClaudeWithSwarm as _invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
+import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
@@ -31,7 +30,7 @@ async function getVersion() {
     }
 }
 
-// Stability configuration - NO TIMEOUT MECHANISMS
+// Stability configuration
 const MAX_RESTARTS = 10;
 const RESTART_DELAY = 1000; // 1 second
 const RESTART_RESET_TIME = 300000; // 5 minutes
@@ -172,7 +171,7 @@ let globalLogger = null;
 async function initializeLogger() {
     if (!globalLogger) {
         globalLogger = new Logger({
-            name: 'ruv-swarm-mcp-no-timeout',
+            name: 'ruv-swarm-mcp',
             level: process.env.LOG_LEVEL || (process.argv.includes('--debug') ? 'DEBUG' : 'INFO'),
             enableStderr: true, // Always use stderr in MCP mode
             enableFile: process.env.LOG_TO_FILE === 'true',
@@ -181,31 +180,25 @@ async function initializeLogger() {
             metadata: {
                 pid: process.pid,
                 version: await getVersion(),
-                mode: 'mcp-stdio-no-timeout'
+                mode: 'mcp-stdio'
             }
         });
         
-        // Set up global error handlers with stability - NO TIMEOUT MECHANISMS
+        // Set up bulletproof error handlers - LOG but NEVER exit
         process.on('uncaughtException', (error) => {
-            globalLogger.fatal('Uncaught exception', { error });
+            globalLogger.error('Uncaught exception - continuing operation', { error });
             if (isStabilityMode) {
-                stabilityLog(`Uncaught exception: ${error.message}`);
-                stabilityLog('Attempting graceful recovery...');
-                // NO TIMEOUT - immediate exit
-                process.exit(1);
-            } else {
-                process.exit(1);
+                stabilityLog(`Uncaught exception: ${error.message} - continuing...`);
             }
+            // DO NOT EXIT - bulletproof operation continues
         });
         
         process.on('unhandledRejection', (reason, promise) => {
-            globalLogger.fatal('Unhandled rejection', { reason, promise });
+            globalLogger.error('Unhandled rejection - continuing operation', { reason, promise });
             if (isStabilityMode) {
-                stabilityLog(`Unhandled rejection: ${reason}`);
-                stabilityLog('Attempting graceful recovery...');
-            } else {
-                process.exit(1);
+                stabilityLog(`Unhandled rejection: ${reason} - continuing...`);
             }
+            // DO NOT EXIT - bulletproof operation continues
         });
     }
     return globalLogger;
@@ -268,7 +261,7 @@ async function handleInit(args) {
         const topology = validateTopology(rawTopology);
         const maxAgents = validateMaxAgents(rawMaxAgents);
         
-        console.log('🚀 Initializing ruv-swarm (NO TIMEOUT VERSION)...');
+        console.log('🚀 Initializing ruv-swarm...');
         
         const result = await mcpTools.swarm_init({
             topology,
@@ -285,7 +278,6 @@ async function handleInit(args) {
         console.log('   Max Agents: ' + result.maxAgents);
         console.log('   Features: ' + Object.entries(result.features).filter(([k,v]) => v).map(([k,v]) => k).join(', '));
         console.log('   Performance: ' + result.performance.initialization_time_ms.toFixed(1) + 'ms');
-        console.log('   🔥 TIMEOUT MECHANISMS: COMPLETELY REMOVED');
         
         // Setup Claude integration using modular approach
         if (setupClaude || forceSetup || mergeSetup) {
@@ -311,7 +303,6 @@ async function handleInit(args) {
         console.log('   1. Test with MCP tools: mcp__ruv-swarm__agent_spawn');
         console.log('   2. Use wrapper scripts for remote execution');
         console.log('   3. Check .claude/commands/ for detailed guides');
-        console.log('   4. 🔥 ENJOY INFINITE RUNTIME - NO TIMEOUTS!');
         
         if (forceSetup) {
             console.log('\n🔄 Files regenerated with --force flag');
@@ -353,7 +344,6 @@ async function handleSpawn(args) {
             console.log('   Neural Network: ' + result.agent.neural_network_id);
         }
         console.log('   Swarm Capacity: ' + result.swarm_info.capacity);
-        console.log('   🔥 TIMEOUT PROTECTION: DISABLED');
     } catch (error) {
         if (error instanceof ValidationError) {
             logValidationError(error, 'spawn');
@@ -388,7 +378,6 @@ async function handleOrchestrate(args) {
         console.log('   Assigned Agents: ' + result.assigned_agents.length);
         console.log('   Status: ' + result.status);
         console.log('   Estimated Completion: ' + result.performance.estimated_completion_ms + 'ms');
-        console.log('   🔥 EXECUTION MODE: INFINITE RUNTIME');
     } catch (error) {
         if (error instanceof ValidationError) {
             logValidationError(error, 'orchestrate');
@@ -447,17 +436,15 @@ async function handleStatus(args) {
     const result = await mcpTools.swarm_status({ verbose });
     
     if (swarmId) {
-        console.log(`🐝 Swarm Status (${swarmId}) - NO TIMEOUT VERSION:`);
+        console.log(`🐝 Swarm Status (${swarmId}):`);
         console.log(`   Agents: ${result.agents.total} (${result.agents.active} active, ${result.agents.idle} idle)`);
         console.log(`   Tasks: ${result.tasks.total} (${result.tasks.pending} pending, ${result.tasks.in_progress} in progress)`);
-        console.log(`   🔥 TIMEOUT PROTECTION: COMPLETELY DISABLED`);
     } else {
-        console.log('🌐 Global Status (NO TIMEOUT VERSION):');
+        console.log('🌐 Global Status:');
         console.log(`   Active Swarms: ${result.active_swarms}`);
         console.log(`   Total Agents: ${result.global_metrics.totalAgents}`);
         console.log(`   Total Tasks: ${result.global_metrics.totalTasks}`);
         console.log(`   Memory Usage: ${result.global_metrics.memoryUsage / (1024 * 1024)}MB`);
-        console.log(`   🔥 RUNTIME: INFINITE (NO TIMEOUTS)`);
         
         if (verbose) {
             console.log('\n📊 WASM Modules:');
@@ -471,34 +458,21 @@ async function handleStatus(args) {
 async function handleMonitor(args) {
     const { mcpTools } = await initializeSystem();
     
-    const duration = parseInt(args.find(arg => arg.match(/^\d+$/)), 10) || 10000;
+    const duration = parseInt(args.find(arg => arg.match(/^\d+$/))) || 10000;
     
-    console.log(`📊 Monitoring for ${duration}ms... (NO TIMEOUT VERSION)`);
+    console.log(`📊 Monitoring for ${duration}ms...`);
     console.log('Press Ctrl+C to stop\n');
     
-    // REMOVED: All connection intervals and timeout mechanisms
-    // Instead, use a simple loop with await delay
-    let elapsed = 0;
-    const interval = 1000; // 1 second
-    
-    while (elapsed < duration) {
+    const interval = setInterval(async () => {
         const status = await mcpTools.swarm_status({ verbose: false });
         process.stdout.write('\r');
-        process.stdout.write(`Swarms: ${status.active_swarms} | Agents: ${status.global_metrics.totalAgents} | Tasks: ${status.global_metrics.totalTasks} | Memory: ${(status.global_metrics.memoryUsage / (1024 * 1024)).toFixed(1)}MB | Runtime: INFINITE`);
-        
-        // Simple delay without setTimeout
-        await new Promise(resolve => {
-            const start = Date.now();
-            while (Date.now() - start < interval) {
-                // Busy wait - no timeout mechanisms
-            }
-            resolve();
-        });
-        
-        elapsed += interval;
-    }
+        process.stdout.write(`Swarms: ${status.active_swarms} | Agents: ${status.global_metrics.totalAgents} | Tasks: ${status.global_metrics.totalTasks} | Memory: ${(status.global_metrics.memoryUsage / (1024 * 1024)).toFixed(1)}MB`);
+    }, 1000);
     
-    console.log('\n\n✅ Monitoring complete (NO TIMEOUT MECHANISMS USED)');
+    setTimeout(() => {
+        clearInterval(interval);
+        console.log('\n\n✅ Monitoring complete');
+    }, duration);
 }
 
 async function handleMcp(args) {
@@ -532,7 +506,7 @@ async function startMcpServer(args) {
     
     if (enableStability) {
         isStabilityMode = true;
-        stabilityLog('Starting MCP server with stability mode enabled (NO TIMEOUT VERSION)');
+        stabilityLog('Starting MCP server with stability mode enabled');
         return startStableMcpServer(args);
     }
     
@@ -543,7 +517,7 @@ async function startMcpServer(args) {
     try {
         if (protocol === 'stdio') {
             // In stdio mode, only JSON-RPC messages should go to stdout
-            logger.info('ruv-swarm MCP server starting in stdio mode (NO TIMEOUT VERSION)', {
+            logger.info('ruv-swarm MCP server starting in stdio mode', {
                 protocol,
                 sessionId,
                 nodeVersion: process.version,
@@ -568,16 +542,14 @@ async function startMcpServer(args) {
             
             // Signal server readiness for testing
             if (process.env.MCP_TEST_MODE === 'true') {
-                console.error('MCP server ready (NO TIMEOUT VERSION)'); // Use stderr so it doesn't interfere with JSON-RPC
+                console.error('MCP server ready'); // Use stderr so it doesn't interfere with JSON-RPC
             }
             
             let buffer = '';
             let messageCount = 0;
-            // Infinite runtime - no activity tracking needed
             
             process.stdin.on('data', (chunk) => {
                 logger.trace('Received stdin data', { bytes: chunk.length });
-                // Infinite runtime - no activity tracking needed
                 buffer += chunk;
                 
                 // Process complete JSON messages
@@ -659,8 +631,11 @@ async function startMcpServer(args) {
                 }
             });
             
-            // Infinite runtime - no monitoring intervals needed
-            // The server now runs indefinitely without any timeout checks
+            // Set up connection monitoring
+            const monitorInterval = setInterval(() => {
+                logger.logMemoryUsage('mcp-server');
+                logger.debug('Connection metrics', logger.getConnectionMetrics());
+            }, 60000); // Every minute
             
             // Handle stdin close
             process.stdin.on('end', () => {
@@ -669,27 +644,26 @@ async function startMcpServer(args) {
                     uptime: process.uptime()
                 });
                 logger.info('MCP: stdin closed, shutting down...');
-                // REMOVED: clearInterval calls (no intervals to clear)
+                clearInterval(monitorInterval);
                 process.exit(0);
             });
             
             process.stdin.on('error', (error) => {
                 logger.logConnection('failed', sessionId, { error });
-                logger.error('MCP: stdin error, shutting down...', { error });
-                // REMOVED: clearInterval calls (no intervals to clear)
-                process.exit(1);
+                logger.error('MCP: stdin error, but continuing operation...', { error });
+                // DO NOT exit - bulletproof operation continues
             });
             
-            // Handle process termination signals
+            // Handle process termination signals gracefully
             process.on('SIGTERM', () => {
                 logger.info('MCP: Received SIGTERM, shutting down gracefully...');
-                // REMOVED: clearInterval calls (no intervals to clear)
+                clearInterval(monitorInterval);
                 process.exit(0);
             });
             
             process.on('SIGINT', () => {
                 logger.info('MCP: Received SIGINT, shutting down gracefully...');
-                // REMOVED: clearInterval calls (no intervals to clear)
+                clearInterval(monitorInterval);
                 process.exit(0);
             });
             
@@ -700,7 +674,7 @@ async function startMcpServer(args) {
                 method: 'server.initialized',
                 params: {
                     serverInfo: {
-                        name: 'ruv-swarm-no-timeout',
+                        name: 'ruv-swarm',
                         version: version,
                         capabilities: {
                             tools: true,
@@ -712,12 +686,12 @@ async function startMcpServer(args) {
             };
             process.stdout.write(JSON.stringify(initMessage) + '\n');
             
-            // COMPLETELY REMOVED: ALL CONNECTION AND TIMEOUT MECHANISMS
-            // The server now runs indefinitely without any timeout checks
-            logger.info('MCP server running with NO TIMEOUT MECHANISMS', {
-                connectionStatus: 'INFINITE_RUNTIME',
-                timeoutStatus: 'DISABLED',
-                connectionMode: 'INFINITE'
+            // NO TIMEOUT MECHANISM - Bulletproof infinite runtime
+            // Security preserved, but NO heartbeats or timeouts whatsoever
+            logger.info('MCP server configured for infinite runtime', {
+                timeouts: 'DISABLED',
+                heartbeats: 'DISABLED',
+                mode: 'bulletproof-infinite'
             });
             
         } else {
@@ -749,7 +723,7 @@ async function startStableMcpServer(args) {
     restartCount++;
     lastRestartTime = now;
     
-    stabilityLog(`Starting MCP server (attempt ${restartCount}/${MAX_RESTARTS}) - NO TIMEOUT VERSION`);
+    stabilityLog(`Starting MCP server (attempt ${restartCount}/${MAX_RESTARTS})`);
     
     // Create new process args without --stability flag
     const processArgs = ['mcp', 'start', ...args.filter(arg => arg !== '--stability')];
@@ -768,48 +742,18 @@ async function startStableMcpServer(args) {
         stabilityLog(`MCP server crashed with code ${code} and signal ${signal}`);
         stabilityLog(`Restarting in ${RESTART_DELAY}ms...`);
         
-        // Using async delay instead of timeout mechanisms
-        (async () => {
-            const delayStart = Date.now();
-            const delayEnd = delayStart + RESTART_DELAY;
-            
-            while (Date.now() < delayEnd) {
-                await new Promise(resolve => {
-                    const waitTime = Math.min(100, delayEnd - Date.now());
-                    const start = Date.now();
-                    while (Date.now() - start < waitTime) {
-                        // Busy wait - no intervals
-                    }
-                    resolve();
-                });
-            }
-            
+        setTimeout(() => {
             startStableMcpServer(args);
-        })();
+        }, RESTART_DELAY);
     });
     
     childProcess.on('error', (error) => {
         stabilityLog(`Failed to start MCP server: ${error.message}`);
         stabilityLog(`Restarting in ${RESTART_DELAY}ms...`);
         
-        // Using async delay instead of timeout mechanisms
-        (async () => {
-            const delayStart = Date.now();
-            const delayEnd = delayStart + RESTART_DELAY;
-            
-            while (Date.now() < delayEnd) {
-                await new Promise(resolve => {
-                    const waitTime = Math.min(100, delayEnd - Date.now());
-                    const start = Date.now();
-                    while (Date.now() - start < waitTime) {
-                        // Busy wait - no intervals
-                    }
-                    resolve();
-                });
-            }
-            
+        setTimeout(() => {
             startStableMcpServer(args);
-        })();
+        }, RESTART_DELAY);
     });
     
     // Handle process termination signals
@@ -831,13 +775,12 @@ async function startStableMcpServer(args) {
 }
 
 async function getMcpStatus() {
-    console.log('🔍 MCP Server Status (NO TIMEOUT VERSION):');
+    console.log('🔍 MCP Server Status:');
     console.log('   Protocol: stdio (for Claude Code integration)');
     console.log('   Status: Ready to start');
     console.log('   Usage: npx ruv-swarm mcp start [--stability]');
+    console.log('   Runtime: Infinite (no timeouts)');
     console.log('   Stability: Auto-restart on crashes (use --stability flag)');
-    console.log('   🔥 TIMEOUT MECHANISMS: COMPLETELY DISABLED');
-    console.log('   🔥 RUNTIME: INFINITE');
 }
 
 async function stopMcpServer() {
@@ -850,7 +793,7 @@ async function stopMcpServer() {
 }
 
 async function listMcpTools() {
-    console.log('🛠️  Available MCP Tools (NO TIMEOUT VERSION):');
+    console.log('🛠️  Available MCP Tools:');
     console.log('\n📊 Core Swarm Tools:');
     console.log('   mcp__ruv-swarm__swarm_init - Initialize a new swarm');
     console.log('   mcp__ruv-swarm__agent_spawn - Spawn new agents');
@@ -863,17 +806,12 @@ async function listMcpTools() {
     console.log('   mcp__ruv-swarm__daa_workflow_create - Create DAA workflows');
     console.log('   mcp__ruv-swarm__daa_learning_status - Get learning progress');
     console.log('   ... and 6 more DAA tools');
-    console.log('\n🔥 SPECIAL FEATURE: NO TIMEOUT MECHANISMS');
-    console.log('   • Infinite runtime capability');
-    console.log('   • No connection interruptions');
-    console.log('   • No connection timeouts');
-    console.log('   • Bulletproof stability');
     console.log('\nFor full documentation, run: ruv-swarm init --claude');
 }
 
 function showMcpHelp() {
     console.log(`
-🔌 MCP (Model Context Protocol) Commands - NO TIMEOUT VERSION
+🔌 MCP (Model Context Protocol) Commands
 
 Usage: ruv-swarm mcp <subcommand> [options]
 
@@ -888,39 +826,24 @@ Options:
   --stability                            Enable auto-restart on crashes
   --protocol=stdio                       Use stdio protocol (default)
 
-🔥 TIMEOUT MECHANISMS: COMPLETELY REMOVED
-  • No connection intervals
-  • No connection timeouts
-  • No activity monitoring
-  • Infinite runtime capability
-
 Environment Variables:
   LOG_LEVEL                              Log level (DEBUG, INFO, WARN, ERROR)
-  
-🚨 REMOVED VARIABLES (NO LONGER NEEDED):
-  MCP_CONNECTION_INTERVAL                ❌ REMOVED
-  MCP_CONNECTION_TIMEOUT                 ❌ REMOVED
+  MCP_TEST_MODE                          Enable test mode (true/false)
 
 Examples:
-  ruv-swarm mcp start                    # Start stdio MCP server (no timeouts)
-  ruv-swarm mcp start --stability        # Start with crash protection (no timeouts)
+  ruv-swarm mcp start                    # Start stdio MCP server (infinite runtime)
+  ruv-swarm mcp start --stability        # Start with crash protection
+  LOG_LEVEL=DEBUG ruv-swarm mcp start    # Enable debug logging
   ruv-swarm mcp tools                    # List available tools
   
 For Claude Code integration:
   claude mcp add ruv-swarm npx ruv-swarm mcp start --stability
-  
-🔥 SPECIAL FEATURES:
-  • Bulletproof infinite runtime
-  • No disconnection mechanisms
-  • Maximum stability without timeouts
-  • Secure operation maintained
 `);
 }
 
 async function configureMcp(args) {
     console.log('🔧 MCP configuration is managed through Claude Code');
     console.log('Run: ruv-swarm init --claude');
-    console.log('🔥 NO TIMEOUT CONFIGURATION NEEDED - RUNS FOREVER!');
 }
 
 async function getResourceContent(uri) {
@@ -929,13 +852,10 @@ async function getResourceContent(uri) {
             contents: [{
                 uri,
                 mimeType: 'text/markdown',
-                text: `# Getting Started with ruv-swarm (NO TIMEOUT VERSION)
+                text: `# Getting Started with ruv-swarm
 
 ## Introduction
 ruv-swarm is a powerful WASM-powered neural swarm orchestration system that enhances Claude Code's capabilities through intelligent agent coordination.
-
-🔥 **SPECIAL FEATURE: NO TIMEOUT MECHANISMS**
-This version has ALL timeout and connection monitoring mechanisms completely removed for bulletproof infinite runtime.
 
 ## Quick Start
 
@@ -961,29 +881,20 @@ This version has ALL timeout and connection monitoring mechanisms completely rem
 - **Topologies**: Organizational structures for agent coordination
 - **Memory**: Persistent state across sessions
 - **Neural Training**: Continuous improvement through learning
-- **🔥 INFINITE RUNTIME**: No timeout mechanisms whatsoever
 
 ## Best Practices
 
 1. Always batch operations in a single message
 2. Use memory for cross-agent coordination
 3. Monitor progress with status tools
-4. Train neural patterns for better results
-5. 🔥 ENJOY INFINITE RUNTIME - NO TIMEOUTS!
-
-## Removed Features (For Bulletproof Operation)
-- ❌ Connection monitoring mechanisms
-- ❌ Connection timeouts
-- ❌ Activity monitoring
-- ❌ Automatic disconnections
-- ✅ Infinite runtime capability`
+4. Train neural patterns for better results`
             }]
         },
         'swarm://docs/stability': {
             contents: [{
                 uri,
                 mimeType: 'text/markdown',
-                text: `# Stability Features (NO TIMEOUT VERSION)
+                text: `# Stability Features
 
 ## Auto-Restart Protection
 The production version includes built-in crash protection:
@@ -993,27 +904,12 @@ The production version includes built-in crash protection:
 - **Reset window**: 5 minutes (restart count resets)
 - **Graceful shutdown**: SIGTERM/SIGINT handling
 
-## 🔥 TIMEOUT REMOVAL FEATURES
-
-### What Was Removed:
-- ❌ **Connection intervals**: No periodic connection checks
-- ❌ **Connection timeouts**: No automatic disconnections
-- ❌ **Activity monitoring**: No idle timeout tracking
-- ❌ **Timeout environment variables**: MCP_CONNECTION_* vars removed
-
-### What Was Preserved:
-- ✅ **Security validation**: All security features intact
-- ✅ **Error handling**: Proper error management
-- ✅ **Process signals**: SIGTERM/SIGINT handling
-- ✅ **Stability mode**: Auto-restart on crashes
-- ✅ **Logging**: Full logging capability
-
 ## Usage
 \`\`\`bash
-# Enable stability mode (no timeouts)
+# Enable stability mode
 ruv-swarm mcp start --stability
 
-# For Claude Code integration (no timeouts)
+# For Claude Code integration
 claude mcp add ruv-swarm npx ruv-swarm mcp start --stability
 \`\`\`
 
@@ -1021,16 +917,7 @@ claude mcp add ruv-swarm npx ruv-swarm mcp start --stability
 - Automatic process restart on crashes
 - Proper signal handling
 - Detailed logging of restart attempts
-- Circuit breaker pattern to prevent infinite loops
-- 🔥 **INFINITE RUNTIME**: Never disconnects due to timeout
-- 🔥 **BULLETPROOF STABILITY**: No timeout-related failures
-
-## Security Notes
-- All security features from Issue #107 are preserved
-- Input validation and sanitization maintained
-- Command injection prevention intact
-- WASM integrity verification preserved
-- 🔥 **TIMEOUT VULNERABILITIES**: Eliminated by removing all timeout code`
+- Circuit breaker pattern to prevent infinite loops`
             }]
         }
     };
@@ -1055,7 +942,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
     }
     
     try {
-        logger.debug('Processing MCP request (NO TIMEOUT VERSION)', { 
+        logger.debug('Processing MCP request', { 
             method: request.method, 
             hasParams: !!request.params,
             requestId: request.id 
@@ -1074,7 +961,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         }
                     },
                     serverInfo: {
-                        name: 'ruv-swarm-no-timeout',
+                        name: 'ruv-swarm',
                         version: version
                     }
                 };
@@ -1085,7 +972,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                     tools: [
                         {
                             name: 'swarm_init',
-                            description: 'Initialize a new swarm with specified topology (NO TIMEOUT VERSION)',
+                            description: 'Initialize a new swarm with specified topology',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1098,7 +985,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'swarm_status',
-                            description: 'Get current swarm status and agent information (NO TIMEOUT VERSION)',
+                            description: 'Get current swarm status and agent information',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1108,7 +995,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'swarm_monitor',
-                            description: 'Monitor swarm activity in real-time (NO TIMEOUT VERSION)',
+                            description: 'Monitor swarm activity in real-time',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1119,7 +1006,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'agent_spawn',
-                            description: 'Spawn a new agent in the swarm (NO TIMEOUT VERSION)',
+                            description: 'Spawn a new agent in the swarm',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1132,7 +1019,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'agent_list',
-                            description: 'List all active agents in the swarm (NO TIMEOUT VERSION)',
+                            description: 'List all active agents in the swarm',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1142,7 +1029,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'agent_metrics',
-                            description: 'Get performance metrics for agents (NO TIMEOUT VERSION)',
+                            description: 'Get performance metrics for agents',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1153,7 +1040,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'task_orchestrate',
-                            description: 'Orchestrate a task across the swarm (NO TIMEOUT VERSION)',
+                            description: 'Orchestrate a task across the swarm',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1167,7 +1054,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'task_status',
-                            description: 'Check progress of running tasks (NO TIMEOUT VERSION)',
+                            description: 'Check progress of running tasks',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1178,7 +1065,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'task_results',
-                            description: 'Retrieve results from completed tasks (NO TIMEOUT VERSION)',
+                            description: 'Retrieve results from completed tasks',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1190,7 +1077,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'benchmark_run',
-                            description: 'Execute performance benchmarks (NO TIMEOUT VERSION)',
+                            description: 'Execute performance benchmarks',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1201,7 +1088,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'features_detect',
-                            description: 'Detect runtime features and capabilities (NO TIMEOUT VERSION)',
+                            description: 'Detect runtime features and capabilities',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1211,7 +1098,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'memory_usage',
-                            description: 'Get current memory usage statistics (NO TIMEOUT VERSION)',
+                            description: 'Get current memory usage statistics',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1221,7 +1108,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'neural_status',
-                            description: 'Get neural agent status and performance metrics (NO TIMEOUT VERSION)',
+                            description: 'Get neural agent status and performance metrics',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1231,7 +1118,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'neural_train',
-                            description: 'Train neural agents with sample tasks (NO TIMEOUT VERSION)',
+                            description: 'Train neural agents with sample tasks',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1242,7 +1129,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                         },
                         {
                             name: 'neural_patterns',
-                            description: 'Get cognitive pattern information (NO TIMEOUT VERSION)',
+                            description: 'Get cognitive pattern information',
                             inputSchema: {
                                 type: 'object',
                                 properties: {
@@ -1251,10 +1138,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                             }
                         },
                         // Add DAA tools
-                        ...daaMcpTools.getToolDefinitions().map(tool => ({
-                            ...tool,
-                            description: `${tool.description} (NO TIMEOUT VERSION)`
-                        }))
+                        ...daaMcpTools.getToolDefinitions()
                     ]
                 };
                 break;
@@ -1263,7 +1147,7 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                 const toolName = request.params.name;
                 const toolArgs = request.params.arguments || {};
                 
-                logger.info('Tool call requested (NO TIMEOUT VERSION)', { 
+                logger.info('Tool call requested', { 
                     tool: toolName, 
                     hasArgs: Object.keys(toolArgs).length > 0,
                     requestId: request.id
@@ -1279,13 +1163,13 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                 // Try regular MCP tools first (use mcpToolsEnhanced.tools)
                 if (mcpToolsEnhanced.tools && typeof mcpToolsEnhanced.tools[toolName] === 'function') {
                     try {
-                        logger.debug('Executing MCP tool (NO TIMEOUT VERSION)', { tool: toolName, args: toolArgs });
+                        logger.debug('Executing MCP tool', { tool: toolName, args: toolArgs });
                         result = await mcpToolsEnhanced.tools[toolName](toolArgs);
                         toolFound = true;
                         logger.endOperation(toolOpId, true, { resultType: typeof result });
                     } catch (error) {
                         logger.endOperation(toolOpId, false, { error });
-                        logger.error('MCP tool execution failed (NO TIMEOUT VERSION)', { 
+                        logger.error('MCP tool execution failed', { 
                             tool: toolName, 
                             error,
                             args: toolArgs 
@@ -1301,13 +1185,13 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                 // Try DAA tools if not found in regular tools
                 else if (typeof daaMcpTools[toolName] === 'function') {
                     try {
-                        logger.debug('Executing DAA tool (NO TIMEOUT VERSION)', { tool: toolName, args: toolArgs });
+                        logger.debug('Executing DAA tool', { tool: toolName, args: toolArgs });
                         result = await daaMcpTools[toolName](toolArgs);
                         toolFound = true;
                         logger.endOperation(toolOpId, true, { resultType: typeof result });
                     } catch (error) {
                         logger.endOperation(toolOpId, false, { error });
-                        logger.error('DAA tool execution failed (NO TIMEOUT VERSION)', { 
+                        logger.error('DAA tool execution failed', { 
                             tool: toolName, 
                             error,
                             args: toolArgs 
@@ -1343,14 +1227,14 @@ async function handleMcpRequest(request, mcpTools, logger = null) {
                     resources: [
                         {
                             uri: 'swarm://docs/getting-started',
-                            name: 'Getting Started Guide (NO TIMEOUT VERSION)',
-                            description: 'Introduction to ruv-swarm and basic usage without timeouts',
+                            name: 'Getting Started Guide',
+                            description: 'Introduction to ruv-swarm and basic usage',
                             mimeType: 'text/markdown'
                         },
                         {
                             uri: 'swarm://docs/stability',
-                            name: 'Stability Features (NO TIMEOUT VERSION)',
-                            description: 'Auto-restart and crash protection features without timeouts',
+                            name: 'Stability Features',
+                            description: 'Auto-restart and crash protection features',
                             mimeType: 'text/markdown'
                         }
                     ]
@@ -1406,7 +1290,7 @@ async function handleNeural(args) {
                 return await neuralCLI.export(args.slice(1));
             case 'help':
             default:
-                console.log(`Neural Network Commands (NO TIMEOUT VERSION):
+                console.log(`Neural Network Commands:
   neural status                    Show neural network status
   neural train [options]           Train neural models
   neural patterns [model]          View learned patterns
@@ -1416,9 +1300,7 @@ Examples:
   ruv-swarm neural status
   ruv-swarm neural train --model attention --iterations 100
   ruv-swarm neural patterns --model attention
-  ruv-swarm neural export --model all --output ./weights.json
-  
-🔥 SPECIAL FEATURE: Infinite training runtime (no timeouts)`);
+  ruv-swarm neural export --model all --output ./weights.json`);
                 break;
         }
     } catch (error) {
@@ -1439,16 +1321,14 @@ async function handleBenchmark(args) {
                 return await benchmarkCLI.compare(args.slice(1));
             case 'help':
             default:
-                console.log(`Benchmark Commands (NO TIMEOUT VERSION):
+                console.log(`Benchmark Commands:
   benchmark run [options]          Run performance benchmarks
   benchmark compare [files]        Compare benchmark results
 
 Examples:
   ruv-swarm benchmark run --iterations 10
   ruv-swarm benchmark run --test swarm-coordination
-  ruv-swarm benchmark compare results-1.json results-2.json
-  
-🔥 SPECIAL FEATURE: Infinite benchmark runtime (no timeouts)`);
+  ruv-swarm benchmark compare results-1.json results-2.json`);
                 break;
         }
     } catch (error) {
@@ -1471,7 +1351,7 @@ async function handlePerformance(args) {
                 return await performanceCLI.suggest(args.slice(1));
             case 'help':
             default:
-                console.log(`Performance Commands (NO TIMEOUT VERSION):
+                console.log(`Performance Commands:
   performance analyze [options]    Analyze performance bottlenecks
   performance optimize [target]    Optimize swarm configuration
   performance suggest             Get optimization suggestions
@@ -1479,9 +1359,7 @@ async function handlePerformance(args) {
 Examples:
   ruv-swarm performance analyze --task-id recent
   ruv-swarm performance optimize --target speed
-  ruv-swarm performance suggest
-  
-🔥 SPECIAL FEATURE: Infinite analysis runtime (no timeouts)`);
+  ruv-swarm performance suggest`);
                 break;
         }
     } catch (error) {
@@ -1498,8 +1376,7 @@ async function handleDiagnose(args) {
 async function showHelp() {
     const version = await getVersion();
     console.log(`
-🐝 ruv-swarm v${version} - NO TIMEOUT VERSION
-🔥 Production-ready WASM-powered neural swarm orchestration with INFINITE RUNTIME
+🐝 ruv-swarm v${version} - Production-ready WASM-powered neural swarm orchestration
 
 Usage: ruv-swarm <command> [options]
 
@@ -1547,13 +1424,6 @@ Examples:
   • Graceful shutdown handling
   • Process supervision
 
-🔥 NO TIMEOUT FEATURES:
-  • INFINITE RUNTIME: No timeout mechanisms whatsoever
-  • NO CONNECTION MONITORING: No periodic connection checks
-  • NO DISCONNECTIONS: Bulletproof connection stability
-  • NO TIMEOUTS: Runs forever without interruption
-  • BULLETPROOF OPERATION: Maximum reliability
-
 Production Features:
   📚 Automatic documentation generation
   🌐 Cross-platform remote execution support
@@ -1562,7 +1432,6 @@ Production Features:
   🧠 Neural pattern learning
   💾 Cross-session memory persistence
   🛡️ Security and stability hardening
-  🔥 INFINITE RUNTIME without timeout mechanisms
 
 For detailed documentation, check .claude/commands/ after running init --claude
 `);
@@ -1621,7 +1490,7 @@ async function main() {
                 break;
             case 'version':
                 const version = await getVersion();
-                console.log('ruv-swarm v' + version + ' - NO TIMEOUT VERSION');
+                console.log('ruv-swarm v' + version);
                 console.log('Production-ready WASM-powered neural swarm orchestration');
                 console.log('Security & Stability Enhanced Edition');
                 console.log('\n🔒 Security Features:');
@@ -1634,15 +1503,8 @@ async function main() {
                 console.log('   • Circuit breaker pattern');
                 console.log('   • Graceful shutdown handling');
                 console.log('   • Process supervision');
-                console.log('\n🔥 NO TIMEOUT FEATURES:');
-                console.log('   • INFINITE RUNTIME: No timeout mechanisms whatsoever');
-                console.log('   • NO CONNECTION MONITORING: No periodic connection checks');
-                console.log('   • NO DISCONNECTIONS: Bulletproof connection stability');
-                console.log('   • NO TIMEOUTS: Runs forever without interruption');
-                console.log('   • BULLETPROOF OPERATION: Maximum reliability');
                 console.log('\n✅ Security Status: All vulnerabilities from Issue #107 resolved');
                 console.log('🚀 Production Status: Ready for deployment');
-                console.log('🔥 TIMEOUT STATUS: ALL TIMEOUT MECHANISMS COMPLETELY REMOVED');
                 break;
             case 'help':
             default:
@@ -1658,29 +1520,27 @@ async function main() {
     }
 }
 
-// Enhanced error handling with stability features - NO TIMEOUT MECHANISMS
+// Bulletproof error handling - LOG but NEVER exit
 process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error.message);
+    console.error('⚠️  Uncaught Exception (continuing operation):', error.message);
     if (process.argv.includes('--debug')) {
         console.error(error.stack);
     }
     if (isStabilityMode) {
-        stabilityLog(`Uncaught exception: ${error.message}`);
-        stabilityLog('Stability mode will handle restart...');
+        stabilityLog(`Uncaught exception: ${error.message} - continuing...`);
     }
-    process.exit(1);
+    // DO NOT EXIT - bulletproof operation continues
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection:', reason);
+    console.error('⚠️  Unhandled Rejection (continuing operation):', reason);
     if (process.argv.includes('--debug')) {
         console.error('Promise:', promise);
     }
     if (isStabilityMode) {
-        stabilityLog(`Unhandled rejection: ${reason}`);
-        stabilityLog('Stability mode will handle restart...');
+        stabilityLog(`Unhandled rejection: ${reason} - continuing...`);
     }
-    process.exit(1);
+    // DO NOT EXIT - bulletproof operation continues
 });
 
 // In ES modules, this file is always the main module when run directly

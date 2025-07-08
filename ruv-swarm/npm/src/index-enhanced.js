@@ -6,6 +6,7 @@
 
 import { WasmModuleLoader } from './wasm-loader.js';
 import { SwarmPersistence } from './persistence.js';
+import { getContainer } from './singleton-container.js';
 // import { NeuralAgentFactory } from './neural-agent.js';
 // import path from 'path';
 // import fs from 'fs';
@@ -16,6 +17,7 @@ class RuvSwarm {
     this.persistence = null;
     this.activeSwarms = new Map();
     this.globalAgents = new Map();
+    this.isInitialized = false;
     this.metrics = {
       totalSwarms: 0,
       totalAgents: 0,
@@ -31,13 +33,48 @@ class RuvSwarm {
     };
   }
 
-  static async initialize(options = {}) {
-    // Return existing instance if already initialized
-    if (global._ruvSwarmInstance) {
-      return global._ruvSwarmInstance;
+  /**
+   * Cleanup method for proper resource disposal
+   */
+  destroy() {
+    console.log('🧹 Cleaning up RuvSwarm instance...');
+
+    // Terminate all active swarms
+    for (const swarm of this.activeSwarms.values()) {
+      if (typeof swarm.terminate === 'function') {
+        swarm.terminate();
+      }
     }
 
-    const instance = new RuvSwarm();
+    this.activeSwarms.clear();
+    this.globalAgents.clear();
+
+    // Cleanup persistence
+    if (this.persistence && typeof this.persistence.close === 'function') {
+      this.persistence.close();
+    }
+
+    // Cleanup WASM loader
+    if (this.wasmLoader && typeof this.wasmLoader.cleanup === 'function') {
+      this.wasmLoader.cleanup();
+    }
+
+    this.isInitialized = false;
+  }
+
+  static async initialize(options = {}) {
+    const container = getContainer();
+
+    // Register RuvSwarm factory if not already registered
+    if (!container.has('RuvSwarm')) {
+      container.register('RuvSwarm', () => new RuvSwarm(), {
+        singleton: true,
+        lazy: false,
+      });
+    }
+
+    // Get or create singleton instance through container
+    const instance = container.get('RuvSwarm');
 
     const {
       // wasmPath = './wasm',
@@ -49,20 +86,15 @@ class RuvSwarm {
       debug = false,
     } = options;
 
-    // Use global to track initialization across module instances
-    if (!global._ruvSwarmInitialized) {
-      global._ruvSwarmInitialized = 0;
-    }
-    global._ruvSwarmInitialized++;
-
-    if (global._ruvSwarmInitialized > 1) {
-      // Skip duplicate initialization messages
+    // Check if already initialized through container
+    if (instance.isInitialized) {
       if (debug) {
-        console.log(`[DEBUG] RuvSwarm.initialize called ${global._ruvSwarmInitialized} times`);
+        console.log('[DEBUG] RuvSwarm already initialized through container');
       }
-    } else {
-      console.log('🧠 Initializing ruv-swarm with WASM capabilities...');
+      return instance;
     }
+
+    console.log('🧠 Initializing ruv-swarm with WASM capabilities...');
 
     try {
       // Initialize WASM modules
@@ -83,9 +115,10 @@ class RuvSwarm {
       }
 
       // Pre-load neural networks if enabled
-      if (enableNeuralNetworks && instance.features.neural_networks) {
+      if (enableNeuralNetworks) {
         try {
           await instance.wasmLoader.loadModule('neural');
+          instance.features.neural_networks = true;
           console.log('🧠 Neural network capabilities loaded');
         } catch (error) {
           console.warn('⚠️ Neural network module not available:', error.message);
@@ -105,13 +138,11 @@ class RuvSwarm {
         }
       }
 
-      if (global._ruvSwarmInitialized <= 1) {
-        console.log('✅ ruv-swarm initialized successfully');
-        console.log('📊 Features:', instance.features);
-      }
+      console.log('✅ ruv-swarm initialized successfully');
+      console.log('📊 Features:', instance.features);
 
-      // Store instance globally to prevent duplicate initialization
-      global._ruvSwarmInstance = instance;
+      // Mark as initialized
+      instance.isInitialized = true;
 
       return instance;
     } catch (error) {
