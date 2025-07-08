@@ -6,7 +6,7 @@
  */
 
 import { spawn } from 'child_process';
-import { setupClaudeIntegration, invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
+import { setupClaudeIntegration, invokeClaudeWithSwarm as _invokeClaudeWithSwarm } from '../src/claude-integration/index.js';
 import { RuvSwarm } from '../src/index-enhanced.js';
 import { EnhancedMCPTools } from '../src/mcp-tools-enhanced.js';
 import { daaMcpTools } from '../src/mcp-daa-tools.js';
@@ -471,7 +471,7 @@ async function handleStatus(args) {
 async function handleMonitor(args) {
     const { mcpTools } = await initializeSystem();
     
-    const duration = parseInt(args.find(arg => arg.match(/^\d+$/))) || 10000;
+    const duration = parseInt(args.find(arg => arg.match(/^\d+$/)), 10) || 10000;
     
     console.log(`📊 Monitoring for ${duration}ms... (NO TIMEOUT VERSION)`);
     console.log('Press Ctrl+C to stop\n');
