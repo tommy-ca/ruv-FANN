@@ -87,10 +87,13 @@ Message 6: Write "package.json"
 ```bash
 # Add ruv-swarm MCP server to Claude Code using stdio
 # SECURITY: Always use version pinning to prevent supply chain attacks
-claude mcp add ruv-swarm npx ruv-swarm@1.0.17 mcp start
+claude mcp add ruv-swarm npx ruv-swarm@1.0.17 mcp start --stability
 
-# For local development, use local executable:
-# claude mcp add ruv-swarm ./ruv-swarm-local mcp start
+# NO TIMEOUT VERSION - Bulletproof infinite runtime (RECOMMENDED):
+# claude mcp add ruv-swarm-secure npx ruv-swarm@1.0.17 mcp start --stability
+
+# For local development, use secure version:
+# claude mcp add ruv-swarm-secure ./ruv-swarm/npm/bin/ruv-swarm-secure.js mcp start --stability
 ```
 
 ### 2. Use MCP Tools for Coordination in Claude Code
