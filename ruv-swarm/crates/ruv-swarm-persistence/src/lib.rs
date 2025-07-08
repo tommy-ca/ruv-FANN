@@ -134,10 +134,11 @@ pub trait Transaction: Send + Sync {
     async fn rollback(self: Box<Self>) -> Result<(), StorageError>;
 }
 
-/// Query builder for type-safe queries
+/// Query builder for type-safe queries with parameterized values
 pub struct QueryBuilder<T> {
     table: String,
     conditions: Vec<String>,
+    parameters: Vec<String>,
     order_by: Option<String>,
     limit: Option<usize>,
     offset: Option<usize>,
@@ -149,6 +150,7 @@ impl<T> QueryBuilder<T> {
         Self {
             table: table.to_string(),
             conditions: Vec::new(),
+            parameters: Vec::new(),
             order_by: None,
             limit: None,
             offset: None,
@@ -157,13 +159,16 @@ impl<T> QueryBuilder<T> {
     }
 
     pub fn where_eq(mut self, field: &str, value: &str) -> Self {
-        self.conditions.push(format!("{} = '{}'", field, value));
+        // Use parameterized placeholders to prevent SQL injection
+        self.conditions.push(format!("{} = ?", field));
+        self.parameters.push(value.to_string());
         self
     }
 
     pub fn where_like(mut self, field: &str, pattern: &str) -> Self {
-        self.conditions
-            .push(format!("{} LIKE '{}'", field, pattern));
+        // Use parameterized placeholders to prevent SQL injection
+        self.conditions.push(format!("{} LIKE ?", field));
+        self.parameters.push(pattern.to_string());
         self
     }
 
@@ -187,7 +192,7 @@ impl<T> QueryBuilder<T> {
         self
     }
 
-    pub fn build(&self) -> String {
+    pub fn build(&self) -> (String, Vec<String>) {
         let mut query = format!("SELECT * FROM {}", self.table);
 
         if !self.conditions.is_empty() {
@@ -208,7 +213,7 @@ impl<T> QueryBuilder<T> {
             query.push_str(&format!(" OFFSET {}", offset));
         }
 
-        query
+        (query, self.parameters.clone())
     }
 }
 

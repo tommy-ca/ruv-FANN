@@ -32,6 +32,9 @@ chrono = { version = "0.4", features = ["serde"] }
 # UUID generation
 uuid = { workspace = true }
 
+# Random number generation
+fastrand = "2.0"
+
 # WASM support
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = { workspace = true }
@@ -46,6 +49,7 @@ criterion = { workspace = true }
 proptest = { workspace = true }
 tempfile = "3.12"
 tokio-test = "0.4"
+num_cpus = "1.16"
 
 [features]
 default = ["rusqlite-backend"]
