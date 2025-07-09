@@ -291,11 +291,26 @@ mod backprop;
 mod quickprop;
 mod rprop;
 
+// GPU training module (when GPU features are enabled)
+#[cfg(feature = "gpu")]
+mod gpu_backprop;
+#[cfg(feature = "gpu")]
+mod gpu_batch_training;
+#[cfg(feature = "gpu")]
+mod gpu_training;
+
 // Re-export main types
 pub use adam::{Adam, AdamW};
 pub use backprop::{BatchBackprop, IncrementalBackprop};
 pub use quickprop::Quickprop;
 pub use rprop::Rprop;
+
+// Re-export GPU training types when available
+#[cfg(feature = "gpu")]
+pub use gpu_training::{
+    get_gpu_capabilities, is_gpu_available, GpuAdam, GpuAdamW, GpuBatchBackprop,
+    GpuPerformanceStats,
+};
 
 /// Helper functions for forward propagation and gradient calculation
 pub mod helpers {

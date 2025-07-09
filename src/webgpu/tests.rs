@@ -10,6 +10,7 @@ mod webgpu_tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "Miri cannot handle WebGPU FFI calls")]
     fn test_backend_selector_creation() {
         // Skip test in CI environment
         if is_ci_environment() {
@@ -30,6 +31,7 @@ mod webgpu_tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "Miri cannot handle WebGPU FFI calls")]
     fn test_compute_profile_selection() {
         // Skip test in CI environment
         if is_ci_environment() {
