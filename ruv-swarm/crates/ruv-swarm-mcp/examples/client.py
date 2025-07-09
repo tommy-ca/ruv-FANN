@@ -56,7 +56,7 @@ class MCPClient:
             "id": self.request_id
         }
         
-        future = asyncio.create_future()
+        future = asyncio.Future()
         self.pending_requests[self.request_id] = future
         
         await self.ws.send(json.dumps(request))

@@ -4235,6 +4235,7 @@ dependencies = [
  "futures",
  "jsonschema",
  "proptest",
+ "rand 0.8.5",
  "ruv-swarm-core",
  "schemars",
  "serde",

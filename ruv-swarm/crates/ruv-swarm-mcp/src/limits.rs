@@ -33,14 +33,14 @@ pub struct ResourceLimits {
 impl Default for ResourceLimits {
     fn default() -> Self {
         Self {
-            max_agents_per_session: 50,
-            max_memory_per_session: 100 * 1024 * 1024, // 100MB
-            max_concurrent_tasks: 100,
-            max_session_duration: Duration::from_secs(24 * 60 * 60), // 24 hours
-            max_message_size: 10 * 1024 * 1024,                      // 10MB
-            max_workflow_duration: Duration::from_secs(30 * 60),     // 30 minutes
-            max_memory_entries: 1000,
-            max_memory_value_size: 1024 * 1024, // 1MB per value
+            max_agents_per_session: 10_000_000,                     // 10M agents for massive GPU swarms
+            max_memory_per_session: 1024 * 1024 * 1024 * 1024,     // 1TB memory
+            max_concurrent_tasks: 10_000_000,                       // 10M concurrent tasks
+            max_session_duration: Duration::from_secs(30 * 24 * 60 * 60), // 30 days
+            max_message_size: 1024 * 1024 * 1024,                  // 1GB messages
+            max_workflow_duration: Duration::from_secs(7 * 24 * 60 * 60), // 7 days
+            max_memory_entries: 100_000_000,                        // 100M entries
+            max_memory_value_size: 1024 * 1024 * 1024,             // 1GB per value
         }
     }
 }
