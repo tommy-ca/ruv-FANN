@@ -4,6 +4,8 @@
 //! and management for the WebGPU backend. It includes staging optimizations for
 //! production-ready GPU acceleration.
 
+#![allow(clippy::manual_div_ceil)]
+
 use crate::webgpu::error::{ComputeError, ComputeResult};
 
 /// GPU device wrapper with advanced capabilities
@@ -96,7 +98,7 @@ impl GpuDevice {
             )
             .await
             .map_err(|e| {
-                ComputeError::InitializationError(format!("Failed to create WebGPU device: {}", e))
+                ComputeError::InitializationError(format!("Failed to create WebGPU device: {e}"))
             })?;
 
         Ok(Self {

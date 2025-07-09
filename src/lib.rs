@@ -41,6 +41,7 @@ pub mod connection;
 pub mod errors;
 pub mod integration;
 pub mod layer;
+pub mod memory_manager;
 pub mod network;
 pub mod neuron;
 pub mod training;
@@ -51,6 +52,10 @@ pub mod io;
 
 // WebGPU acceleration module
 pub mod webgpu;
+
+// SIMD acceleration module (CPU optimizations)
+#[cfg(feature = "parallel")]
+pub mod simd;
 
 // Test module
 #[cfg(test)]

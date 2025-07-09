@@ -8,6 +8,8 @@
 //!
 //! All training algorithms implement the `TrainingAlgorithm` trait for extensibility.
 
+#![allow(clippy::needless_range_loop)]
+
 use crate::Network;
 use num_traits::Float;
 use std::collections::HashMap;
@@ -284,17 +286,19 @@ pub trait TrainingAlgorithm<T: Float>: Send {
 }
 
 // Module declarations for specific algorithms
+mod adam;
 mod backprop;
 mod quickprop;
 mod rprop;
 
 // Re-export main types
+pub use adam::{Adam, AdamW};
 pub use backprop::{BatchBackprop, IncrementalBackprop};
 pub use quickprop::Quickprop;
 pub use rprop::Rprop;
 
 /// Helper functions for forward propagation and gradient calculation
-pub(crate) mod helpers {
+pub mod helpers {
     use super::*;
 
     /// Simple network representation for training algorithms
@@ -444,11 +448,12 @@ pub(crate) mod helpers {
             .map(|b| vec![T::zero(); b.len()])
             .collect::<Vec<_>>();
 
+        // Initialize errors for each layer
+        let mut layer_errors = vec![vec![]; network.layer_sizes.len()];
+
         // Calculate output layer errors
         let output_idx = activations.len() - 1;
-        let mut errors = vec![];
-
-        let output_errors: Vec<T> = activations[output_idx]
+        layer_errors[output_idx] = activations[output_idx]
             .iter()
             .zip(desired_output.iter())
             .map(|(&actual, &desired)| {
@@ -456,46 +461,48 @@ pub(crate) mod helpers {
             })
             .collect();
 
-        errors.push(output_errors);
-
-        // Backpropagate errors
+        // Backpropagate errors to hidden layers
         for layer_idx in (1..network.layer_sizes.len() - 1).rev() {
-            let mut layer_errors = vec![T::zero(); network.layer_sizes[layer_idx]];
+            layer_errors[layer_idx] = vec![T::zero(); network.layer_sizes[layer_idx]];
 
             for neuron_idx in 0..network.layer_sizes[layer_idx] {
                 let mut error_sum = T::zero();
 
                 // Sum weighted errors from next layer
-                for next_neuron_idx in 0..network.layer_sizes[layer_idx + 1] {
+                let next_layer_idx = layer_idx + 1;
+                let next_layer_weights_idx = layer_idx; // weights[i] connects layer i to layer i+1
+
+                for next_neuron_idx in 0..network.layer_sizes[next_layer_idx] {
+                    // Weight from current neuron to next layer neuron
                     let weight_idx = next_neuron_idx * network.layer_sizes[layer_idx] + neuron_idx;
-                    if weight_idx < network.weights[layer_idx].len() {
+                    if weight_idx < network.weights[next_layer_weights_idx].len() {
                         error_sum = error_sum
-                            + errors[0][next_neuron_idx] * network.weights[layer_idx][weight_idx];
+                            + layer_errors[next_layer_idx][next_neuron_idx]
+                                * network.weights[next_layer_weights_idx][weight_idx];
                     }
                 }
 
-                layer_errors[neuron_idx] =
+                layer_errors[layer_idx][neuron_idx] =
                     error_sum * sigmoid_derivative(activations[layer_idx][neuron_idx]);
             }
-
-            errors.insert(0, layer_errors);
         }
 
-        // Calculate gradients
+        // Calculate gradients for each layer
         for layer_idx in 0..network.weights.len() {
+            let current_layer_idx = layer_idx + 1; // weights[i] connects layer i to layer i+1
             let prev_activations = &activations[layer_idx];
-            let layer_errors = &errors[layer_idx];
+            let current_errors = &layer_errors[current_layer_idx];
 
-            for neuron_idx in 0..layer_errors.len() {
+            for neuron_idx in 0..current_errors.len() {
                 // Bias gradient
-                bias_gradients[layer_idx][neuron_idx] = layer_errors[neuron_idx];
+                bias_gradients[layer_idx][neuron_idx] = current_errors[neuron_idx];
 
                 // Weight gradients
                 let weight_start = neuron_idx * prev_activations.len();
                 for (input_idx, &activation) in prev_activations.iter().enumerate() {
                     if weight_start + input_idx < weight_gradients[layer_idx].len() {
                         weight_gradients[layer_idx][weight_start + input_idx] =
-                            layer_errors[neuron_idx] * activation;
+                            current_errors[neuron_idx] * activation;
                     }
                 }
             }
@@ -518,3 +525,6 @@ mod tests {
         assert!(sigmoid(-10.0) < 0.01);
     }
 }
+
+#[cfg(test)]
+mod test_all_algorithms;

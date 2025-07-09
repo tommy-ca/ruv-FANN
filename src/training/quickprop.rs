@@ -1,12 +1,14 @@
 //! Quickprop training algorithm
 
+#![allow(clippy::needless_range_loop)]
+
 use super::*;
 use num_traits::Float;
 use std::collections::HashMap;
 
 /// Quickprop trainer
 /// An advanced batch training algorithm that uses second-order information
-pub struct Quickprop<T: Float + Send> {
+pub struct Quickprop<T: Float + Send + Default> {
     learning_rate: T,
     mu: T,
     decay: T,
@@ -21,7 +23,7 @@ pub struct Quickprop<T: Float + Send> {
     callback: Option<TrainingCallback<T>>,
 }
 
-impl<T: Float + Send> Quickprop<T> {
+impl<T: Float + Send + Default> Quickprop<T> {
     pub fn new() -> Self {
         Self {
             learning_rate: T::from(0.7).unwrap(),
@@ -135,37 +137,207 @@ impl<T: Float + Send> Quickprop<T> {
     }
 }
 
-impl<T: Float + Send> Default for Quickprop<T> {
+impl<T: Float + Send + Default> Default for Quickprop<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Float + Send> TrainingAlgorithm<T> for Quickprop<T> {
+impl<T: Float + Send + Default> TrainingAlgorithm<T> for Quickprop<T> {
     fn train_epoch(
         &mut self,
         network: &mut Network<T>,
         data: &TrainingData<T>,
     ) -> Result<T, TrainingError> {
+        use super::helpers::*;
+
         self.initialize_state(network);
 
         let mut total_error = T::zero();
 
+        // Convert network to simplified form for easier manipulation
+        let simple_network = network_to_simple(network);
+
+        // Initialize gradient accumulators
+        let mut accumulated_weight_gradients = simple_network
+            .weights
+            .iter()
+            .map(|w| vec![T::zero(); w.len()])
+            .collect::<Vec<_>>();
+        let mut accumulated_bias_gradients = simple_network
+            .biases
+            .iter()
+            .map(|b| vec![T::zero(); b.len()])
+            .collect::<Vec<_>>();
+
         // Calculate gradients over entire dataset
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
-            let output = network.run(input);
-            total_error = total_error + self.error_function.calculate(&output, desired_output);
+            // Forward propagation to get all layer activations
+            let activations = forward_propagate(&simple_network, input);
 
-            // Calculate and accumulate gradients (placeholder)
-            // In a full implementation, you would:
-            // 1. Perform backpropagation to calculate gradients
-            // 2. Update weights using Quickprop rules
+            // Get output from last layer
+            let output = &activations[activations.len() - 1];
+
+            // Calculate error
+            total_error = total_error + self.error_function.calculate(output, desired_output);
+
+            // Calculate gradients using backpropagation
+            let (weight_gradients, bias_gradients) = calculate_gradients(
+                &simple_network,
+                &activations,
+                desired_output,
+                self.error_function.as_ref(),
+            );
+
+            // Accumulate gradients
+            for layer_idx in 0..weight_gradients.len() {
+                for i in 0..weight_gradients[layer_idx].len() {
+                    accumulated_weight_gradients[layer_idx][i] =
+                        accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
+                }
+                for i in 0..bias_gradients[layer_idx].len() {
+                    accumulated_bias_gradients[layer_idx][i] =
+                        accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
+                }
+            }
         }
 
-        // Placeholder for Quickprop weight updates
-        // This would apply the Quickprop algorithm to update weights
+        // Average gradients by batch size
+        let batch_size = T::from(data.inputs.len()).unwrap();
+        for layer_idx in 0..accumulated_weight_gradients.len() {
+            for i in 0..accumulated_weight_gradients[layer_idx].len() {
+                accumulated_weight_gradients[layer_idx][i] =
+                    accumulated_weight_gradients[layer_idx][i] / batch_size;
+            }
+            for i in 0..accumulated_bias_gradients[layer_idx].len() {
+                accumulated_bias_gradients[layer_idx][i] =
+                    accumulated_bias_gradients[layer_idx][i] / batch_size;
+            }
+        }
 
-        Ok(total_error / T::from(data.inputs.len()).unwrap())
+        // Apply Quickprop updates
+        let mut weight_updates = Vec::new();
+        let mut bias_updates = Vec::new();
+
+        // Update weights using Quickprop algorithm
+        for layer_idx in 0..accumulated_weight_gradients.len() {
+            let mut layer_weight_updates = Vec::new();
+
+            for i in 0..accumulated_weight_gradients[layer_idx].len() {
+                let current_gradient = accumulated_weight_gradients[layer_idx][i];
+                let previous_gradient = self.previous_weight_gradients[layer_idx][i];
+                let previous_delta = self.previous_weight_deltas[layer_idx][i];
+
+                // Get current weight for decay term
+                let weight_idx = i;
+                let weight = if weight_idx < simple_network.weights[layer_idx].len() {
+                    simple_network.weights[layer_idx][weight_idx]
+                } else {
+                    T::zero()
+                };
+
+                let delta = if previous_gradient == T::zero() {
+                    // First epoch or no previous gradient: use standard gradient descent with decay
+                    -self.learning_rate * current_gradient + self.decay * weight
+                } else {
+                    let gradient_diff = previous_gradient - current_gradient;
+
+                    if gradient_diff.abs() < T::from(1e-15).unwrap() {
+                        // Gradient difference too small: use momentum-like update with decay
+                        -self.learning_rate * current_gradient + self.decay * weight
+                    } else {
+                        // Quickprop formula: delta = (gradient / (previous_gradient - gradient)) * previous_delta
+                        let mut quickprop_delta =
+                            (current_gradient / gradient_diff) * previous_delta;
+
+                        // Apply maximum growth factor constraint
+                        let max_delta = self.mu * previous_delta.abs();
+                        if quickprop_delta.abs() > max_delta && previous_delta != T::zero() {
+                            quickprop_delta = if quickprop_delta > T::zero() {
+                                max_delta
+                            } else {
+                                -max_delta
+                            };
+                        }
+
+                        // Conditional gradient addition (if moving in same direction)
+                        if quickprop_delta * current_gradient > T::zero() {
+                            quickprop_delta =
+                                quickprop_delta - self.learning_rate * current_gradient;
+                        }
+
+                        // Add decay term
+                        quickprop_delta + self.decay * weight
+                    }
+                };
+
+                layer_weight_updates.push(delta);
+
+                // Store gradient and delta for next iteration
+                self.previous_weight_gradients[layer_idx][i] = current_gradient;
+                self.previous_weight_deltas[layer_idx][i] = delta;
+            }
+
+            weight_updates.push(layer_weight_updates);
+        }
+
+        // Update biases using Quickprop algorithm (no decay for biases)
+        for layer_idx in 0..accumulated_bias_gradients.len() {
+            let mut layer_bias_updates = Vec::new();
+
+            for i in 0..accumulated_bias_gradients[layer_idx].len() {
+                let current_gradient = accumulated_bias_gradients[layer_idx][i];
+                let previous_gradient = self.previous_bias_gradients[layer_idx][i];
+                let previous_delta = self.previous_bias_deltas[layer_idx][i];
+
+                let delta = if previous_gradient == T::zero() {
+                    // First epoch or no previous gradient: use standard gradient descent
+                    -self.learning_rate * current_gradient
+                } else {
+                    let gradient_diff = previous_gradient - current_gradient;
+
+                    if gradient_diff.abs() < T::from(1e-15).unwrap() {
+                        // Gradient difference too small: use momentum-like update
+                        -self.learning_rate * current_gradient
+                    } else {
+                        // Quickprop formula
+                        let mut quickprop_delta =
+                            (current_gradient / gradient_diff) * previous_delta;
+
+                        // Apply maximum growth factor constraint
+                        let max_delta = self.mu * previous_delta.abs();
+                        if quickprop_delta.abs() > max_delta && previous_delta != T::zero() {
+                            quickprop_delta = if quickprop_delta > T::zero() {
+                                max_delta
+                            } else {
+                                -max_delta
+                            };
+                        }
+
+                        // Conditional gradient addition
+                        if quickprop_delta * current_gradient > T::zero() {
+                            quickprop_delta =
+                                quickprop_delta - self.learning_rate * current_gradient;
+                        }
+
+                        quickprop_delta
+                    }
+                };
+
+                layer_bias_updates.push(delta);
+
+                // Store gradient and delta for next iteration
+                self.previous_bias_gradients[layer_idx][i] = current_gradient;
+                self.previous_bias_deltas[layer_idx][i] = delta;
+            }
+
+            bias_updates.push(layer_bias_updates);
+        }
+
+        // Apply the updates to the actual network
+        apply_updates_to_network(network, &weight_updates, &bias_updates);
+
+        Ok(total_error / batch_size)
     }
 
     fn calculate_error(&self, network: &Network<T>, data: &TrainingData<T>) -> T {

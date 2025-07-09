@@ -204,7 +204,7 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for IncrementalBackprop<T> 
 
 /// Batch backpropagation
 /// Accumulates gradients over entire dataset before updating weights
-pub struct BatchBackprop<T: Float + Send> {
+pub struct BatchBackprop<T: Float + Send + Default> {
     learning_rate: T,
     momentum: T,
     error_function: Box<dyn ErrorFunction<T>>,
@@ -213,7 +213,7 @@ pub struct BatchBackprop<T: Float + Send> {
     callback: Option<TrainingCallback<T>>,
 }
 
-impl<T: Float + Send> BatchBackprop<T> {
+impl<T: Float + Send + Default> BatchBackprop<T> {
     pub fn new(learning_rate: T) -> Self {
         Self {
             learning_rate,
@@ -261,28 +261,110 @@ impl<T: Float + Send> BatchBackprop<T> {
     }
 }
 
-impl<T: Float + Send> TrainingAlgorithm<T> for BatchBackprop<T> {
+impl<T: Float + Send + Default> TrainingAlgorithm<T> for BatchBackprop<T> {
     fn train_epoch(
         &mut self,
         network: &mut Network<T>,
         data: &TrainingData<T>,
     ) -> Result<T, TrainingError> {
+        use super::helpers::*;
+
         self.initialize_deltas(network);
 
         let mut total_error = T::zero();
 
+        // Convert network to simplified form for easier manipulation
+        let simple_network = network_to_simple(network);
+
+        // Initialize gradient accumulators
+        let mut accumulated_weight_gradients = simple_network
+            .weights
+            .iter()
+            .map(|w| vec![T::zero(); w.len()])
+            .collect::<Vec<_>>();
+        let mut accumulated_bias_gradients = simple_network
+            .biases
+            .iter()
+            .map(|b| vec![T::zero(); b.len()])
+            .collect::<Vec<_>>();
+
         // Accumulate gradients over all patterns
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
-            let output = network.run(input);
-            total_error = total_error + self.error_function.calculate(&output, desired_output);
+            // Forward propagation to get all layer activations
+            let activations = forward_propagate(&simple_network, input);
 
-            // Accumulate gradients here (placeholder)
+            // Get output from last layer
+            let output = &activations[activations.len() - 1];
+
+            // Calculate error
+            total_error = total_error + self.error_function.calculate(output, desired_output);
+
+            // Calculate gradients using backpropagation
+            let (weight_gradients, bias_gradients) = calculate_gradients(
+                &simple_network,
+                &activations,
+                desired_output,
+                self.error_function.as_ref(),
+            );
+
+            // Accumulate gradients
+            for layer_idx in 0..weight_gradients.len() {
+                for i in 0..weight_gradients[layer_idx].len() {
+                    accumulated_weight_gradients[layer_idx][i] =
+                        accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
+                }
+                for i in 0..bias_gradients[layer_idx].len() {
+                    accumulated_bias_gradients[layer_idx][i] =
+                        accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
+                }
+            }
         }
 
-        // Update weights after processing all patterns
-        // Placeholder for actual batch update implementation
+        // Average gradients by batch size
+        let batch_size = T::from(data.inputs.len()).unwrap();
+        for layer_idx in 0..accumulated_weight_gradients.len() {
+            for i in 0..accumulated_weight_gradients[layer_idx].len() {
+                accumulated_weight_gradients[layer_idx][i] =
+                    accumulated_weight_gradients[layer_idx][i] / batch_size;
+            }
+            for i in 0..accumulated_bias_gradients[layer_idx].len() {
+                accumulated_bias_gradients[layer_idx][i] =
+                    accumulated_bias_gradients[layer_idx][i] / batch_size;
+            }
+        }
 
-        Ok(total_error / T::from(data.inputs.len()).unwrap())
+        // Update weights and biases using accumulated gradients with momentum
+        let mut weight_updates = Vec::new();
+        let mut bias_updates = Vec::new();
+
+        for layer_idx in 0..accumulated_weight_gradients.len() {
+            let mut layer_weight_updates = Vec::new();
+            let mut layer_bias_updates = Vec::new();
+
+            // Update weights with momentum
+            for (i, &grad) in accumulated_weight_gradients[layer_idx].iter().enumerate() {
+                let delta = self.learning_rate * grad
+                    + self.momentum * self.previous_weight_deltas[layer_idx][i];
+                self.previous_weight_deltas[layer_idx][i] = delta;
+                layer_weight_updates.push(delta);
+            }
+
+            // Update biases with momentum
+            for (i, &grad) in accumulated_bias_gradients[layer_idx].iter().enumerate() {
+                let delta = self.learning_rate * grad
+                    + self.momentum * self.previous_bias_deltas[layer_idx][i];
+                self.previous_bias_deltas[layer_idx][i] = delta;
+                layer_bias_updates.push(delta);
+            }
+
+            weight_updates.push(layer_weight_updates);
+            bias_updates.push(layer_bias_updates);
+        }
+
+        // Apply the updates to the actual network
+        apply_updates_to_network(network, &weight_updates, &bias_updates);
+
+        Ok(total_error / batch_size)
     }
 
     fn calculate_error(&self, network: &Network<T>, data: &TrainingData<T>) -> T {

@@ -1,12 +1,14 @@
 //! Resilient Propagation (RPROP) training algorithm
 
+#![allow(clippy::needless_range_loop)]
+
 use super::*;
 use num_traits::Float;
 use std::collections::HashMap;
 
 /// RPROP (Resilient Propagation) trainer
 /// An adaptive learning algorithm that only uses the sign of the gradient
-pub struct Rprop<T: Float + Send> {
+pub struct Rprop<T: Float + Send + Default> {
     increase_factor: T,
     decrease_factor: T,
     delta_min: T,
@@ -23,7 +25,7 @@ pub struct Rprop<T: Float + Send> {
     callback: Option<TrainingCallback<T>>,
 }
 
-impl<T: Float + Send> Rprop<T> {
+impl<T: Float + Send + Default> Rprop<T> {
     pub fn new() -> Self {
         Self {
             increase_factor: T::from(1.2).unwrap(),
@@ -127,37 +129,208 @@ impl<T: Float + Send> Rprop<T> {
     }
 }
 
-impl<T: Float + Send> Default for Rprop<T> {
+impl<T: Float + Send + Default> Default for Rprop<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Float + Send> TrainingAlgorithm<T> for Rprop<T> {
+impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
     fn train_epoch(
         &mut self,
         network: &mut Network<T>,
         data: &TrainingData<T>,
     ) -> Result<T, TrainingError> {
+        use super::helpers::*;
+
         self.initialize_state(network);
 
         let mut total_error = T::zero();
 
+        // Convert network to simplified form for easier manipulation
+        let simple_network = network_to_simple(network);
+
+        // Initialize gradient accumulators
+        let mut accumulated_weight_gradients = simple_network
+            .weights
+            .iter()
+            .map(|w| vec![T::zero(); w.len()])
+            .collect::<Vec<_>>();
+        let mut accumulated_bias_gradients = simple_network
+            .biases
+            .iter()
+            .map(|b| vec![T::zero(); b.len()])
+            .collect::<Vec<_>>();
+
         // Calculate gradients over entire dataset
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
-            let output = network.run(input);
-            total_error = total_error + self.error_function.calculate(&output, desired_output);
+            // Forward propagation to get all layer activations
+            let activations = forward_propagate(&simple_network, input);
 
-            // Calculate and accumulate gradients (placeholder)
-            // In a full implementation, you would:
-            // 1. Perform backpropagation to calculate gradients
-            // 2. Update weights using RPROP rules
+            // Get output from last layer
+            let output = &activations[activations.len() - 1];
+
+            // Calculate error
+            total_error = total_error + self.error_function.calculate(output, desired_output);
+
+            // Calculate gradients using backpropagation
+            let (weight_gradients, bias_gradients) = calculate_gradients(
+                &simple_network,
+                &activations,
+                desired_output,
+                self.error_function.as_ref(),
+            );
+
+            // Accumulate gradients
+            for layer_idx in 0..weight_gradients.len() {
+                for i in 0..weight_gradients[layer_idx].len() {
+                    accumulated_weight_gradients[layer_idx][i] =
+                        accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
+                }
+                for i in 0..bias_gradients[layer_idx].len() {
+                    accumulated_bias_gradients[layer_idx][i] =
+                        accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
+                }
+            }
         }
 
-        // Placeholder for RPROP weight updates
-        // This would apply the RPROP algorithm to update weights based on gradient signs
+        // Average gradients by batch size
+        let batch_size = T::from(data.inputs.len()).unwrap();
+        for layer_idx in 0..accumulated_weight_gradients.len() {
+            for i in 0..accumulated_weight_gradients[layer_idx].len() {
+                accumulated_weight_gradients[layer_idx][i] =
+                    accumulated_weight_gradients[layer_idx][i] / batch_size;
+            }
+            for i in 0..accumulated_bias_gradients[layer_idx].len() {
+                accumulated_bias_gradients[layer_idx][i] =
+                    accumulated_bias_gradients[layer_idx][i] / batch_size;
+            }
+        }
 
-        Ok(total_error / T::from(data.inputs.len()).unwrap())
+        // Apply RPROP updates
+        let mut weight_updates = Vec::new();
+        let mut bias_updates = Vec::new();
+
+        // Update weights using RPROP algorithm
+        for layer_idx in 0..accumulated_weight_gradients.len() {
+            let mut layer_weight_updates = Vec::new();
+
+            for i in 0..accumulated_weight_gradients[layer_idx].len() {
+                let current_gradient = accumulated_weight_gradients[layer_idx][i];
+                let previous_gradient = self.previous_weight_gradients[layer_idx][i];
+                let sign_change = current_gradient * previous_gradient;
+
+                // Update step size based on gradient sign change
+                if sign_change > T::zero() {
+                    // Same sign - increase step size
+                    self.weight_step_sizes[layer_idx][i] = (self.weight_step_sizes[layer_idx][i]
+                        * self.increase_factor)
+                        .min(self.delta_max);
+
+                    // Update weight
+                    let update = if current_gradient > T::zero() {
+                        -self.weight_step_sizes[layer_idx][i]
+                    } else if current_gradient < T::zero() {
+                        self.weight_step_sizes[layer_idx][i]
+                    } else {
+                        T::zero()
+                    };
+                    layer_weight_updates.push(update);
+
+                    // Store gradient for next iteration
+                    self.previous_weight_gradients[layer_idx][i] = current_gradient;
+                } else if sign_change < T::zero() {
+                    // Sign changed - decrease step size and backtrack
+                    self.weight_step_sizes[layer_idx][i] = (self.weight_step_sizes[layer_idx][i]
+                        * self.decrease_factor)
+                        .max(self.delta_min);
+
+                    // Don't update weight (backtrack)
+                    layer_weight_updates.push(T::zero());
+
+                    // Set gradient to zero to prevent another sign change detection
+                    self.previous_weight_gradients[layer_idx][i] = T::zero();
+                } else {
+                    // No previous gradient or current gradient is zero
+                    let update = if current_gradient > T::zero() {
+                        -self.weight_step_sizes[layer_idx][i]
+                    } else if current_gradient < T::zero() {
+                        self.weight_step_sizes[layer_idx][i]
+                    } else {
+                        T::zero()
+                    };
+                    layer_weight_updates.push(update);
+
+                    // Store gradient for next iteration
+                    self.previous_weight_gradients[layer_idx][i] = current_gradient;
+                }
+            }
+
+            weight_updates.push(layer_weight_updates);
+        }
+
+        // Update biases using RPROP algorithm
+        for layer_idx in 0..accumulated_bias_gradients.len() {
+            let mut layer_bias_updates = Vec::new();
+
+            for i in 0..accumulated_bias_gradients[layer_idx].len() {
+                let current_gradient = accumulated_bias_gradients[layer_idx][i];
+                let previous_gradient = self.previous_bias_gradients[layer_idx][i];
+                let sign_change = current_gradient * previous_gradient;
+
+                // Update step size based on gradient sign change
+                if sign_change > T::zero() {
+                    // Same sign - increase step size
+                    self.bias_step_sizes[layer_idx][i] = (self.bias_step_sizes[layer_idx][i]
+                        * self.increase_factor)
+                        .min(self.delta_max);
+
+                    // Update bias
+                    let update = if current_gradient > T::zero() {
+                        -self.bias_step_sizes[layer_idx][i]
+                    } else if current_gradient < T::zero() {
+                        self.bias_step_sizes[layer_idx][i]
+                    } else {
+                        T::zero()
+                    };
+                    layer_bias_updates.push(update);
+
+                    // Store gradient for next iteration
+                    self.previous_bias_gradients[layer_idx][i] = current_gradient;
+                } else if sign_change < T::zero() {
+                    // Sign changed - decrease step size and backtrack
+                    self.bias_step_sizes[layer_idx][i] = (self.bias_step_sizes[layer_idx][i]
+                        * self.decrease_factor)
+                        .max(self.delta_min);
+
+                    // Don't update bias (backtrack)
+                    layer_bias_updates.push(T::zero());
+
+                    // Set gradient to zero to prevent another sign change detection
+                    self.previous_bias_gradients[layer_idx][i] = T::zero();
+                } else {
+                    // No previous gradient or current gradient is zero
+                    let update = if current_gradient > T::zero() {
+                        -self.bias_step_sizes[layer_idx][i]
+                    } else if current_gradient < T::zero() {
+                        self.bias_step_sizes[layer_idx][i]
+                    } else {
+                        T::zero()
+                    };
+                    layer_bias_updates.push(update);
+
+                    // Store gradient for next iteration
+                    self.previous_bias_gradients[layer_idx][i] = current_gradient;
+                }
+            }
+
+            bias_updates.push(layer_bias_updates);
+        }
+
+        // Apply the updates to the actual network
+        apply_updates_to_network(network, &weight_updates, &bias_updates);
+
+        Ok(total_error / batch_size)
     }
 
     fn calculate_error(&self, network: &Network<T>, data: &TrainingData<T>) -> T {
