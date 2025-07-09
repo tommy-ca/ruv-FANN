@@ -70,19 +70,21 @@ use tracing::{debug, error, info};
 use uuid::Uuid;
 
 pub mod error;
-pub mod handlers;
-pub mod limits;
+// pub mod handlers;  // Temporarily disabled for simple service test
+// pub mod limits;    // Temporarily disabled for simple service test
 pub mod orchestrator;
-pub mod tools;
+pub mod service;
+// pub mod tools;     // Temporarily disabled for simple service test
 pub mod types;
-pub mod validation;
+// pub mod validation;   // Temporarily disabled for simple service test
 
 use crate::orchestrator::SwarmOrchestrator;
 
-use crate::handlers::RequestHandler;
-use crate::limits::{ResourceLimiter, ResourceLimits};
-use crate::tools::ToolRegistry;
+// use crate::handlers::RequestHandler;  // Temporarily disabled
+// use crate::limits::{ResourceLimiter, ResourceLimits};  // Temporarily disabled
+// use crate::tools::ToolRegistry;  // Temporarily disabled
 
+/*
 /// MCP Server configuration
 /// 
 /// This struct defines the configuration options for the MCP server,
@@ -484,6 +486,8 @@ pub struct McpError {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
+
+*/
 
 #[cfg(test)]
 mod tests;
