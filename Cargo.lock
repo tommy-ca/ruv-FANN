@@ -1493,6 +1493,7 @@ dependencies = [
  "futures",
  "getrandom 0.2.16",
  "js-sys",
+ "lazy_static",
  "log",
  "num-traits",
  "num_cpus",

@@ -53,6 +53,10 @@ pub mod io;
 // WebGPU acceleration module
 pub mod webgpu;
 
+// SIMD acceleration module (CPU optimizations)
+#[cfg(feature = "parallel")]
+pub mod simd;
+
 // Test module
 #[cfg(test)]
 mod tests;
