@@ -1,10 +1,13 @@
-//! Integration tests for RUV-Swarm MCP server
+//! Integration tests for RUV-Swarm MCP server functionality
+//!
+//! These tests verify that different components work together correctly
+//! and that the MCP protocol implementation functions as expected.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use ruv_swarm_core::SwarmConfig;
-use ruv_swarm_mcp::{
+use crate::{
     orchestrator::SwarmOrchestrator, McpConfig, McpRequest, McpResponse, McpServer,
 };
 use serde_json::json;
@@ -19,8 +22,8 @@ async fn test_server_creation() {
 
     let server = McpServer::new(orchestrator, mcp_config);
 
-    // Server should be created successfully
-    assert!(true); // If we get here, server was created
+    // Server should be created successfully - verify it has tools registered
+    assert!(server.state.tools.count() > 0);
 }
 
 /// Test MCP request/response structures
@@ -61,7 +64,7 @@ fn test_mcp_response_serialization() {
 /// Test tool registry
 #[test]
 fn test_tool_registry() {
-    use ruv_swarm_mcp::tools::{register_tools, ToolRegistry};
+    use crate::tools::{register_tools, ToolRegistry};
 
     let registry = ToolRegistry::new();
     register_tools(&registry);
@@ -80,7 +83,7 @@ fn test_tool_registry() {
 /// Test orchestrator agent spawning
 #[tokio::test]
 async fn test_orchestrator_spawn_agent() {
-    use ruv_swarm_mcp::types::{AgentCapabilities, AgentType};
+    use crate::types::{AgentCapabilities, AgentType};
 
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config);
@@ -105,7 +108,7 @@ async fn test_orchestrator_spawn_agent() {
 /// Test orchestrator task creation
 #[tokio::test]
 async fn test_orchestrator_task_creation() {
-    use ruv_swarm_mcp::types::TaskPriority;
+    use crate::types::TaskPriority;
 
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config);
@@ -126,7 +129,7 @@ async fn test_orchestrator_task_creation() {
 /// Test swarm state query
 #[tokio::test]
 async fn test_swarm_state_query() {
-    use ruv_swarm_mcp::types::{AgentCapabilities, AgentType};
+    use crate::types::{AgentCapabilities, AgentType};
 
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config);
@@ -136,7 +139,7 @@ async fn test_swarm_state_query() {
         orchestrator
             .spawn_agent(
                 AgentType::Coder,
-                Some(format!("Agent {}", i)),
+                Some(format!("Agent {i}")),
                 AgentCapabilities::default(),
             )
             .await

@@ -3197,7 +3197,7 @@ impl ConflictResolutionStrategy for ContentionResolutionStrategy {
                         affected_agents: vec![agent_id.clone()],
                         severity: 1.0 - metrics.efficiency,
                         detected_at: SystemTime::now(),
-                        description: format!("Resource contention detected for agent {}", agent_id),
+                        description: format!("Resource contention detected for agent {agent_id}"),
                     };
                     conflicts.push(conflict);
                 }

@@ -122,7 +122,7 @@ impl DotExporter {
                         let weight = network.weights[weight_idx];
 
                         let color = if weight > 0.0 { "blue" } else { "red" };
-                        let width = (weight.abs() * 5.0).max(0.5).min(5.0);
+                        let width = (weight.abs() * 5.0).clamp(0.5, 5.0);
 
                         writeln!(
                             writer,

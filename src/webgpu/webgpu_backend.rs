@@ -8,6 +8,8 @@
 //! - **GPU Acceleration**: High-performance matrix operations using WebGPU compute shaders
 //! - **DAA Integration**: Seamless compatibility with Decentralized Autonomous Agents
 //! - **ComputeContext Bridge**: Direct `Network<T>` integration for performance
+
+#![allow(clippy::needless_range_loop)]
 //! - **Pipeline Caching**: Advanced shader pipeline caching and optimization
 //! - **Memory Pooling**: Intelligent GPU buffer management with automatic cleanup
 //! - **Performance Monitoring**: Real-time performance tracking and optimization
@@ -187,8 +189,7 @@ pub mod webgpu_impl {
             // Step 3: Initialize shader manager with error handling
             let shader_manager = ShaderManager::new().map_err(|e| {
                 ComputeError::InitializationError(format!(
-                    "Failed to initialize shader manager: {:?}",
-                    e
+                    "Failed to initialize shader manager: {e:?}"
                 ))
             })?;
 
@@ -742,8 +743,7 @@ pub mod webgpu_impl {
                 }
                 _ => {
                     return Err(ComputeError::UnsupportedOperation(format!(
-                        "Activation function {:?} not yet implemented in WebGPU backend",
-                        function
+                        "Activation function {function:?} not yet implemented in WebGPU backend"
                     )));
                 }
             }

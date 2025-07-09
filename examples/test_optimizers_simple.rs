@@ -1,12 +1,12 @@
 //! Test optimizers with simpler problem and better parameters
 
-use ruv_fann::*;
 use ruv_fann::training::*;
+use ruv_fann::*;
 
 fn main() {
     println!("🧪 Testing Optimizers with Improved Parameters");
     println!("===============================================");
-    
+
     // Create XOR training data
     let train_data = TrainingData {
         inputs: vec![
@@ -15,28 +15,28 @@ fn main() {
             vec![1.0, 0.0],
             vec![1.0, 1.0],
         ],
-        outputs: vec![
-            vec![0.0],
-            vec![1.0],
-            vec![1.0],
-            vec![0.0],
-        ],
+        outputs: vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]],
     };
-    
+
     println!("🎯 Target: Learn XOR function");
     println!("📊 Training data:");
-    for (i, (input, output)) in train_data.inputs.iter().zip(train_data.outputs.iter()).enumerate() {
+    for (i, (input, output)) in train_data
+        .inputs
+        .iter()
+        .zip(train_data.outputs.iter())
+        .enumerate()
+    {
         println!("  {:?} -> {:?}", input, output);
     }
-    
+
     // Test 1: SGD with higher learning rate
     println!("\n1️⃣ SGD with LR=1.0:");
     test_sgd_higher_lr(&train_data);
-    
-    // Test 2: Adam with higher learning rate  
+
+    // Test 2: Adam with higher learning rate
     println!("\n2️⃣ Adam with LR=0.1:");
     test_adam_higher_lr(&train_data);
-    
+
     // Test 3: Simple linear problem (easier than XOR)
     println!("\n3️⃣ Linear problem test (y = x1 + x2):");
     test_linear_problem();
@@ -48,9 +48,9 @@ fn test_sgd_higher_lr(train_data: &TrainingData<f32>) {
         .hidden_layer(4)
         .output_layer(1)
         .build();
-    
-    let mut trainer = IncrementalBackprop::new(1.0);  // Much higher LR
-    
+
+    let mut trainer = IncrementalBackprop::new(1.0); // Much higher LR
+
     for epoch in 0..200 {
         match trainer.train_epoch(&mut network, train_data) {
             Ok(error) => {
@@ -78,9 +78,9 @@ fn test_adam_higher_lr(train_data: &TrainingData<f32>) {
         .hidden_layer(4)
         .output_layer(1)
         .build();
-    
-    let mut trainer = Adam::new(0.1);  // Higher LR for Adam
-    
+
+    let mut trainer = Adam::new(0.1); // Higher LR for Adam
+
     for epoch in 0..200 {
         match trainer.train_epoch(&mut network, train_data) {
             Ok(error) => {
@@ -112,21 +112,21 @@ fn test_linear_problem() {
             vec![1.0, 1.0],
         ],
         outputs: vec![
-            vec![0.0],  // 0 + 0 = 0
-            vec![1.0],  // 0 + 1 = 1
-            vec![1.0],  // 1 + 0 = 1
-            vec![2.0],  // 1 + 1 = 2
+            vec![0.0], // 0 + 0 = 0
+            vec![1.0], // 0 + 1 = 1
+            vec![1.0], // 1 + 0 = 1
+            vec![2.0], // 1 + 1 = 2
         ],
     };
-    
+
     let mut network = NetworkBuilder::new()
         .input_layer(2)
         .hidden_layer(3)
         .output_layer(1)
         .build();
-    
+
     let mut trainer = Adam::new(0.01);
-    
+
     for epoch in 0..100 {
         match trainer.train_epoch(&mut network, &train_data) {
             Ok(error) => {
@@ -135,7 +135,10 @@ fn test_linear_problem() {
                     test_network_outputs(&mut network, &train_data);
                 }
                 if error < 0.01 {
-                    println!("  ✅ Linear problem converged at epoch {} with error {:.6}", epoch, error);
+                    println!(
+                        "  ✅ Linear problem converged at epoch {} with error {:.6}",
+                        epoch, error
+                    );
                     return;
                 }
             }

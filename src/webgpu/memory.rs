@@ -938,10 +938,7 @@ impl EnhancedGpuMemoryManager {
         #[cfg(feature = "gpu")]
         if let Some(ref _pool) = self.advanced_pool {
             // Advanced buffer pool cleanup - for now just log
-            println!(
-                "Cleaning up advanced buffer pool with aggressiveness: {}",
-                _aggressiveness
-            );
+            println!("Cleaning up advanced buffer pool with aggressiveness: {_aggressiveness}");
         }
         Ok(())
     }

@@ -8,6 +8,8 @@
 //!
 //! All training algorithms implement the `TrainingAlgorithm` trait for extensibility.
 
+#![allow(clippy::needless_range_loop)]
+
 use crate::Network;
 use num_traits::Float;
 use std::collections::HashMap;
@@ -477,13 +479,14 @@ pub mod helpers {
                 // Sum weighted errors from next layer
                 let next_layer_idx = layer_idx + 1;
                 let next_layer_weights_idx = layer_idx; // weights[i] connects layer i to layer i+1
-                
+
                 for next_neuron_idx in 0..network.layer_sizes[next_layer_idx] {
                     // Weight from current neuron to next layer neuron
                     let weight_idx = next_neuron_idx * network.layer_sizes[layer_idx] + neuron_idx;
                     if weight_idx < network.weights[next_layer_weights_idx].len() {
                         error_sum = error_sum
-                            + layer_errors[next_layer_idx][next_neuron_idx] * network.weights[next_layer_weights_idx][weight_idx];
+                            + layer_errors[next_layer_idx][next_neuron_idx]
+                                * network.weights[next_layer_weights_idx][weight_idx];
                     }
                 }
 
@@ -530,3 +533,6 @@ mod tests {
         assert!(sigmoid(-10.0) < 0.01);
     }
 }
+
+#[cfg(test)]
+mod test_all_algorithms;
