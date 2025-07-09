@@ -22,8 +22,8 @@ async fn test_server_creation() {
 
     let server = McpServer::new(orchestrator, mcp_config);
 
-    // Server should be created successfully
-    assert!(true); // If we get here, server was created
+    // Server should be created successfully - verify it has tools registered
+    assert!(server.state.tools.count() > 0);
 }
 
 /// Test MCP request/response structures
@@ -139,7 +139,7 @@ async fn test_swarm_state_query() {
         orchestrator
             .spawn_agent(
                 AgentType::Coder,
-                Some(format!("Agent {}", i)),
+                Some(format!("Agent {i}")),
                 AgentCapabilities::default(),
             )
             .await

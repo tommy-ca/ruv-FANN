@@ -298,7 +298,7 @@ async fn test_concurrent_connections() {
         let orchestrator_clone = orchestrator.clone();
         let handle = tokio::spawn(async move {
             let result = orchestrator_clone.get_swarm_state().await;
-            assert!(result.is_ok(), "Concurrent operation {} failed", i);
+            assert!(result.is_ok(), "Concurrent operation {i} failed");
         });
         handles.push(handle);
     }
