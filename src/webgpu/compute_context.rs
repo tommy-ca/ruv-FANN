@@ -544,7 +544,7 @@ impl<T: Float + Send + Sync + std::fmt::Debug + 'static> ComputeContext<T> {
             0.0
         }
     }
-    
+
     /// Get memory manager for GPU buffer operations
     pub fn memory_manager(&self) -> GpuMemoryManager<T> {
         GpuMemoryManager::new()
@@ -563,26 +563,30 @@ impl<T: Float> GpuMemoryManager<T> {
             _phantom: std::marker::PhantomData,
         }
     }
-    
+
     /// Allocate a GPU buffer
     pub fn allocate_buffer(&self, size: usize) -> ComputeResult<super::memory::BufferHandle> {
         // TODO: Implement actual GPU buffer allocation
         // For now, return a placeholder handle
         Ok(super::memory::BufferHandle::new(size as u64))
     }
-    
+
     /// Upload data to GPU buffer
-    pub fn upload_data(&self, _handle: super::memory::BufferHandle, _data: &[T]) -> ComputeResult<()> {
+    pub fn upload_data(
+        &self,
+        _handle: super::memory::BufferHandle,
+        _data: &[T],
+    ) -> ComputeResult<()> {
         // TODO: Implement GPU data upload
         Ok(())
     }
-    
+
     /// Download data from GPU buffer
     pub fn download_data(&self, _handle: super::memory::BufferHandle) -> ComputeResult<Vec<T>> {
         // TODO: Implement GPU data download
         Ok(Vec::new())
     }
-    
+
     /// Deallocate GPU buffer
     pub fn deallocate_buffer(&self, _handle: super::memory::BufferHandle) -> ComputeResult<()> {
         // TODO: Implement GPU buffer deallocation
