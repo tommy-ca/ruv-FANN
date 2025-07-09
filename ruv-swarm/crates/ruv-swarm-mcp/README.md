@@ -374,14 +374,18 @@ export RUV_SWARM_DEBUG=true
 ### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (24 unit tests + 4 doc tests)
 cargo test
 
-# Run MCP integration tests
-cargo test mcp_integration
+# Run specific test modules
+cargo test tests::integration_tests
+cargo test tests::security_tests
 
 # Run with debug output
 RUST_LOG=debug cargo test -- --nocapture
+
+# Run individual test
+cargo test test_mcp_server_creation
 ```
 
 ### Development Setup

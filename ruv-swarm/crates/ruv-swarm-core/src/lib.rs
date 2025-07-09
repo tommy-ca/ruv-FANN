@@ -70,7 +70,7 @@ mod tests;
 // Re-export commonly used types
 pub use agent::{
     Agent, AgentMessage, AgentMetadata, AgentMetrics, BoxedAgent, CognitivePattern, ErasedAgent,
-    HealthStatus, MessageType, ResourceRequirements, Capability,
+    HealthStatus, MessageType, ResourceRequirements, Capability, DynamicAgent, AgentStatus, AgentId
 };
 
 #[cfg(test)]

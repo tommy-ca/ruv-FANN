@@ -58,19 +58,5 @@ debug-js-glue = true
 demangle-name-section = true
 dwarf-debug-info = true
 
-[profile.release]
-# Optimize for size
-opt-level = "z"
-# LTO for cdylib targets
-lto = true
-# Strip debug symbols  
-strip = true
-# Single codegen unit for better optimization
-codegen-units = 1
-# Reduce binary size by removing panic handling
-panic = "abort"
-# Disable overflow checks in release mode
-overflow-checks = false
-
 # SIMD configuration is handled via RUSTFLAGS environment variable
 # and build.rs script for better cross-platform compatibility
