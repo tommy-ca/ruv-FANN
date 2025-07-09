@@ -71,7 +71,7 @@ impl<T: Float> MemoryManager<T> {
             self.update_stats();
             Ok(buffer)
         } else {
-            Err(format!("Pool '{}' not found", pool_name))
+            Err(format!("Pool '{pool_name}' not found"))
         }
     }
 
@@ -84,7 +84,7 @@ impl<T: Float> MemoryManager<T> {
             self.update_stats();
             Ok(())
         } else {
-            Err(format!("Pool '{}' not found", pool_name))
+            Err(format!("Pool '{pool_name}' not found"))
         }
     }
 
@@ -182,8 +182,8 @@ impl<T: Float> MemoryPool<T> {
     }
 }
 
-/// Global memory manager instance
 lazy_static::lazy_static! {
+    /// Global memory manager instance
     static ref GLOBAL_MEMORY_MANAGER: Arc<Mutex<MemoryManager<f32>>> = Arc::new(Mutex::new(MemoryManager::new()));
 }
 

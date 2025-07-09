@@ -1,6 +1,8 @@
 //! GPU Kernel Optimization System
 //! Advanced workgroup sizing, memory coalescing, and performance optimization
 
+#![allow(clippy::manual_div_ceil)]
+
 use crate::webgpu::error::ComputeError;
 use std::collections::HashMap;
 

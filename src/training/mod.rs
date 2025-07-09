@@ -8,6 +8,8 @@
 //!
 //! All training algorithms implement the `TrainingAlgorithm` trait for extensibility.
 
+#![allow(clippy::needless_range_loop)]
+
 use crate::Network;
 use num_traits::Float;
 use std::collections::HashMap;

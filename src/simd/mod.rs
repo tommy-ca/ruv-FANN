@@ -414,7 +414,9 @@ impl CpuSimdOps {
             }
             ActivationFunction::Gelu => {
                 for x in data.iter_mut() {
-                    *x = *x * 0.5 * (1.0 + (0.7978845608 * (*x + 0.044715 * x.powi(3))).tanh());
+                    // GELU approximation: 0.5 * x * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x³)))
+                    let sqrt_2_over_pi = (2.0f32 / std::f32::consts::PI).sqrt();
+                    *x = *x * 0.5 * (1.0 + (sqrt_2_over_pi * (*x + 0.044715 * x.powi(3))).tanh());
                 }
             }
             ActivationFunction::Swish => {
@@ -488,9 +490,10 @@ impl CpuSimdOps {
             }
             ActivationFunction::Gelu => {
                 for (i, &x) in data.iter().enumerate() {
-                    let tanh_arg = 0.7978845608 * (x + 0.044715 * x.powi(3));
+                    let sqrt_2_over_pi = (2.0f32 / std::f32::consts::PI).sqrt();
+                    let tanh_arg = sqrt_2_over_pi * (x + 0.044715 * x.powi(3));
                     let tanh_val = tanh_arg.tanh();
-                    derivatives[i] = 0.5 * (1.0 + tanh_val + x * 0.7978845608 * (1.0 - tanh_val * tanh_val) * (1.0 + 0.134145 * x * x));
+                    derivatives[i] = 0.5 * (1.0 + tanh_val + x * sqrt_2_over_pi * (1.0 - tanh_val * tanh_val) * (1.0 + 0.134145 * x * x));
                 }
             }
             ActivationFunction::Swish => {
@@ -571,7 +574,7 @@ impl ParallelTraining {
         outputs: &[Vec<f32>],
         processor: F,
     ) where
-        F: Fn(&[f32], &[f32]) -> () + Send + Sync,
+        F: Fn(&[f32], &[f32]) + Send + Sync,
     {
         use rayon::prelude::*;
         

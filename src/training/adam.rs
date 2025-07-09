@@ -9,6 +9,8 @@
 //! - Better handling of sparse gradients and noisy data
 //! - Adaptive learning rates per parameter
 
+#![allow(clippy::needless_range_loop)]
+
 use super::*;
 use num_traits::Float;
 use std::collections::HashMap;
@@ -179,10 +181,9 @@ impl<T: Float + Send + Default> Adam<T> {
         
         // Apply weight decay if specified (Adam approach - apply to gradients)
         if self.weight_decay > T::zero() {
-            for layer_idx in 0..weight_updates.len() {
-                for i in 0..weight_updates[layer_idx].len() {
-                    weight_updates[layer_idx][i] = weight_updates[layer_idx][i] - 
-                        self.learning_rate * self.weight_decay;
+            for layer_updates in &mut weight_updates {
+                for update in layer_updates {
+                    *update = *update - self.learning_rate * self.weight_decay;
                 }
             }
         }
