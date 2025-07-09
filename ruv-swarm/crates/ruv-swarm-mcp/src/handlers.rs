@@ -9,8 +9,8 @@ use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use crate::{
-    orchestrator::SwarmOrchestrator, tools::ToolRegistry, types::*, McpRequest, McpResponse,
-    Session,
+    limits::ResourceLimiter, orchestrator::SwarmOrchestrator, tools::ToolRegistry, types::*,
+    validation::InputValidator, McpRequest, McpResponse, Session,
 };
 
 /// Request handler
@@ -18,7 +18,9 @@ pub struct RequestHandler {
     orchestrator: Arc<SwarmOrchestrator>,
     tools: Arc<ToolRegistry>,
     session: Arc<Session>,
+    limiter: Arc<ResourceLimiter>,
     tx: mpsc::Sender<axum::extract::ws::Message>,
+    validator: InputValidator,
 }
 
 impl RequestHandler {
@@ -26,13 +28,16 @@ impl RequestHandler {
         orchestrator: Arc<SwarmOrchestrator>,
         tools: Arc<ToolRegistry>,
         session: Arc<Session>,
+        limiter: Arc<ResourceLimiter>,
         tx: mpsc::Sender<axum::extract::ws::Message>,
     ) -> Self {
         Self {
             orchestrator,
             tools,
             session,
+            limiter,
             tx,
+            validator: InputValidator::default(),
         }
     }
 
@@ -80,19 +85,23 @@ impl RequestHandler {
         message: &str,
         suggestions: Vec<&str>,
     ) -> McpResponse {
-        let error_details = json!({
-            "error_type": error_type,
-            "message": message,
-            "suggestions": suggestions,
-            "timestamp": chrono::Utc::now(),
-            "session_id": self.session.id
-        });
+        // In production, only return safe error messages
+        // Debug mode can include more details for development
+        let safe_message = if cfg!(debug_assertions) {
+            let error_details = json!({
+                "error_type": error_type,
+                "message": message,
+                "suggestions": suggestions,
+                "timestamp": chrono::Utc::now(),
+                "session_id": self.session.id
+            });
+            serde_json::to_string(&error_details).unwrap_or_else(|_| message.to_string())
+        } else {
+            // Production: return only the message without internal details
+            message.to_string()
+        };
 
-        McpResponse::error(
-            id,
-            code,
-            serde_json::to_string(&error_details).unwrap_or_else(|_| message.to_string()),
-        )
+        McpResponse::error(id, code, safe_message)
     }
 
     /// Handle MCP request
@@ -112,7 +121,7 @@ impl RequestHandler {
             _ => Ok(McpResponse::error(
                 request.id,
                 -32601,
-                format!("Method not found: {}", request.method),
+                "Method not found".to_string(),
             )),
         }
     }
@@ -170,11 +179,10 @@ impl RequestHandler {
                 request.id,
                 -32602,
                 "TOOL_NOT_FOUND",
-                &format!("Unknown tool: {tool_name}"),
+                "Unknown tool specified",
                 vec![
                     "Check the tool name spelling",
                     "Use tools/list to see available tools",
-                    &format!("Available tools: {}", self.get_available_tools().join(", ")),
                 ],
             ));
         }
@@ -286,9 +294,24 @@ impl RequestHandler {
 
     /// Handle spawn tool with enhanced validation
     async fn handle_spawn(&self, id: Option<Value>, params: &Value) -> anyhow::Result<McpResponse> {
+        // Validate parameters first
+        if let Err(e) = self.validator.validate_spawn_params(params) {
+            return Ok(self.create_detailed_error(
+                id,
+                -32602,
+                "VALIDATION_ERROR",
+                &e.to_string(),
+                vec![
+                    "Check parameter types and values",
+                    "Ensure required fields are present"
+                ]
+            ));
+        }
+
+        // Safe to unwrap after validation
         let agent_type_str = params.get("agent_type")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("VALIDATION_ERROR: Missing required parameter 'agent_type'. Expected one of: researcher, coder, analyst, tester, reviewer, documenter"))?;
+            .unwrap();
 
         let agent_type = match agent_type_str {
             "researcher" => AgentType::Researcher,
@@ -297,17 +320,7 @@ impl RequestHandler {
             "tester" => AgentType::Tester,
             "reviewer" => AgentType::Reviewer,
             "documenter" => AgentType::Documenter,
-            _ => return Ok(self.create_detailed_error(
-                id,
-                -32602,
-                "VALIDATION_ERROR",
-                &format!("Invalid agent_type: '{agent_type_str}'. Must be one of: researcher, coder, analyst, tester, reviewer, documenter"),
-                vec![
-                    "Check the agent_type parameter spelling",
-                    "Valid types: researcher, coder, analyst, tester, reviewer, documenter",
-                    "Agent type determines capabilities and cognitive patterns"
-                ]
-            )),
+            _ => unreachable!(), // Validation ensures this won't happen
         };
 
         let name = params
@@ -321,11 +334,30 @@ impl RequestHandler {
             AgentCapabilities::default()
         };
 
+        // Check resource limits before spawning
+        if let Err(e) = self.limiter.check_agent_limit(&self.session.id).await {
+            return Ok(self.create_detailed_error(
+                id,
+                -32005,
+                "RESOURCE_LIMIT",
+                &e.to_string(),
+                vec![
+                    "Agent limit reached for this session",
+                    "Consider terminating unused agents"
+                ]
+            ));
+        }
+
         // Spawn agent
         let agent_id = self
             .orchestrator
             .spawn_agent(agent_type, name, capabilities)
             .await?;
+
+        // Update resource tracking
+        if let Err(e) = self.limiter.increment_agents(&self.session.id).await {
+            error!("Failed to update agent count: {}", e);
+        }
 
         let result = json!({
             "agent_id": agent_id,
@@ -343,10 +375,25 @@ impl RequestHandler {
         id: Option<Value>,
         params: &Value,
     ) -> anyhow::Result<McpResponse> {
+        // Validate parameters first
+        if let Err(e) = self.validator.validate_orchestrate_params(params) {
+            return Ok(self.create_detailed_error(
+                id,
+                -32602,
+                "VALIDATION_ERROR",
+                &e.to_string(),
+                vec![
+                    "Check parameter types and values",
+                    "Ensure objective is provided"
+                ]
+            ));
+        }
+
+        // Safe to unwrap after validation
         let objective = params
             .get("objective")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing required parameter: objective"))?;
+            .unwrap();
 
         let strategy_str = params
             .get("strategy")
@@ -358,9 +405,7 @@ impl RequestHandler {
             "development" => SwarmStrategy::Development,
             "analysis" => SwarmStrategy::Analysis,
             "testing" => SwarmStrategy::Testing,
-            "optimization" => SwarmStrategy::Optimization,
-            "maintenance" => SwarmStrategy::Maintenance,
-            _ => SwarmStrategy::Development,
+            _ => SwarmStrategy::Development, // Validation ensures only valid values
         };
 
         let mode_str = params
@@ -554,19 +599,54 @@ impl RequestHandler {
         id: Option<Value>,
         params: &Value,
     ) -> anyhow::Result<McpResponse> {
+        // Validate parameters first
+        if let Err(e) = self.validator.validate_memory_store_params(params) {
+            return Ok(self.create_detailed_error(
+                id,
+                -32602,
+                "VALIDATION_ERROR",
+                &e.to_string(),
+                vec![
+                    "Check parameter types and values",
+                    "Ensure key and value are provided"
+                ]
+            ));
+        }
+
+        // Safe to unwrap after validation
         let key = params
             .get("key")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing required parameter: key"))?;
+            .unwrap();
 
         let value = params
             .get("value")
-            .ok_or_else(|| anyhow::anyhow!("Missing required parameter: value"))?;
+            .unwrap();
 
         let ttl_secs = params.get("ttl_secs").and_then(|v| v.as_u64());
 
+        // Check memory limits before storing
+        let value_size = serde_json::to_string(&value).unwrap_or_default().len();
+        if let Err(e) = self.limiter.check_memory_limit(&self.session.id, value_size).await {
+            return Ok(self.create_detailed_error(
+                id,
+                -32006,
+                "RESOURCE_LIMIT",
+                &e.to_string(),
+                vec![
+                    "Memory limit reached for this session",
+                    "Consider removing unused data"
+                ]
+            ));
+        }
+
         // Store in session metadata with TTL support
         self.session.metadata.insert(key.to_string(), value.clone());
+
+        // Update resource tracking
+        if let Err(e) = self.limiter.update_memory_usage(&self.session.id, value_size, true).await {
+            error!("Failed to update memory usage: {}", e);
+        }
 
         // If TTL is specified, schedule cleanup
         if let Some(ttl) = ttl_secs {
@@ -675,10 +755,25 @@ impl RequestHandler {
         id: Option<Value>,
         params: &Value,
     ) -> anyhow::Result<McpResponse> {
+        // Validate parameters first, including path traversal protection
+        if let Err(e) = self.validator.validate_workflow_params(params) {
+            return Ok(self.create_detailed_error(
+                id,
+                -32602,
+                "VALIDATION_ERROR",
+                &e.to_string(),
+                vec![
+                    "Check workflow path format",
+                    "Ensure path is relative and safe"
+                ]
+            ));
+        }
+
+        // Safe to unwrap after validation
         let workflow_path = params
             .get("workflow_path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Missing required parameter: workflow_path"))?;
+            .unwrap();
 
         let parameters = params.get("parameters").cloned().unwrap_or(json!({}));
 

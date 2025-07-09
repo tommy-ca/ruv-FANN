@@ -24,6 +24,7 @@ async fn main() -> anyhow::Result<()> {
         max_connections: 100,
         request_timeout_secs: 300,
         debug: true,
+        allowed_origins: vec![], // Default to localhost only
     };
 
     // Create and start the MCP server

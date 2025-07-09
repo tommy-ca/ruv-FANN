@@ -69,14 +69,18 @@ use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
+pub mod error;
 pub mod handlers;
+pub mod limits;
 pub mod orchestrator;
 pub mod tools;
 pub mod types;
+pub mod validation;
 
 use crate::orchestrator::SwarmOrchestrator;
 
 use crate::handlers::RequestHandler;
+use crate::limits::{ResourceLimiter, ResourceLimits};
 use crate::tools::ToolRegistry;
 
 /// MCP Server configuration
@@ -94,6 +98,7 @@ use crate::tools::ToolRegistry;
 ///     max_connections: 100,
 ///     request_timeout_secs: 300,
 ///     debug: true,
+///     allowed_origins: vec!["https://claude.ai".to_string()],
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,6 +111,9 @@ pub struct McpConfig {
     pub request_timeout_secs: u64,
     /// Enable debug logging for troubleshooting
     pub debug: bool,
+    /// Allowed CORS origins (empty = localhost only)
+    #[serde(default)]
+    pub allowed_origins: Vec<String>,
 }
 
 impl Default for McpConfig {
@@ -115,6 +123,7 @@ impl Default for McpConfig {
             max_connections: 100,
             request_timeout_secs: 300,
             debug: false,
+            allowed_origins: vec![],
         }
     }
 }
@@ -127,6 +136,8 @@ pub struct McpServerState {
     tools: Arc<ToolRegistry>,
     /// Active sessions
     sessions: Arc<DashMap<Uuid, Arc<Session>>>,
+    /// Resource limiter
+    limiter: Arc<ResourceLimiter>,
     /// Server configuration
     config: McpConfig,
 }
@@ -188,10 +199,14 @@ impl McpServer {
         // Register all tools
         tools::register_tools(&tools);
 
+        // Create resource limiter with default limits
+        let limiter = Arc::new(ResourceLimiter::new(ResourceLimits::default()));
+
         let state = Arc::new(McpServerState {
             orchestrator,
             tools,
             sessions: Arc::new(DashMap::new()),
+            limiter,
             config,
         });
 
@@ -244,8 +259,46 @@ impl McpServer {
             .route("/mcp", get(websocket_handler))
             .route("/tools", get(list_tools_handler))
             .route("/health", get(health_handler))
-            .layer(CorsLayer::permissive())
+            .layer(self.build_cors_layer())
             .with_state(self.state.clone())
+    }
+
+    /// Build secure CORS layer with restrictive settings
+    fn build_cors_layer(&self) -> CorsLayer {
+        let mut cors = CorsLayer::new();
+
+        // Configure allowed origins
+        let origins: Vec<axum::http::HeaderValue> = if self.state.config.allowed_origins.is_empty() {
+            // Default to localhost only if no origins specified
+            vec![
+                "http://localhost:3000".parse().unwrap(),
+                "http://localhost:8080".parse().unwrap(),
+                "http://127.0.0.1:3000".parse().unwrap(),
+                "http://127.0.0.1:8080".parse().unwrap(),
+            ]
+        } else {
+            // Use configured origins
+            self.state.config.allowed_origins
+                .iter()
+                .filter_map(|origin| origin.parse().ok())
+                .collect()
+        };
+
+        cors = cors.allow_origin(origins)
+            .allow_methods([
+                axum::http::Method::GET,
+                axum::http::Method::POST,
+                axum::http::Method::OPTIONS,
+            ])
+            .allow_headers([
+                axum::http::header::CONTENT_TYPE,
+                axum::http::header::AUTHORIZATION,
+                axum::http::header::ACCEPT,
+            ])
+            .allow_credentials(true)
+            .max_age(std::time::Duration::from_secs(86400)); // 24 hours
+
+        cors
     }
 }
 
@@ -301,6 +354,10 @@ async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<McpServe
     });
 
     state.sessions.insert(session_id, session.clone());
+    
+    // Initialize resource tracking for this session
+    state.limiter.init_session(session_id).await;
+    
     info!("New MCP session: {}", session_id);
 
     let (mut sender, mut receiver) = socket.split();
@@ -320,6 +377,7 @@ async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<McpServe
         state.orchestrator.clone(),
         state.tools.clone(),
         session.clone(),
+        state.limiter.clone(),
         tx.clone(),
     );
 
@@ -341,9 +399,13 @@ async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<McpServe
                             }
                         }
                         Err(e) => {
-                            error!("Error handling request: {}", e);
+                            let sanitized_error = crate::error::log_and_sanitize_error(
+                                &e,
+                                &session_id,
+                                state.config.debug,
+                            );
                             let error_response =
-                                McpResponse::error(None, -32603, format!("Internal error: {e}"));
+                                McpResponse::error(None, -32603, sanitized_error);
                             if let Ok(json) = serde_json::to_string(&error_response) {
                                 let _ = tx.send(axum::extract::ws::Message::Text(json)).await;
                             }
@@ -365,6 +427,7 @@ async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<McpServe
     // Cleanup
     tx_task.abort();
     state.sessions.remove(&session_id);
+    state.limiter.remove_session(&session_id).await;
     info!("MCP session closed: {}", session_id);
 }
 
