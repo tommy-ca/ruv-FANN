@@ -327,6 +327,8 @@ pub fn gpu_batch_train_step<T: Float + Send + Sync + Default + std::fmt::Debug +
             sample_errors.push(error);
         }
         
+        // Divide by number of outputs to match CPU MseError implementation
+        sample_error = sample_error / T::from(output.len()).unwrap();
         total_error = total_error + sample_error;
         batch_output_errors.push(sample_errors);
     }
