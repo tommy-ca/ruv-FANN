@@ -60,8 +60,9 @@ pub mod webgpu_impl {
     };
     use crate::webgpu::error::ComputeError;
     use crate::webgpu::memory::{BufferHandle, MemoryStats};
-    use crate::webgpu::shaders::webgpu_shaders::ShaderManager;
+    use crate::webgpu::shaders::webgpu_shaders::{ShaderManager, ShaderType};
     use crate::ActivationFunction;
+    use std::collections::HashMap;
 
     /// WebGPU compute backend
     ///
@@ -85,17 +86,48 @@ pub mod webgpu_impl {
     /// - Matrix operations: O(n²) → O(n²/p) where p is the number of GPU cores
     /// - Batch processing: Near-linear scaling with batch size
     /// - Memory transfers: Minimized through intelligent caching and batching
-    #[derive(Debug)]
     pub struct WebGPUBackend<T: Float + std::fmt::Debug + Send + Sync + 'static> {
+        /// WebGPU device handle
+        device: wgpu::Device,
+        /// WebGPU queue for command submission
+        queue: wgpu::Queue,
         /// GPU device capabilities and limits
         capabilities: BackendCapabilities,
         /// WGSL shader compiler and manager
         shader_manager: ShaderManager,
+        /// Compiled shader modules cache
+        shader_modules: HashMap<ShaderType, wgpu::ShaderModule>,
+        /// Compute pipelines cache  
+        pipelines: HashMap<ShaderType, wgpu::ComputePipeline>,
+        /// GPU buffer pool for memory reuse
+        buffer_pool: HashMap<u64, wgpu::Buffer>,
+        /// Bind group layouts cache
+        bind_group_layouts: HashMap<ShaderType, wgpu::BindGroupLayout>,
         /// Phantom data for type safety
         _phantom: std::marker::PhantomData<T>,
     }
+    
+    impl<T: Float + std::fmt::Debug + Send + Sync + 'static> std::fmt::Debug for WebGPUBackend<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("WebGPUBackend")
+                .field("capabilities", &self.capabilities)
+                .field("shader_manager", &self.shader_manager)
+                .field("shader_modules_count", &self.shader_modules.len())
+                .field("pipelines_count", &self.pipelines.len())
+                .field("buffer_pool_size", &self.buffer_pool.len())
+                .finish()
+        }
+    }
 
     impl<T: Float + std::fmt::Debug + Send + Sync + 'static> WebGPUBackend<T> {
+        /// Initialize WebGPU backend synchronously
+        ///
+        /// This is the main entry point for creating a WebGPU backend.
+        /// It uses pollster to run the async initialization in a blocking manner.
+        pub fn new() -> Result<Self, ComputeError> {
+            pollster::block_on(Self::initialize())
+        }
+        
         /// Initialize WebGPU backend asynchronously
         ///
         /// This method performs the following initialization steps:
@@ -128,7 +160,31 @@ pub mod webgpu_impl {
                 return Err(ComputeError::GpuUnavailable);
             }
 
-            // Step 2: Initialize shader manager with error handling
+            // Step 2: Initialize WebGPU device using synchronous wrapper
+            let (device, queue) = pollster::block_on(async {
+                let instance = wgpu::Instance::default();
+                
+                let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    compatible_surface: None,
+                    force_fallback_adapter: false,
+                })
+                .await
+                .ok_or_else(|| ComputeError::GpuUnavailable)?;
+                
+                adapter.request_device(
+                    &wgpu::DeviceDescriptor {
+                        label: Some("ruv-FANN GPU Device"),
+                        required_features: wgpu::Features::default(), // Add SHADER_F16 later
+                        required_limits: wgpu::Limits::downlevel_defaults(),
+                    },
+                    None,
+                )
+                .await
+                .map_err(|e| ComputeError::InitializationError(format!("Failed to request device: {}", e)))
+            })?;
+
+            // Step 3: Initialize shader manager with error handling
             let shader_manager = ShaderManager::new().map_err(|e| {
                 ComputeError::InitializationError(format!(
                     "Failed to initialize shader manager: {:?}",
@@ -136,20 +192,21 @@ pub mod webgpu_impl {
                 ))
             })?;
 
-            // Step 3: Detect actual device capabilities
-            let capabilities = Self::detect_capabilities().await.map_err(|e| {
-                ComputeError::InitializationError(format!(
-                    "Failed to detect device capabilities: {:?}",
-                    e
-                ))
-            })?;
+            // Step 4: Detect actual device capabilities
+            let capabilities = Self::detect_capabilities_from_device(&device);
 
-            // Step 4: Validate minimum requirements
+            // Step 5: Validate minimum requirements
             Self::validate_capabilities(&capabilities)?;
 
             Ok(Self {
+                device,
+                queue,
                 capabilities,
                 shader_manager,
+                shader_modules: HashMap::new(),
+                pipelines: HashMap::new(),
+                buffer_pool: HashMap::new(),
+                bind_group_layouts: HashMap::new(),
                 _phantom: std::marker::PhantomData,
             })
         }
@@ -169,31 +226,30 @@ pub mod webgpu_impl {
         ///
         /// `true` if WebGPU is available and can be initialized
         pub fn is_available() -> bool {
-            // Current implementation: Conservative approach
-            // Returns false until WebGPU APIs are fully stabilized across platforms
-            //
-            // Future implementation will include:
-            // - Browser: web_sys::window().and_then(|w| w.navigator().gpu()).is_some()
-            // - Desktop: Check for wgpu instance creation
-            // - Feature detection for required extensions
-            false
+            // Safe: Instance is cheap and can be dropped immediately
+            let instance = wgpu::Instance::default();
+            instance.enumerate_adapters(wgpu::Backends::all())
+                .into_iter()
+                .any(|a| a.get_info().device_type != wgpu::DeviceType::Cpu)
         }
 
-        /// Detect actual device capabilities asynchronously
+        /// Detect actual device capabilities from a device object
         ///
         /// This method queries the WebGPU device for its actual capabilities,
         /// including memory limits, compute unit count, and supported features.
-        async fn detect_capabilities() -> Result<BackendCapabilities, ComputeError> {
-            // TODO: Implement actual device capability detection
-            // For now, return conservative defaults
-            Ok(BackendCapabilities {
-                max_buffer_size: 1024 * 1024 * 1024, // 1GB - conservative limit
-                supports_f64: false,                 // WebGPU typically doesn't support f64
-                supports_f32: true,                  // All WebGPU implementations support f32
-                max_compute_units: 256,              // Reasonable default for modern GPUs
-                memory_bandwidth_gbps: 500.0,        // Conservative estimate
+        fn detect_capabilities_from_device(device: &wgpu::Device) -> BackendCapabilities {
+            let limits = device.limits();
+            let features = device.features();
+            
+            BackendCapabilities {
+                max_buffer_size: limits.max_buffer_size as usize,
+                supports_f64: false, // WebGPU doesn't support f64
+                supports_f32: true,  // All WebGPU implementations support f32
+                supports_f16: features.contains(wgpu::Features::SHADER_F16),
+                max_compute_units: limits.max_compute_workgroups_per_dimension as usize,
+                memory_bandwidth_gbps: 500.0, // Conservative estimate
                 shader_model: Some("WGSL 1.0".to_string()),
-            })
+            }
         }
 
         /// Validate that device capabilities meet minimum requirements
@@ -310,17 +366,9 @@ pub mod webgpu_impl {
                 )));
             }
 
-            // Performance heuristic: Use GPU for larger matrices
-            const GPU_THRESHOLD: usize = 1000; // Crossover point where GPU becomes faster
-
-            if rows * cols > GPU_THRESHOLD * GPU_THRESHOLD {
-                // TODO: Implement GPU-accelerated path
-                // self.gpu_matrix_vector_multiply(matrix, vector, rows, cols)
-                self.cpu_matrix_vector_multiply_optimized(matrix, vector, rows, cols)
-            } else {
-                // Use optimized CPU implementation for smaller matrices
-                self.cpu_matrix_vector_multiply_optimized(matrix, vector, rows, cols)
-            }
+            // For trait implementation we can't mutate self, so use CPU fallback
+            // In practice, GPU would be used through a mutable reference
+            self.cpu_matrix_vector_multiply_optimized(matrix, vector, rows, cols)
         }
 
         /// Perform batch matrix-vector multiplication with GPU optimization
@@ -442,6 +490,150 @@ pub mod webgpu_impl {
 
     // Private implementation methods
     impl<T: Float + std::fmt::Debug + Send + Sync + 'static> WebGPUBackend<T> {
+        /// Get or compile a shader module
+        fn get_or_create_shader_module(&mut self, shader_type: ShaderType) -> Result<(), ComputeError> {
+            if self.shader_modules.contains_key(&shader_type) {
+                return Ok(());
+            }
+            
+            // Get shader source from the manager
+            let source = self.shader_manager
+                .get_shader_source(&shader_type)
+                .ok_or_else(|| ComputeError::UnsupportedOperation(
+                    format!("No shader source for {:?}", shader_type)
+                ))?;
+            
+            // Compile the shader
+            let module = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(&format!("{:?} Shader", shader_type)),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            });
+            
+            self.shader_modules.insert(shader_type, module);
+            Ok(())
+        }
+        
+        /// Get or create a compute pipeline
+        fn get_or_create_pipeline(&mut self, shader_type: ShaderType, entry_point: &str) -> Result<(), ComputeError> {
+            if self.pipelines.contains_key(&shader_type) {
+                return Ok(());
+            }
+            
+            // Ensure shader module exists
+            self.get_or_create_shader_module(shader_type.clone())?;
+            let module = self.shader_modules.get(&shader_type).unwrap();
+            
+            // Create bind group layout based on shader type
+            let entries = match shader_type {
+                ShaderType::MatrixVectorMultiply => vec![
+                    // Storage buffer for matrix
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Storage buffer for vector
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Storage buffer for output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Uniform buffer for dimensions
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+                _ => vec![
+                    // Default layout for other shaders
+                    // Storage buffer for input
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Storage buffer for output
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Uniform buffer for parameters
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            };
+            
+            let bind_group_layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some(&format!("{:?} Bind Group Layout", shader_type)),
+                entries: &entries,
+            });
+            
+            // Create pipeline layout
+            let pipeline_layout = self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(&format!("{:?} Pipeline Layout", shader_type)),
+                bind_group_layouts: &[&bind_group_layout],
+                push_constant_ranges: &[],
+            });
+            
+            // Create compute pipeline
+            let pipeline = self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(&format!("{:?} Pipeline", shader_type)),
+                layout: Some(&pipeline_layout),
+                module,
+                entry_point,
+            });
+            
+            self.bind_group_layouts.insert(shader_type.clone(), bind_group_layout);
+            self.pipelines.insert(shader_type, pipeline);
+            Ok(())
+        }
+        
         /// Optimized CPU matrix-vector multiplication
         ///
         /// This fallback implementation uses vectorized operations and
@@ -581,6 +773,145 @@ pub mod webgpu_impl {
             }
 
             Ok(sum)
+        }
+        
+        /// GPU-accelerated matrix-vector multiplication
+        fn gpu_matrix_vector_multiply(
+            &mut self,
+            matrix: &[T],
+            vector: &[T],
+            rows: usize,
+            cols: usize,
+        ) -> Result<Vec<T>, ComputeError> {
+            // Ensure the compute pipeline exists
+            self.get_or_create_pipeline(ShaderType::MatrixVectorMultiply, "matrix_vector_multiply")?;
+            let pipeline = self.pipelines.get(&ShaderType::MatrixVectorMultiply).unwrap();
+            
+            // Create GPU buffers
+            use wgpu::util::DeviceExt;
+            
+            // Convert to f32 for GPU operations (WebGPU doesn't support f64)
+            let matrix_f32: Vec<f32> = matrix.iter().map(|&x| x.to_f32().unwrap()).collect();
+            let vector_f32: Vec<f32> = vector.iter().map(|&x| x.to_f32().unwrap()).collect();
+            
+            let matrix_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Matrix Buffer"),
+                contents: bytemuck::cast_slice(&matrix_f32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+            
+            let vector_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Vector Buffer"),
+                contents: bytemuck::cast_slice(&vector_f32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+            
+            let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Output Buffer"),
+                size: (rows * std::mem::size_of::<f32>()) as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
+            
+            let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Staging Buffer"),
+                size: (rows * std::mem::size_of::<f32>()) as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            
+            // Create uniform buffer for dimensions
+            #[repr(C)]
+            #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+            struct Dimensions {
+                rows: u32,
+                cols: u32,
+            }
+            
+            let dims = Dimensions {
+                rows: rows as u32,
+                cols: cols as u32,
+            };
+            
+            let dims_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Dimensions Buffer"),
+                contents: bytemuck::cast_slice(&[dims]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+            
+            // Create bind group
+            let bind_group_layout = self.bind_group_layouts.get(&ShaderType::MatrixVectorMultiply)
+                .ok_or_else(|| ComputeError::InitializationError("Missing bind group layout".to_string()))?;
+                
+            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Matrix Vector Multiply Bind Group"),
+                layout: bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: matrix_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: vector_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: dims_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+            
+            // Create command encoder and dispatch compute shader
+            let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Matrix Vector Multiply Encoder"),
+            });
+            
+            {
+                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Matrix Vector Multiply Pass"),
+                    timestamp_writes: None,
+                });
+                
+                compute_pass.set_pipeline(pipeline);
+                compute_pass.set_bind_group(0, &bind_group, &[]);
+                
+                // Dispatch with appropriate workgroup size
+                const WORKGROUP_SIZE: u32 = 64;
+                let workgroups = ((rows as u32 + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE).max(1);
+                compute_pass.dispatch_workgroups(workgroups, 1, 1);
+            }
+            
+            // Copy output to staging buffer
+            encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, (rows * std::mem::size_of::<f32>()) as u64);
+            
+            // Submit commands
+            self.queue.submit(Some(encoder.finish()));
+            
+            // Map staging buffer and read results
+            let buffer_slice = staging_buffer.slice(..);
+            let (sender, receiver) = std::sync::mpsc::channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                sender.send(result).unwrap();
+            });
+            
+            self.device.poll(wgpu::Maintain::Wait);
+            receiver.recv().unwrap().map_err(|_| ComputeError::ComputeError("Failed to map buffer".to_string()))?;
+            
+            let data = buffer_slice.get_mapped_range();
+            let result_f32: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+            
+            drop(data);
+            staging_buffer.unmap();
+            
+            // Convert back to T
+            let result: Vec<T> = result_f32.iter().map(|&x| T::from(x).unwrap()).collect();
+            
+            Ok(result)
         }
     }
 

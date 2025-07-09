@@ -78,6 +78,7 @@ pub struct BackendCapabilities {
     pub max_buffer_size: usize,
     pub supports_f64: bool,
     pub supports_f32: bool,
+    pub supports_f16: bool,
     pub max_compute_units: usize,
     pub memory_bandwidth_gbps: f32,
     pub shader_model: Option<String>,
@@ -283,6 +284,7 @@ impl<T: Float + std::fmt::Debug + Send + Sync + 'static> SimdBackend<T> {
                 max_buffer_size: usize::MAX,
                 supports_f64: true,
                 supports_f32: true,
+                supports_f16: false, // CPU doesn't have native f16 support
                 max_compute_units: {
                     #[cfg(feature = "parallel")]
                     {
@@ -525,6 +527,7 @@ impl<T: Float + std::fmt::Debug + Send + Sync + 'static> CpuBackend<T> {
                 max_buffer_size: usize::MAX,
                 supports_f64: true,
                 supports_f32: true,
+                supports_f16: false, // CPU doesn't have native f16 support
                 max_compute_units: 1,
                 memory_bandwidth_gbps: 25.0, // Conservative estimate
                 shader_model: None,
