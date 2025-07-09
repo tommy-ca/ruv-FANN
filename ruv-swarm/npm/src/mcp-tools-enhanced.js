@@ -4,7 +4,7 @@
  */
 
 import { RuvSwarm } from './index-enhanced.js';
-import { SwarmPersistence } from './persistence.js';
+import { SwarmPersistencePooled } from './persistence-pooled.js';
 import {
   RuvSwarmError,
   ValidationError,
@@ -31,7 +31,20 @@ class EnhancedMCPTools {
     this.ruvSwarm = ruvSwarmInstance;
     this.activeSwarms = new Map();
     this.toolMetrics = new Map();
-    this.persistence = new SwarmPersistence();
+    // Initialize pooled persistence with production-optimized settings
+    const poolOptions = {
+      maxReaders: process.env.POOL_MAX_READERS ? parseInt(process.env.POOL_MAX_READERS) : 6,
+      maxWorkers: process.env.POOL_MAX_WORKERS ? parseInt(process.env.POOL_MAX_WORKERS) : 3,
+      mmapSize: process.env.POOL_MMAP_SIZE ? parseInt(process.env.POOL_MMAP_SIZE) : 268435456, // 256MB
+      cacheSize: process.env.POOL_CACHE_SIZE ? parseInt(process.env.POOL_CACHE_SIZE) : -64000, // 64MB
+      enableBackup: process.env.POOL_ENABLE_BACKUP === 'true',
+      healthCheckInterval: 60000, // 1 minute
+    };
+    this.persistence = new SwarmPersistencePooled(undefined, poolOptions);
+    this.persistenceReady = false;
+    
+    // Initialize persistence asynchronously
+    this.initializePersistence();
     this.errorContext = new ErrorContext();
     this.errorLog = [];
     this.maxErrorLogSize = 1000;
@@ -68,6 +81,11 @@ class EnhancedMCPTools {
       neural_train: this.neural_train.bind(this),
       neural_patterns: this.neural_patterns.bind(this),
 
+      // Connection Pool Health and Statistics
+      pool_health: this.pool_health.bind(this),
+      pool_stats: this.pool_stats.bind(this),
+      persistence_stats: this.persistence_stats.bind(this),
+
       // DAA tools (delegated to DAA_MCPTools)
       daa_init: this.daaTools.daa_init.bind(this.daaTools),
       daa_agent_create: this.daaTools.daa_agent_create.bind(this.daaTools),
@@ -80,6 +98,42 @@ class EnhancedMCPTools {
       daa_meta_learning: this.daaTools.daa_meta_learning.bind(this.daaTools),
       daa_performance_metrics: this.daaTools.daa_performance_metrics.bind(this.daaTools),
     };
+  }
+
+  /**
+   * Initialize persistence layer asynchronously
+   */
+  async initializePersistence() {
+    try {
+      await this.persistence.initialize();
+      this.persistenceReady = true;
+      this.logger.info('Pooled persistence layer initialized successfully');
+    } catch (error) {
+      this.persistenceReady = false;
+      this.logger.error('Failed to initialize pooled persistence', { error: error.message });
+    }
+  }
+
+  /**
+   * Ensure persistence is ready before operations
+   */
+  async ensurePersistenceReady() {
+    if (!this.persistenceReady && this.persistence) {
+      // Wait up to 5 seconds for persistence to initialize
+      const maxWait = 5000;
+      const checkInterval = 100;
+      let waited = 0;
+      
+      while (!this.persistenceReady && waited < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+      }
+      
+      if (!this.persistenceReady) {
+        throw new PersistenceError('Persistence layer not ready after timeout', 'PERSISTENCE_NOT_READY');
+      }
+    }
+    return this.persistenceReady;
   }
 
   /**
@@ -373,10 +427,11 @@ class EnhancedMCPTools {
         return;
       }
 
-      const existingSwarms = this.persistence.getActiveSwarms();
-      console.log(`📦 Loading ${existingSwarms.length} existing swarms from database...`);
+      const existingSwarms = await this.persistence.getActiveSwarms();
+      const swarmsArray = Array.isArray(existingSwarms) ? existingSwarms : [];
+      console.log(`📦 Loading ${swarmsArray.length} existing swarms from database...`);
 
-      for (const swarmData of existingSwarms) {
+      for (const swarmData of swarmsArray) {
         try {
           // Create in-memory swarm instance with existing ID
           const swarm = await this.ruvSwarm.createSwarm({
@@ -2631,6 +2686,146 @@ class EnhancedMCPTools {
   }
 
   /**
+   * Get connection pool health status
+   */
+  async pool_health() {
+    try {
+      if (!this.persistence || !this.persistence.isHealthy) {
+        return {
+          healthy: false,
+          message: 'Persistence layer not available or unhealthy',
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      const poolStats = this.persistence.getPoolStats();
+      const isHealthy = this.persistence.isHealthy();
+
+      return {
+        healthy: isHealthy,
+        pool_status: {
+          total_connections: poolStats.activeConnections + poolStats.availableReaders,
+          active_connections: poolStats.activeConnections,
+          available_readers: poolStats.availableReaders,
+          available_workers: poolStats.availableWorkers,
+          queue_lengths: {
+            read_queue: poolStats.readQueueLength,
+            write_queue: poolStats.writeQueueLength,
+            worker_queue: poolStats.workerQueueLength
+          }
+        },
+        last_health_check: poolStats.lastHealthCheck,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      return this.handleError(
+        new PersistenceError('Failed to get pool health status', 'POOL_HEALTH_ERROR', { originalError: error }),
+        'pool_health',
+        'health_check'
+      );
+    }
+  }
+
+  /**
+   * Get detailed connection pool statistics
+   */
+  async pool_stats() {
+    try {
+      if (!this.persistence || !this.persistence.getPoolStats) {
+        return {
+          error: 'Pool statistics not available',
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      const poolStats = this.persistence.getPoolStats();
+      const persistenceStats = this.persistence.getPersistenceStats();
+
+      return {
+        pool_metrics: {
+          total_reads: poolStats.totalReads,
+          total_writes: poolStats.totalWrites,
+          total_worker_tasks: poolStats.totalWorkerTasks,
+          failed_connections: poolStats.failedConnections,
+          average_read_time: poolStats.averageReadTime,
+          average_write_time: poolStats.averageWriteTime,
+          active_connections: poolStats.activeConnections,
+          available_readers: poolStats.availableReaders,
+          available_workers: poolStats.availableWorkers,
+          queue_lengths: {
+            read_queue: poolStats.readQueueLength,
+            write_queue: poolStats.writeQueueLength,
+            worker_queue: poolStats.workerQueueLength
+          }
+        },
+        persistence_metrics: {
+          total_operations: persistenceStats.totalOperations,
+          total_errors: persistenceStats.totalErrors,
+          average_response_time: persistenceStats.averageResponseTime,
+          error_rate: persistenceStats.totalOperations > 0 ? 
+            (persistenceStats.totalErrors / persistenceStats.totalOperations * 100).toFixed(2) + '%' : '0%'
+        },
+        health_status: {
+          healthy: this.persistence.isHealthy(),
+          last_check: poolStats.lastHealthCheck
+        },
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      return this.handleError(
+        new PersistenceError('Failed to get pool statistics', 'POOL_STATS_ERROR', { originalError: error }),
+        'pool_stats',
+        'statistics'
+      );
+    }
+  }
+
+  /**
+   * Get persistence layer statistics
+   */
+  async persistence_stats() {
+    try {
+      if (!this.persistence) {
+        return {
+          error: 'Persistence layer not available',
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      const stats = this.persistence.getPersistenceStats();
+      const poolStats = this.persistence.getPoolStats ? this.persistence.getPoolStats() : {};
+
+      return {
+        persistence_layer: 'SwarmPersistencePooled',
+        connection_pool: 'enabled',
+        statistics: {
+          total_operations: stats.totalOperations || 0,
+          total_errors: stats.totalErrors || 0,
+          average_response_time_ms: stats.averageResponseTime || 0,
+          error_rate_percent: stats.totalOperations > 0 ? 
+            ((stats.totalErrors / stats.totalOperations) * 100).toFixed(2) : '0.00',
+          success_rate_percent: stats.totalOperations > 0 ? 
+            (((stats.totalOperations - stats.totalErrors) / stats.totalOperations) * 100).toFixed(2) : '100.00'
+        },
+        pool_health: {
+          healthy: this.persistence.isHealthy ? this.persistence.isHealthy() : false,
+          total_connections: (poolStats.activeConnections || 0) + (poolStats.availableReaders || 0),
+          active_connections: poolStats.activeConnections || 0,
+          available_readers: poolStats.availableReaders || 0,
+          available_workers: poolStats.availableWorkers || 0
+        },
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      return this.handleError(
+        new PersistenceError('Failed to get persistence statistics', 'PERSISTENCE_STATS_ERROR', { originalError: error }),
+        'persistence_stats',
+        'statistics'
+      );
+    }
+  }
+
+  /**
    * Get all tool definitions (both core MCP and DAA tools)
    */
   getAllToolDefinitions() {
@@ -2650,6 +2845,9 @@ class EnhancedMCPTools {
       { name: 'neural_status', description: 'Get neural agent status and performance metrics' },
       { name: 'neural_train', description: 'Train neural agents with sample tasks' },
       { name: 'neural_patterns', description: 'Get cognitive pattern information' },
+      { name: 'pool_health', description: 'Get connection pool health status' },
+      { name: 'pool_stats', description: 'Get detailed connection pool statistics' },
+      { name: 'persistence_stats', description: 'Get persistence layer statistics' },
     ];
 
     const daaTools = this.daaTools.getToolDefinitions();
