@@ -522,3 +522,6 @@ mod tests {
         assert!(sigmoid(-10.0) < 0.01);
     }
 }
+
+#[cfg(test)]
+mod test_all_algorithms;
