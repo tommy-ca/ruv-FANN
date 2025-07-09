@@ -643,6 +643,10 @@ pub type GpuPerformanceStats = ();
 
 /// Check if GPU training is available
 pub fn is_gpu_available() -> bool {
+    // Skip GPU availability check when running under Miri
+    #[cfg(miri)]
+    return false;
+    
     #[cfg(feature = "gpu")]
     {
         crate::webgpu::WebGPUBackend::<f32>::is_available()
@@ -654,6 +658,10 @@ pub fn is_gpu_available() -> bool {
 
 /// Get GPU capabilities summary
 pub fn get_gpu_capabilities() -> String {
+    // Skip GPU capabilities check when running under Miri
+    #[cfg(miri)]
+    return "GPU unavailable under Miri".to_string();
+    
     #[cfg(feature = "gpu")]
     {
         if is_gpu_available() {
@@ -687,6 +695,7 @@ mod tests {
     use crate::NetworkBuilder;
     
     #[test]
+    #[cfg_attr(miri, ignore = "Miri cannot handle WebGPU FFI calls")]
     fn test_gpu_availability() {
         println!("GPU available: {}", is_gpu_available());
         println!("GPU capabilities: {}", get_gpu_capabilities());
@@ -694,7 +703,14 @@ mod tests {
     
     #[cfg(feature = "gpu")]
     #[test]
+    #[cfg_attr(miri, ignore = "Miri cannot handle WebGPU FFI calls")]
     fn test_gpu_adam_creation() {
+        // Skip if no GPU available (CI/headless environments)
+        if !is_gpu_available() {
+            println!("GPU not available, skipping GPU Adam creation test");
+            return;
+        }
+        
         let result = GpuAdam::new(0.001f32);
         match result {
             Ok(optimizer) => {
