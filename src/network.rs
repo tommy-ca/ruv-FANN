@@ -252,7 +252,7 @@ impl<T: Float> Network<T> {
         // Actual training algorithm is selected when calling train methods
     }
 
-    /// Train the network with the given data
+    /// Train the network with the given data using backpropagation
     pub fn train(
         &mut self,
         inputs: &[Vec<T>],
@@ -267,36 +267,132 @@ impl<T: Float> Network<T> {
             return Err(NetworkError::InvalidLayerConfiguration);
         }
 
-        // Simple gradient descent training implementation
-        let lr = T::from(learning_rate as f64).unwrap_or(T::from(0.7).unwrap_or(T::one()));
+        let lr = T::from(learning_rate as f64).unwrap_or(T::from(0.1).unwrap_or(T::one()));
 
         for _epoch in 0..epochs {
-            let mut total_error = T::zero();
-
             for (input, target) in inputs.iter().zip(outputs.iter()) {
-                // Forward pass
-                let output = self.run(input);
-
-                // Calculate error
-                for (o, t) in output.iter().zip(target.iter()) {
-                    let diff = *o - *t;
-                    total_error += diff * diff;
-                }
-
-                // Backward pass (simplified backpropagation)
-                // This is a placeholder - real implementation would involve proper backpropagation
-                for layer in &mut self.layers {
-                    for neuron in &mut layer.neurons {
-                        for connection in &mut neuron.connections {
-                            // Simple weight update
-                            connection.weight -= lr * T::from(0.01).unwrap_or(T::one());
-                        }
-                    }
-                }
+                // Forward pass - store all layer outputs for backpropagation
+                let layer_outputs = self.forward_pass_with_storage(input);
+                
+                // Backward pass - calculate gradients and update weights
+                self.backward_pass(&layer_outputs, target, lr);
             }
         }
 
         Ok(())
+    }
+
+    /// Forward pass that stores all layer outputs for backpropagation
+    fn forward_pass_with_storage(&mut self, input: &[T]) -> Vec<Vec<T>> {
+        let mut layer_outputs = Vec::with_capacity(self.layers.len());
+        
+        // Set input layer
+        if !self.layers.is_empty() {
+            let _ = self.layers[0].set_inputs(input);
+            layer_outputs.push(self.layers[0].get_outputs());
+        }
+
+        // Forward propagate through each layer
+        for i in 1..self.layers.len() {
+            let prev_outputs = layer_outputs[i - 1].clone();
+            self.layers[i].calculate(&prev_outputs);
+            layer_outputs.push(self.layers[i].get_outputs());
+        }
+
+        layer_outputs
+    }
+
+    /// Backward pass - calculate gradients and update weights
+    fn backward_pass(&mut self, layer_outputs: &[Vec<T>], target: &[T], learning_rate: T) {
+        if self.layers.is_empty() {
+            return;
+        }
+
+        let num_layers = self.layers.len();
+        let mut layer_errors = vec![Vec::new(); num_layers];
+
+        // Calculate output layer errors
+        if let Some(output_layer) = self.layers.last() {
+            let output_idx = num_layers - 1;
+            let outputs = &layer_outputs[output_idx];
+            
+            // Calculate output errors (target - output)
+            for (i, neuron) in output_layer.neurons.iter().enumerate() {
+                if !neuron.is_bias && i < target.len() && i < outputs.len() {
+                    let error = target[i] - outputs[i];
+                    let delta = error * neuron.activation_derivative();
+                    layer_errors[output_idx].push(delta);
+                } else {
+                    layer_errors[output_idx].push(T::zero());
+                }
+            }
+        }
+
+        // Calculate hidden layer errors (backpropagate)
+        for layer_idx in (1..num_layers - 1).rev() {
+            let current_layer = &self.layers[layer_idx];
+            let next_layer = &self.layers[layer_idx + 1];
+            let next_errors = layer_errors[layer_idx + 1].clone(); // Clone to avoid borrowing issues
+
+            let mut current_errors = Vec::new();
+            
+            for (i, neuron) in current_layer.neurons.iter().enumerate() {
+                if neuron.is_bias {
+                    current_errors.push(T::zero());
+                    continue;
+                }
+
+                let mut error_sum = T::zero();
+                
+                // Sum errors from next layer weighted by connections
+                for (j, next_neuron) in next_layer.neurons.iter().enumerate() {
+                    if !next_neuron.is_bias && j < next_errors.len() {
+                        // Find connection from current neuron to next neuron
+                        for connection in &next_neuron.connections {
+                            if connection.from_neuron == i {
+                                error_sum = error_sum + next_errors[j] * connection.weight;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                let delta = error_sum * neuron.activation_derivative();
+                current_errors.push(delta);
+            }
+            
+            layer_errors[layer_idx] = current_errors;
+        }
+
+        // Update weights
+        for layer_idx in 1..num_layers {
+            let prev_outputs = if layer_idx == 1 {
+                // For first hidden layer, use input layer outputs
+                &layer_outputs[0]
+            } else {
+                &layer_outputs[layer_idx - 1]
+            };
+
+            let current_errors = &layer_errors[layer_idx];
+            let current_layer = &mut self.layers[layer_idx];
+
+            for (neuron_idx, neuron) in current_layer.neurons.iter_mut().enumerate() {
+                if neuron.is_bias || neuron_idx >= current_errors.len() {
+                    continue;
+                }
+
+                let error = current_errors[neuron_idx];
+
+                // Update weights for this neuron
+                for connection in &mut neuron.connections {
+                    if connection.from_neuron < prev_outputs.len() {
+                        let input_value = prev_outputs[connection.from_neuron];
+                        let weight_delta = learning_rate * error * input_value;
+                        connection.weight = connection.weight + weight_delta;
+                    }
+                }
+            }
+        }
     }
 
     /// Run batch inference on multiple inputs
