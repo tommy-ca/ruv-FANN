@@ -310,11 +310,11 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for BatchBackprop<T> {
             // Accumulate gradients
             for layer_idx in 0..weight_gradients.len() {
                 for i in 0..weight_gradients[layer_idx].len() {
-                    accumulated_weight_gradients[layer_idx][i] = 
+                    accumulated_weight_gradients[layer_idx][i] =
                         accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
                 }
                 for i in 0..bias_gradients[layer_idx].len() {
-                    accumulated_bias_gradients[layer_idx][i] = 
+                    accumulated_bias_gradients[layer_idx][i] =
                         accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
                 }
             }
@@ -324,11 +324,11 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for BatchBackprop<T> {
         let batch_size = T::from(data.inputs.len()).unwrap();
         for layer_idx in 0..accumulated_weight_gradients.len() {
             for i in 0..accumulated_weight_gradients[layer_idx].len() {
-                accumulated_weight_gradients[layer_idx][i] = 
+                accumulated_weight_gradients[layer_idx][i] =
                     accumulated_weight_gradients[layer_idx][i] / batch_size;
             }
             for i in 0..accumulated_bias_gradients[layer_idx].len() {
-                accumulated_bias_gradients[layer_idx][i] = 
+                accumulated_bias_gradients[layer_idx][i] =
                     accumulated_bias_gradients[layer_idx][i] / batch_size;
             }
         }

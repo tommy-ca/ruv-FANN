@@ -142,7 +142,7 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
         data: &TrainingData<T>,
     ) -> Result<T, TrainingError> {
         use super::helpers::*;
-        
+
         self.initialize_state(network);
 
         let mut total_error = T::zero();
@@ -184,11 +184,11 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
             // Accumulate gradients
             for layer_idx in 0..weight_gradients.len() {
                 for i in 0..weight_gradients[layer_idx].len() {
-                    accumulated_weight_gradients[layer_idx][i] = 
+                    accumulated_weight_gradients[layer_idx][i] =
                         accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
                 }
                 for i in 0..bias_gradients[layer_idx].len() {
-                    accumulated_bias_gradients[layer_idx][i] = 
+                    accumulated_bias_gradients[layer_idx][i] =
                         accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
                 }
             }
@@ -198,11 +198,11 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
         let batch_size = T::from(data.inputs.len()).unwrap();
         for layer_idx in 0..accumulated_weight_gradients.len() {
             for i in 0..accumulated_weight_gradients[layer_idx].len() {
-                accumulated_weight_gradients[layer_idx][i] = 
+                accumulated_weight_gradients[layer_idx][i] =
                     accumulated_weight_gradients[layer_idx][i] / batch_size;
             }
             for i in 0..accumulated_bias_gradients[layer_idx].len() {
-                accumulated_bias_gradients[layer_idx][i] = 
+                accumulated_bias_gradients[layer_idx][i] =
                     accumulated_bias_gradients[layer_idx][i] / batch_size;
             }
         }
@@ -214,18 +214,19 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
         // Update weights using RPROP algorithm
         for layer_idx in 0..accumulated_weight_gradients.len() {
             let mut layer_weight_updates = Vec::new();
-            
+
             for i in 0..accumulated_weight_gradients[layer_idx].len() {
                 let current_gradient = accumulated_weight_gradients[layer_idx][i];
                 let previous_gradient = self.previous_weight_gradients[layer_idx][i];
                 let sign_change = current_gradient * previous_gradient;
-                
+
                 // Update step size based on gradient sign change
                 if sign_change > T::zero() {
                     // Same sign - increase step size
-                    self.weight_step_sizes[layer_idx][i] = 
-                        (self.weight_step_sizes[layer_idx][i] * self.increase_factor).min(self.delta_max);
-                    
+                    self.weight_step_sizes[layer_idx][i] = (self.weight_step_sizes[layer_idx][i]
+                        * self.increase_factor)
+                        .min(self.delta_max);
+
                     // Update weight
                     let update = if current_gradient > T::zero() {
                         -self.weight_step_sizes[layer_idx][i]
@@ -235,17 +236,18 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
                         T::zero()
                     };
                     layer_weight_updates.push(update);
-                    
+
                     // Store gradient for next iteration
                     self.previous_weight_gradients[layer_idx][i] = current_gradient;
                 } else if sign_change < T::zero() {
                     // Sign changed - decrease step size and backtrack
-                    self.weight_step_sizes[layer_idx][i] = 
-                        (self.weight_step_sizes[layer_idx][i] * self.decrease_factor).max(self.delta_min);
-                    
+                    self.weight_step_sizes[layer_idx][i] = (self.weight_step_sizes[layer_idx][i]
+                        * self.decrease_factor)
+                        .max(self.delta_min);
+
                     // Don't update weight (backtrack)
                     layer_weight_updates.push(T::zero());
-                    
+
                     // Set gradient to zero to prevent another sign change detection
                     self.previous_weight_gradients[layer_idx][i] = T::zero();
                 } else {
@@ -258,30 +260,31 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
                         T::zero()
                     };
                     layer_weight_updates.push(update);
-                    
+
                     // Store gradient for next iteration
                     self.previous_weight_gradients[layer_idx][i] = current_gradient;
                 }
             }
-            
+
             weight_updates.push(layer_weight_updates);
         }
 
         // Update biases using RPROP algorithm
         for layer_idx in 0..accumulated_bias_gradients.len() {
             let mut layer_bias_updates = Vec::new();
-            
+
             for i in 0..accumulated_bias_gradients[layer_idx].len() {
                 let current_gradient = accumulated_bias_gradients[layer_idx][i];
                 let previous_gradient = self.previous_bias_gradients[layer_idx][i];
                 let sign_change = current_gradient * previous_gradient;
-                
+
                 // Update step size based on gradient sign change
                 if sign_change > T::zero() {
                     // Same sign - increase step size
-                    self.bias_step_sizes[layer_idx][i] = 
-                        (self.bias_step_sizes[layer_idx][i] * self.increase_factor).min(self.delta_max);
-                    
+                    self.bias_step_sizes[layer_idx][i] = (self.bias_step_sizes[layer_idx][i]
+                        * self.increase_factor)
+                        .min(self.delta_max);
+
                     // Update bias
                     let update = if current_gradient > T::zero() {
                         -self.bias_step_sizes[layer_idx][i]
@@ -291,17 +294,18 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
                         T::zero()
                     };
                     layer_bias_updates.push(update);
-                    
+
                     // Store gradient for next iteration
                     self.previous_bias_gradients[layer_idx][i] = current_gradient;
                 } else if sign_change < T::zero() {
                     // Sign changed - decrease step size and backtrack
-                    self.bias_step_sizes[layer_idx][i] = 
-                        (self.bias_step_sizes[layer_idx][i] * self.decrease_factor).max(self.delta_min);
-                    
+                    self.bias_step_sizes[layer_idx][i] = (self.bias_step_sizes[layer_idx][i]
+                        * self.decrease_factor)
+                        .max(self.delta_min);
+
                     // Don't update bias (backtrack)
                     layer_bias_updates.push(T::zero());
-                    
+
                     // Set gradient to zero to prevent another sign change detection
                     self.previous_bias_gradients[layer_idx][i] = T::zero();
                 } else {
@@ -314,12 +318,12 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Rprop<T> {
                         T::zero()
                     };
                     layer_bias_updates.push(update);
-                    
+
                     // Store gradient for next iteration
                     self.previous_bias_gradients[layer_idx][i] = current_gradient;
                 }
             }
-            
+
             bias_updates.push(layer_bias_updates);
         }
 

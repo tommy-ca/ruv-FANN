@@ -24,16 +24,16 @@ pub struct Adam<T: Float + Send + Default> {
     epsilon: T,
     weight_decay: T,
     error_function: Box<dyn ErrorFunction<T>>,
-    
+
     // Moment estimates
-    m_weights: Vec<Vec<T>>,  // First moment (momentum)
-    v_weights: Vec<Vec<T>>,  // Second moment (uncentered variance)
+    m_weights: Vec<Vec<T>>, // First moment (momentum)
+    v_weights: Vec<Vec<T>>, // Second moment (uncentered variance)
     m_biases: Vec<Vec<T>>,
     v_biases: Vec<Vec<T>>,
-    
+
     // Step counter for bias correction
     step: usize,
-    
+
     callback: Option<TrainingCallback<T>>,
 }
 
@@ -55,37 +55,37 @@ impl<T: Float + Send + Default> Adam<T> {
             callback: None,
         }
     }
-    
+
     /// Set beta1 parameter (momentum coefficient)
     pub fn with_beta1(mut self, beta1: T) -> Self {
         self.beta1 = beta1;
         self
     }
-    
+
     /// Set beta2 parameter (variance coefficient)
     pub fn with_beta2(mut self, beta2: T) -> Self {
         self.beta2 = beta2;
         self
     }
-    
+
     /// Set epsilon for numerical stability
     pub fn with_epsilon(mut self, epsilon: T) -> Self {
         self.epsilon = epsilon;
         self
     }
-    
+
     /// Set weight decay (L2 regularization)
     pub fn with_weight_decay(mut self, weight_decay: T) -> Self {
         self.weight_decay = weight_decay;
         self
     }
-    
+
     /// Set error function
     pub fn with_error_function(mut self, error_function: Box<dyn ErrorFunction<T>>) -> Self {
         self.error_function = error_function;
         self
     }
-    
+
     /// Initialize moment estimates for the network
     fn initialize_moments(&mut self, network: &Network<T>) {
         if self.m_weights.is_empty() {
@@ -103,20 +103,20 @@ impl<T: Float + Send + Default> Adam<T> {
                     vec![T::zero(); num_neurons * num_connections]
                 })
                 .collect();
-                
+
             self.v_weights = self.m_weights.clone();
-            
+
             self.m_biases = network
                 .layers
                 .iter()
                 .skip(1) // Skip input layer
                 .map(|layer| vec![T::zero(); layer.neurons.len()])
                 .collect();
-                
+
             self.v_biases = self.m_biases.clone();
         }
     }
-    
+
     /// Update parameters using Adam algorithm
     fn update_parameters(
         &mut self,
@@ -125,60 +125,59 @@ impl<T: Float + Send + Default> Adam<T> {
         bias_gradients: &[Vec<T>],
     ) {
         self.step += 1;
-        
+
         // Bias correction factors
-        let lr_t = self.learning_rate * 
-            (T::one() - self.beta2.powi(self.step as i32)).sqrt() / 
-            (T::one() - self.beta1.powi(self.step as i32));
-        
+        let lr_t = self.learning_rate * (T::one() - self.beta2.powi(self.step as i32)).sqrt()
+            / (T::one() - self.beta1.powi(self.step as i32));
+
         // Compute weight updates
         let mut weight_updates = Vec::new();
         for layer_idx in 0..weight_gradients.len() {
             let mut layer_updates = Vec::new();
             for i in 0..weight_gradients[layer_idx].len() {
                 let grad = weight_gradients[layer_idx][i];
-                
+
                 // Update biased first moment estimate
-                self.m_weights[layer_idx][i] = self.beta1 * self.m_weights[layer_idx][i] + 
-                    (T::one() - self.beta1) * grad;
-                
-                // Update biased second moment estimate  
-                self.v_weights[layer_idx][i] = self.beta2 * self.v_weights[layer_idx][i] + 
-                    (T::one() - self.beta2) * grad * grad;
-                
+                self.m_weights[layer_idx][i] =
+                    self.beta1 * self.m_weights[layer_idx][i] + (T::one() - self.beta1) * grad;
+
+                // Update biased second moment estimate
+                self.v_weights[layer_idx][i] = self.beta2 * self.v_weights[layer_idx][i]
+                    + (T::one() - self.beta2) * grad * grad;
+
                 // Compute parameter update
-                let update = lr_t * self.m_weights[layer_idx][i] / 
-                    (self.v_weights[layer_idx][i].sqrt() + self.epsilon);
-                
+                let update = lr_t * self.m_weights[layer_idx][i]
+                    / (self.v_weights[layer_idx][i].sqrt() + self.epsilon);
+
                 layer_updates.push(-update);
             }
             weight_updates.push(layer_updates);
         }
-        
+
         // Compute bias updates
         let mut bias_updates = Vec::new();
         for layer_idx in 0..bias_gradients.len() {
             let mut layer_updates = Vec::new();
             for i in 0..bias_gradients[layer_idx].len() {
                 let grad = bias_gradients[layer_idx][i];
-                
+
                 // Update biased first moment estimate
-                self.m_biases[layer_idx][i] = self.beta1 * self.m_biases[layer_idx][i] + 
-                    (T::one() - self.beta1) * grad;
-                
+                self.m_biases[layer_idx][i] =
+                    self.beta1 * self.m_biases[layer_idx][i] + (T::one() - self.beta1) * grad;
+
                 // Update biased second moment estimate
-                self.v_biases[layer_idx][i] = self.beta2 * self.v_biases[layer_idx][i] + 
-                    (T::one() - self.beta2) * grad * grad;
-                
+                self.v_biases[layer_idx][i] = self.beta2 * self.v_biases[layer_idx][i]
+                    + (T::one() - self.beta2) * grad * grad;
+
                 // Compute parameter update
-                let update = lr_t * self.m_biases[layer_idx][i] / 
-                    (self.v_biases[layer_idx][i].sqrt() + self.epsilon);
-                
+                let update = lr_t * self.m_biases[layer_idx][i]
+                    / (self.v_biases[layer_idx][i].sqrt() + self.epsilon);
+
                 layer_updates.push(-update);
             }
             bias_updates.push(layer_updates);
         }
-        
+
         // Apply weight decay if specified (Adam approach - apply to gradients)
         if self.weight_decay > T::zero() {
             for layer_updates in &mut weight_updates {
@@ -187,7 +186,7 @@ impl<T: Float + Send + Default> Adam<T> {
                 }
             }
         }
-        
+
         // Apply updates using existing helper
         super::helpers::apply_updates_to_network(network, &weight_updates, &bias_updates);
     }
@@ -200,14 +199,14 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
         data: &TrainingData<T>,
     ) -> Result<T, TrainingError> {
         use super::helpers::*;
-        
+
         self.initialize_moments(network);
-        
+
         let mut total_error = T::zero();
-        
+
         // Convert network to simplified form for easier manipulation
         let simple_network = network_to_simple(network);
-        
+
         // Accumulate gradients over entire batch
         let mut accumulated_weight_gradients = simple_network
             .weights
@@ -219,18 +218,18 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
             .iter()
             .map(|b| vec![T::zero(); b.len()])
             .collect::<Vec<_>>();
-        
+
         // Process all samples in the batch
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
             // Forward propagation to get all layer activations
             let activations = forward_propagate(&simple_network, input);
-            
+
             // Get output from last layer
             let output = &activations[activations.len() - 1];
-            
+
             // Calculate error
             total_error = total_error + self.error_function.calculate(output, desired_output);
-            
+
             // Calculate gradients using backpropagation
             let (weight_gradients, bias_gradients) = calculate_gradients(
                 &simple_network,
@@ -238,51 +237,55 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
                 desired_output,
                 self.error_function.as_ref(),
             );
-            
+
             // Accumulate gradients
             for layer_idx in 0..weight_gradients.len() {
                 for i in 0..weight_gradients[layer_idx].len() {
-                    accumulated_weight_gradients[layer_idx][i] = 
+                    accumulated_weight_gradients[layer_idx][i] =
                         accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
                 }
                 for i in 0..bias_gradients[layer_idx].len() {
-                    accumulated_bias_gradients[layer_idx][i] = 
+                    accumulated_bias_gradients[layer_idx][i] =
                         accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
                 }
             }
         }
-        
+
         // Average gradients over batch size
         let batch_size = T::from(data.inputs.len()).unwrap();
         for layer_idx in 0..accumulated_weight_gradients.len() {
             for i in 0..accumulated_weight_gradients[layer_idx].len() {
-                accumulated_weight_gradients[layer_idx][i] = 
+                accumulated_weight_gradients[layer_idx][i] =
                     accumulated_weight_gradients[layer_idx][i] / batch_size;
             }
             for i in 0..accumulated_bias_gradients[layer_idx].len() {
-                accumulated_bias_gradients[layer_idx][i] = 
+                accumulated_bias_gradients[layer_idx][i] =
                     accumulated_bias_gradients[layer_idx][i] / batch_size;
             }
         }
-        
+
         // Update parameters using Adam
-        self.update_parameters(network, &accumulated_weight_gradients, &accumulated_bias_gradients);
-        
+        self.update_parameters(
+            network,
+            &accumulated_weight_gradients,
+            &accumulated_bias_gradients,
+        );
+
         Ok(total_error / batch_size)
     }
-    
+
     fn calculate_error(&self, network: &Network<T>, data: &TrainingData<T>) -> T {
         let mut total_error = T::zero();
         let mut network_clone = network.clone();
-        
+
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
             let output = network_clone.run(input);
             total_error = total_error + self.error_function.calculate(&output, desired_output);
         }
-        
+
         total_error / T::from(data.inputs.len()).unwrap()
     }
-    
+
     fn count_bit_fails(
         &self,
         network: &Network<T>,
@@ -291,7 +294,7 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
     ) -> usize {
         let mut bit_fails = 0;
         let mut network_clone = network.clone();
-        
+
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
             let output = network_clone.run(input);
             for (&actual, &desired) in output.iter().zip(desired_output.iter()) {
@@ -300,10 +303,10 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
                 }
             }
         }
-        
+
         bit_fails
     }
-    
+
     fn save_state(&self) -> TrainingState<T> {
         let mut state = HashMap::new();
         state.insert("learning_rate".to_string(), vec![self.learning_rate]);
@@ -312,14 +315,14 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
         state.insert("epsilon".to_string(), vec![self.epsilon]);
         state.insert("weight_decay".to_string(), vec![self.weight_decay]);
         state.insert("step".to_string(), vec![T::from(self.step).unwrap()]);
-        
+
         TrainingState {
             epoch: 0,
             best_error: T::from(f32::MAX).unwrap(),
             algorithm_specific: state,
         }
     }
-    
+
     fn restore_state(&mut self, state: TrainingState<T>) {
         if let Some(lr) = state.algorithm_specific.get("learning_rate") {
             if !lr.is_empty() {
@@ -352,11 +355,11 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for Adam<T> {
             }
         }
     }
-    
+
     fn set_callback(&mut self, callback: TrainingCallback<T>) {
         self.callback = Some(callback);
     }
-    
+
     fn call_callback(
         &mut self,
         epoch: usize,
@@ -381,16 +384,16 @@ pub struct AdamW<T: Float + Send + Default> {
     epsilon: T,
     weight_decay: T,
     error_function: Box<dyn ErrorFunction<T>>,
-    
+
     // Moment estimates
     m_weights: Vec<Vec<T>>,
     v_weights: Vec<Vec<T>>,
     m_biases: Vec<Vec<T>>,
     v_biases: Vec<Vec<T>>,
-    
+
     // Step counter for bias correction
     step: usize,
-    
+
     callback: Option<TrainingCallback<T>>,
 }
 
@@ -412,37 +415,37 @@ impl<T: Float + Send + Default> AdamW<T> {
             callback: None,
         }
     }
-    
+
     /// Set beta1 parameter (momentum coefficient)
     pub fn with_beta1(mut self, beta1: T) -> Self {
         self.beta1 = beta1;
         self
     }
-    
+
     /// Set beta2 parameter (variance coefficient)
     pub fn with_beta2(mut self, beta2: T) -> Self {
         self.beta2 = beta2;
         self
     }
-    
+
     /// Set epsilon for numerical stability
     pub fn with_epsilon(mut self, epsilon: T) -> Self {
         self.epsilon = epsilon;
         self
     }
-    
+
     /// Set weight decay (decoupled from gradient-based updates)
     pub fn with_weight_decay(mut self, weight_decay: T) -> Self {
         self.weight_decay = weight_decay;
         self
     }
-    
+
     /// Set error function
     pub fn with_error_function(mut self, error_function: Box<dyn ErrorFunction<T>>) -> Self {
         self.error_function = error_function;
         self
     }
-    
+
     /// Initialize moment estimates for the network
     fn initialize_moments(&mut self, network: &Network<T>) {
         if self.m_weights.is_empty() {
@@ -460,20 +463,20 @@ impl<T: Float + Send + Default> AdamW<T> {
                     vec![T::zero(); num_neurons * num_connections]
                 })
                 .collect();
-                
+
             self.v_weights = self.m_weights.clone();
-            
+
             self.m_biases = network
                 .layers
                 .iter()
                 .skip(1) // Skip input layer
                 .map(|layer| vec![T::zero(); layer.neurons.len()])
                 .collect();
-                
+
             self.v_biases = self.m_biases.clone();
         }
     }
-    
+
     /// Apply AdamW updates to the network (with decoupled weight decay)
     fn apply_adamw_updates(
         &mut self,
@@ -487,43 +490,43 @@ impl<T: Float + Send + Default> AdamW<T> {
         for layer_idx in 0..weight_gradients.len() {
             let mut layer_updates = Vec::new();
             for i in 0..weight_gradients[layer_idx].len() {
-                let adaptive_update = lr_t * self.m_weights[layer_idx][i] / 
-                    (self.v_weights[layer_idx][i].sqrt() + self.epsilon);
-                
+                let adaptive_update = lr_t * self.m_weights[layer_idx][i]
+                    / (self.v_weights[layer_idx][i].sqrt() + self.epsilon);
+
                 // In AdamW, weight decay is applied directly to weights, not gradients
                 layer_updates.push(-adaptive_update);
             }
             weight_updates.push(layer_updates);
         }
-        
+
         // Compute and apply bias updates (no weight decay for biases)
         let mut bias_updates = Vec::new();
         for layer_idx in 0..bias_gradients.len() {
             let mut layer_updates = Vec::new();
             for i in 0..bias_gradients[layer_idx].len() {
-                let update = lr_t * self.m_biases[layer_idx][i] / 
-                    (self.v_biases[layer_idx][i].sqrt() + self.epsilon);
+                let update = lr_t * self.m_biases[layer_idx][i]
+                    / (self.v_biases[layer_idx][i].sqrt() + self.epsilon);
                 layer_updates.push(-update);
             }
             bias_updates.push(layer_updates);
         }
-        
+
         // Apply updates using existing helper
         super::helpers::apply_updates_to_network(network, &weight_updates, &bias_updates);
-        
+
         // Apply decoupled weight decay directly to weights
         if self.weight_decay > T::zero() {
             self.apply_decoupled_weight_decay(network);
         }
     }
-    
+
     /// Apply decoupled weight decay directly to weights (AdamW approach)
     fn apply_decoupled_weight_decay(&self, network: &mut Network<T>) {
         let decay_factor = T::one() - self.learning_rate * self.weight_decay;
-        
+
         for layer_idx in 1..network.layers.len() {
             let current_layer = &mut network.layers[layer_idx];
-            
+
             for neuron in &mut current_layer.neurons {
                 if !neuron.is_bias {
                     // Apply weight decay to all connections except bias (index 0)
@@ -543,15 +546,15 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
         data: &TrainingData<T>,
     ) -> Result<T, TrainingError> {
         use super::helpers::*;
-        
+
         self.initialize_moments(network);
         self.step += 1;
-        
+
         let mut total_error = T::zero();
-        
+
         // Convert network to simplified form for easier manipulation
         let simple_network = network_to_simple(network);
-        
+
         // Accumulate gradients over entire batch
         let mut accumulated_weight_gradients = simple_network
             .weights
@@ -563,18 +566,18 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
             .iter()
             .map(|b| vec![T::zero(); b.len()])
             .collect::<Vec<_>>();
-        
+
         // Process all samples in the batch
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
             // Forward propagation to get all layer activations
             let activations = forward_propagate(&simple_network, input);
-            
+
             // Get output from last layer
             let output = &activations[activations.len() - 1];
-            
+
             // Calculate error
             total_error = total_error + self.error_function.calculate(output, desired_output);
-            
+
             // Calculate gradients using backpropagation
             let (weight_gradients, bias_gradients) = calculate_gradients(
                 &simple_network,
@@ -582,86 +585,90 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
                 desired_output,
                 self.error_function.as_ref(),
             );
-            
+
             // Accumulate gradients
             for layer_idx in 0..weight_gradients.len() {
                 for i in 0..weight_gradients[layer_idx].len() {
-                    accumulated_weight_gradients[layer_idx][i] = 
+                    accumulated_weight_gradients[layer_idx][i] =
                         accumulated_weight_gradients[layer_idx][i] + weight_gradients[layer_idx][i];
                 }
                 for i in 0..bias_gradients[layer_idx].len() {
-                    accumulated_bias_gradients[layer_idx][i] = 
+                    accumulated_bias_gradients[layer_idx][i] =
                         accumulated_bias_gradients[layer_idx][i] + bias_gradients[layer_idx][i];
                 }
             }
         }
-        
+
         // Average gradients over batch size
         let batch_size = T::from(data.inputs.len()).unwrap();
         for layer_idx in 0..accumulated_weight_gradients.len() {
             for i in 0..accumulated_weight_gradients[layer_idx].len() {
-                accumulated_weight_gradients[layer_idx][i] = 
+                accumulated_weight_gradients[layer_idx][i] =
                     accumulated_weight_gradients[layer_idx][i] / batch_size;
             }
             for i in 0..accumulated_bias_gradients[layer_idx].len() {
-                accumulated_bias_gradients[layer_idx][i] = 
+                accumulated_bias_gradients[layer_idx][i] =
                     accumulated_bias_gradients[layer_idx][i] / batch_size;
             }
         }
-        
+
         // Update moment estimates
         for layer_idx in 0..accumulated_weight_gradients.len() {
             for i in 0..accumulated_weight_gradients[layer_idx].len() {
                 let grad = accumulated_weight_gradients[layer_idx][i];
-                
+
                 // Update biased first moment estimate
-                self.m_weights[layer_idx][i] = self.beta1 * self.m_weights[layer_idx][i] + 
-                    (T::one() - self.beta1) * grad;
-                
-                // Update biased second moment estimate  
-                self.v_weights[layer_idx][i] = self.beta2 * self.v_weights[layer_idx][i] + 
-                    (T::one() - self.beta2) * grad * grad;
+                self.m_weights[layer_idx][i] =
+                    self.beta1 * self.m_weights[layer_idx][i] + (T::one() - self.beta1) * grad;
+
+                // Update biased second moment estimate
+                self.v_weights[layer_idx][i] = self.beta2 * self.v_weights[layer_idx][i]
+                    + (T::one() - self.beta2) * grad * grad;
             }
         }
-        
-        // Update bias moments 
+
+        // Update bias moments
         for layer_idx in 0..accumulated_bias_gradients.len() {
             for i in 0..accumulated_bias_gradients[layer_idx].len() {
                 let grad = accumulated_bias_gradients[layer_idx][i];
-                
+
                 // Update biased first moment estimate
-                self.m_biases[layer_idx][i] = self.beta1 * self.m_biases[layer_idx][i] + 
-                    (T::one() - self.beta1) * grad;
-                
+                self.m_biases[layer_idx][i] =
+                    self.beta1 * self.m_biases[layer_idx][i] + (T::one() - self.beta1) * grad;
+
                 // Update biased second moment estimate
-                self.v_biases[layer_idx][i] = self.beta2 * self.v_biases[layer_idx][i] + 
-                    (T::one() - self.beta2) * grad * grad;
+                self.v_biases[layer_idx][i] = self.beta2 * self.v_biases[layer_idx][i]
+                    + (T::one() - self.beta2) * grad * grad;
             }
         }
-        
+
         // Bias correction factors
-        let lr_t = self.learning_rate * 
-            (T::one() - self.beta2.powi(self.step as i32)).sqrt() / 
-            (T::one() - self.beta1.powi(self.step as i32));
-        
+        let lr_t = self.learning_rate * (T::one() - self.beta2.powi(self.step as i32)).sqrt()
+            / (T::one() - self.beta1.powi(self.step as i32));
+
         // Apply AdamW updates with decoupled weight decay
-        self.apply_adamw_updates(network, &accumulated_weight_gradients, &accumulated_bias_gradients, lr_t);
-        
+        self.apply_adamw_updates(
+            network,
+            &accumulated_weight_gradients,
+            &accumulated_bias_gradients,
+            lr_t,
+        );
+
         Ok(total_error / batch_size)
     }
-    
+
     fn calculate_error(&self, network: &Network<T>, data: &TrainingData<T>) -> T {
         let mut total_error = T::zero();
         let mut network_clone = network.clone();
-        
+
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
             let output = network_clone.run(input);
             total_error = total_error + self.error_function.calculate(&output, desired_output);
         }
-        
+
         total_error / T::from(data.inputs.len()).unwrap()
     }
-    
+
     fn count_bit_fails(
         &self,
         network: &Network<T>,
@@ -670,7 +677,7 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
     ) -> usize {
         let mut bit_fails = 0;
         let mut network_clone = network.clone();
-        
+
         for (input, desired_output) in data.inputs.iter().zip(data.outputs.iter()) {
             let output = network_clone.run(input);
             for (&actual, &desired) in output.iter().zip(desired_output.iter()) {
@@ -679,10 +686,10 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
                 }
             }
         }
-        
+
         bit_fails
     }
-    
+
     fn save_state(&self) -> TrainingState<T> {
         let mut state = HashMap::new();
         state.insert("learning_rate".to_string(), vec![self.learning_rate]);
@@ -691,14 +698,14 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
         state.insert("epsilon".to_string(), vec![self.epsilon]);
         state.insert("weight_decay".to_string(), vec![self.weight_decay]);
         state.insert("step".to_string(), vec![T::from(self.step).unwrap()]);
-        
+
         TrainingState {
             epoch: 0,
             best_error: T::from(f32::MAX).unwrap(),
             algorithm_specific: state,
         }
     }
-    
+
     fn restore_state(&mut self, state: TrainingState<T>) {
         if let Some(lr) = state.algorithm_specific.get("learning_rate") {
             if !lr.is_empty() {
@@ -731,11 +738,11 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
             }
         }
     }
-    
+
     fn set_callback(&mut self, callback: TrainingCallback<T>) {
         self.callback = Some(callback);
     }
-    
+
     fn call_callback(
         &mut self,
         epoch: usize,
@@ -755,7 +762,7 @@ impl<T: Float + Send + Default> TrainingAlgorithm<T> for AdamW<T> {
 mod tests {
     use super::*;
     use crate::Network;
-    
+
     #[test]
     fn test_adam_creation() {
         let adam = Adam::new(0.001f32);
@@ -764,7 +771,7 @@ mod tests {
         assert_eq!(adam.beta2, 0.999);
         assert_eq!(adam.step, 0);
     }
-    
+
     #[test]
     fn test_adamw_creation() {
         let adamw = AdamW::new(0.001f32);
@@ -774,7 +781,7 @@ mod tests {
         assert_eq!(adamw.weight_decay, 0.01);
         assert_eq!(adamw.step, 0);
     }
-    
+
     #[test]
     fn test_adam_with_parameters() {
         let adam = Adam::new(0.001f32)
@@ -782,7 +789,7 @@ mod tests {
             .with_beta2(0.998)
             .with_epsilon(1e-7)
             .with_weight_decay(0.001);
-            
+
         assert_eq!(adam.beta1, 0.95);
         assert_eq!(adam.beta2, 0.998);
         assert_eq!(adam.epsilon, 1e-7);

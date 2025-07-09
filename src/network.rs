@@ -273,7 +273,7 @@ impl<T: Float> Network<T> {
             for (input, target) in inputs.iter().zip(outputs.iter()) {
                 // Forward pass - store all layer outputs for backpropagation
                 let layer_outputs = self.forward_pass_with_storage(input);
-                
+
                 // Backward pass - calculate gradients and update weights
                 self.backward_pass(&layer_outputs, target, lr);
             }
@@ -285,7 +285,7 @@ impl<T: Float> Network<T> {
     /// Forward pass that stores all layer outputs for backpropagation
     fn forward_pass_with_storage(&mut self, input: &[T]) -> Vec<Vec<T>> {
         let mut layer_outputs = Vec::with_capacity(self.layers.len());
-        
+
         // Set input layer
         if !self.layers.is_empty() {
             let _ = self.layers[0].set_inputs(input);
@@ -315,7 +315,7 @@ impl<T: Float> Network<T> {
         if let Some(output_layer) = self.layers.last() {
             let output_idx = num_layers - 1;
             let outputs = &layer_outputs[output_idx];
-            
+
             // Calculate output errors (target - output)
             for (i, neuron) in output_layer.neurons.iter().enumerate() {
                 if !neuron.is_bias && i < target.len() && i < outputs.len() {
@@ -335,7 +335,7 @@ impl<T: Float> Network<T> {
             let next_errors = layer_errors[layer_idx + 1].clone(); // Clone to avoid borrowing issues
 
             let mut current_errors = Vec::new();
-            
+
             for (i, neuron) in current_layer.neurons.iter().enumerate() {
                 if neuron.is_bias {
                     current_errors.push(T::zero());
@@ -343,7 +343,7 @@ impl<T: Float> Network<T> {
                 }
 
                 let mut error_sum = T::zero();
-                
+
                 // Sum errors from next layer weighted by connections
                 for (j, next_neuron) in next_layer.neurons.iter().enumerate() {
                     if !next_neuron.is_bias && j < next_errors.len() {
@@ -360,7 +360,7 @@ impl<T: Float> Network<T> {
                 let delta = error_sum * neuron.activation_derivative();
                 current_errors.push(delta);
             }
-            
+
             layer_errors[layer_idx] = current_errors;
         }
 

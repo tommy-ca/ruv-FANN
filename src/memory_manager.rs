@@ -159,7 +159,7 @@ impl<T: Float> MemoryPool<T> {
     }
 
     /// Deallocate a buffer back to this pool
-    pub fn deallocate(&mut self, buffer: Vec<T>) {        
+    pub fn deallocate(&mut self, buffer: Vec<T>) {
         // Add to available list for reuse
         self.available.push(buffer);
         self.allocated_count = self.allocated_count.saturating_sub(1);
@@ -253,11 +253,11 @@ mod tests {
     #[test]
     fn test_pool_reuse() {
         let mut pool: MemoryPool<f32> = MemoryPool::new("test".to_string(), 100);
-        
+
         // Allocate and deallocate
         let buffer1 = pool.allocate(50).unwrap();
         pool.deallocate(buffer1);
-        
+
         // Allocate again - should reuse
         let buffer2 = pool.allocate(50).unwrap();
         assert_eq!(buffer2.len(), 50);
