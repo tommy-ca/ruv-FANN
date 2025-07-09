@@ -43,6 +43,9 @@ pub struct GpuAdam<T: Float + Send + Sync + Default + std::fmt::Debug + 'static>
     /// Performance statistics
     gpu_stats: GpuPerformanceStats,
     
+    /// CPU-side moment estimates (temporary until full GPU implementation)
+    moment_estimates: Option<HashMap<String, T>>,
+    
     callback: Option<TrainingCallback<T>>,
 }
 
@@ -143,6 +146,7 @@ impl<T: Float + Send + Sync + Default + std::fmt::Debug + 'static> GpuAdam<T> {
             v_biases_gpu: None,
             step: 0,
             gpu_stats: GpuPerformanceStats::default(),
+            moment_estimates: None,
             callback: None,
         })
     }
@@ -265,7 +269,7 @@ impl<T: Float + Send + Sync + Default + std::fmt::Debug + 'static> GpuAdam<T> {
         Ok(())
     }
     
-    /// Perform GPU-accelerated training step
+    /// Perform GPU-accelerated training step with batch processing
     fn gpu_train_step(&mut self, network: &mut Network<T>, data: &TrainingData<T>) -> Result<T, ComputeError> {
         let start_time = std::time::Instant::now();
         
@@ -275,70 +279,26 @@ impl<T: Float + Send + Sync + Default + std::fmt::Debug + 'static> GpuAdam<T> {
         self.step += 1;
         
         // Check if we have WebGPU backend
-        // Clone the Arc to avoid borrow checker issues
         if let Some(backend) = self.webgpu_backend.clone() {
-            // Process batch on GPU using WebGPU backend
-            let mut total_error = T::zero();
-            let batch_size = data.inputs.len();
+            // Use batch training for efficiency
+            use super::gpu_batch_training::gpu_batch_train_step;
             
-            // Use WebGPU backend for batch processing
-            for (input, target) in data.inputs.iter().zip(data.outputs.iter()) {
-                // Forward pass using WebGPU
-                let mut current_input = input.clone();
-                
-                // Process each layer using WebGPU matrix operations
-                for layer in network.layers.iter().skip(1) {
-                    // Extract layer weights
-                    let weights = self.extract_layer_weights(layer);
-                    let biases = self.extract_layer_biases(layer);
-                    
-                    // Perform matrix-vector multiplication on GPU
-                    let layer_output = backend.matrix_vector_multiply(
-                        &weights,
-                        &current_input,
-                        biases.len(),
-                        current_input.len()
-                    )?;
-                    
-                    // Add biases and apply activation function
-                    let mut activated_output = Vec::new();
-                    for (i, &output) in layer_output.iter().enumerate() {
-                        let with_bias = output + biases[i];
-                        activated_output.push(with_bias);
-                    }
-                    
-                    // Apply activation function using GPU
-                    let activation_function = layer.neurons.iter()
-                        .find(|n| !n.is_bias)
-                        .map(|n| n.activation_function)
-                        .unwrap_or(crate::ActivationFunction::Sigmoid);
-                    
-                    current_input = backend.apply_activation_function(
-                        &activated_output,
-                        activation_function,
-                        T::one()
-                    )?;
-                }
-                
-                // Calculate error
-                total_error = total_error + self.error_function.calculate(&current_input, target);
-                
-                // Backward pass would be implemented here using gradient shaders
-                // For now, we'll use the CPU fallback for gradients
-            }
-            
-            // Apply gradient updates after processing the batch
-            // This is a simplified approach - in a full implementation, we would accumulate gradients
-            // during the forward pass and apply them all at once using GPU kernels
-            self.apply_simplified_adam_updates(network)?;
+            // Process entire batch in one GPU operation
+            let total_error = gpu_batch_train_step(
+                network, 
+                data, 
+                backend.clone(),
+                self
+            )?;
             
             // Update performance statistics
             let elapsed = start_time.elapsed();
             self.gpu_stats.total_gpu_time_ms += elapsed.as_secs_f64() * 1000.0;
-            self.gpu_stats.kernel_launches += 1;
-            self.gpu_stats.avg_batch_time_ms = self.gpu_stats.total_gpu_time_ms / self.gpu_stats.kernel_launches as f64;
+            // Much fewer kernel launches with batch processing!
+            self.gpu_stats.kernel_launches += 1; // One batch operation instead of thousands
+            self.gpu_stats.avg_batch_time_ms = elapsed.as_secs_f64() * 1000.0;
             
-            Ok(total_error / T::from(batch_size).unwrap())
+            Ok(total_error)
         } else {
             // Fallback to CPU implementation
             Err(ComputeError::GpuUnavailable)
@@ -376,32 +336,123 @@ impl<T: Float + Send + Sync + Default + std::fmt::Debug + 'static> GpuAdam<T> {
         biases
     }
     
-    /// Apply simplified Adam updates (placeholder for full GPU implementation)
-    fn apply_simplified_adam_updates(&mut self, network: &mut Network<T>) -> Result<(), ComputeError> {
-        // This is a very simplified update rule
-        // In a full implementation, this would use the gradient_operations.wgsl shaders
-        // and properly computed gradients from backpropagation
+    /// Apply Adam updates using real gradients computed via backpropagation
+    pub(super) fn apply_adam_updates_with_gradients(
+        &mut self, 
+        network: &mut Network<T>,
+        weight_gradients: &[Vec<T>],
+        bias_gradients: &[Vec<T>],
+    ) -> Result<(), ComputeError> {
+        // Initialize moment estimates if not already done
+        if self.m_weights_gpu.is_none() {
+            self.initialize_moment_estimates(network)?;
+        }
         
         // Bias correction for Adam
         let lr_t = self.learning_rate * 
             (T::one() - self.beta2.powi(self.step as i32)).sqrt() / 
             (T::one() - self.beta1.powi(self.step as i32));
         
-        // Apply a simplified update to all weights
-        for layer in network.layers.iter_mut().skip(1) {
-            for neuron in layer.neurons.iter_mut().filter(|n| !n.is_bias) {
-                for connection in neuron.connections.iter_mut() {
-                    // Very simplified gradient approximation
-                    // In reality, we would compute proper gradients via backpropagation
-                    let pseudo_gradient = (connection.weight * T::from(0.01).unwrap()).abs();
-                    
-                    // Simplified Adam-like update
-                    connection.weight = connection.weight - lr_t * pseudo_gradient;
+        // Apply Adam updates to each layer
+        for (layer_idx, layer) in network.layers.iter_mut().skip(1).enumerate() {
+            let weight_grads = &weight_gradients[layer_idx];
+            let bias_grads = &bias_gradients[layer_idx];
+            
+            let mut weight_idx = 0;
+            for (neuron_idx, neuron) in layer.neurons.iter_mut()
+                .filter(|n| !n.is_bias)
+                .enumerate() 
+            {
+                // Update bias (first connection)
+                if !neuron.connections.is_empty() {
+                    let bias_grad = bias_grads[neuron_idx];
+                    self.update_adam_parameter(
+                        &mut neuron.connections[0].weight,
+                        bias_grad,
+                        lr_t,
+                        layer_idx,
+                        neuron_idx,
+                        true, // is_bias
+                    );
+                }
+                
+                // Update weights (remaining connections)
+                for connection in neuron.connections.iter_mut().skip(1) {
+                    if weight_idx < weight_grads.len() {
+                        let weight_grad = weight_grads[weight_idx];
+                        self.update_adam_parameter(
+                            &mut connection.weight,
+                            weight_grad,
+                            lr_t,
+                            layer_idx,
+                            weight_idx,
+                            false, // is_bias
+                        );
+                        weight_idx += 1;
+                    }
                 }
             }
         }
         
         Ok(())
+    }
+    
+    /// Update a single parameter using Adam algorithm
+    fn update_adam_parameter(
+        &mut self,
+        param: &mut T,
+        gradient: T,
+        lr_t: T,
+        layer_idx: usize,
+        param_idx: usize,
+        is_bias: bool,
+    ) {
+        // Get moment estimates (in real GPU implementation, these would be GPU buffers)
+        // For now, we'll use CPU-side tracking
+        let m_key = format!("{}_{}_{}_{}", layer_idx, param_idx, is_bias, "m");
+        let v_key = format!("{}_{}_{}_{}", layer_idx, param_idx, is_bias, "v");
+        
+        // Retrieve or initialize moments
+        let m = self.get_moment(&m_key).unwrap_or(T::zero());
+        let v = self.get_moment(&v_key).unwrap_or(T::zero());
+        
+        // Update biased first moment estimate
+        let new_m = self.beta1 * m + (T::one() - self.beta1) * gradient;
+        
+        // Update biased second raw moment estimate  
+        let new_v = self.beta2 * v + (T::one() - self.beta2) * gradient * gradient;
+        
+        // Store updated moments
+        self.set_moment(&m_key, new_m);
+        self.set_moment(&v_key, new_v);
+        
+        // Update parameter
+        *param = *param - lr_t * new_m / (new_v.sqrt() + self.epsilon);
+        
+        // Apply weight decay if specified
+        if self.weight_decay > T::zero() && !is_bias {
+            *param = *param - self.learning_rate * self.weight_decay * *param;
+        }
+    }
+    
+    /// Initialize moment estimates for Adam optimizer
+    fn initialize_moment_estimates(&mut self, network: &Network<T>) -> Result<(), ComputeError> {
+        // In a full GPU implementation, this would allocate GPU buffers
+        // For now, we use a simple HashMap for CPU tracking
+        self.moment_estimates = Some(HashMap::new());
+        Ok(())
+    }
+    
+    /// Get moment estimate (CPU fallback)
+    fn get_moment(&self, key: &str) -> Option<T> {
+        self.moment_estimates.as_ref()?.get(key).copied()
+    }
+    
+    /// Set moment estimate (CPU fallback)
+    fn set_moment(&mut self, key: &str, value: T) {
+        if let Some(moments) = self.moment_estimates.as_mut() {
+            moments.insert(key.to_string(), value);
+        }
     }
 }
 

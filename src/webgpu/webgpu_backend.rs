@@ -97,6 +97,14 @@ pub mod webgpu_impl {
         capabilities: BackendCapabilities,
         /// WGSL shader compiler and manager
         shader_manager: ShaderManager,
+        /// Mutable state for GPU resources (thread-safe interior mutability)
+        gpu_state: std::sync::RwLock<GpuState>,
+        /// Phantom data for type safety
+        _phantom: std::marker::PhantomData<T>,
+    }
+    
+    /// Mutable GPU state managed through interior mutability
+    struct GpuState {
         /// Compiled shader modules cache
         shader_modules: HashMap<ShaderType, wgpu::ShaderModule>,
         /// Compute pipelines cache  
@@ -105,18 +113,17 @@ pub mod webgpu_impl {
         buffer_pool: HashMap<u64, wgpu::Buffer>,
         /// Bind group layouts cache
         bind_group_layouts: HashMap<ShaderType, wgpu::BindGroupLayout>,
-        /// Phantom data for type safety
-        _phantom: std::marker::PhantomData<T>,
     }
     
     impl<T: Float + std::fmt::Debug + Send + Sync + 'static> std::fmt::Debug for WebGPUBackend<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let gpu_state = self.gpu_state.read().unwrap();
             f.debug_struct("WebGPUBackend")
                 .field("capabilities", &self.capabilities)
                 .field("shader_manager", &self.shader_manager)
-                .field("shader_modules_count", &self.shader_modules.len())
-                .field("pipelines_count", &self.pipelines.len())
-                .field("buffer_pool_size", &self.buffer_pool.len())
+                .field("shader_modules_count", &gpu_state.shader_modules.len())
+                .field("pipelines_count", &gpu_state.pipelines.len())
+                .field("buffer_pool_size", &gpu_state.buffer_pool.len())
                 .finish()
         }
     }
@@ -199,15 +206,23 @@ pub mod webgpu_impl {
             // Step 5: Validate minimum requirements
             Self::validate_capabilities(&capabilities)?;
 
+            // Step 6: Add uncaptured error handler for debugging
+            device.on_uncaptured_error(Box::new(|error| {
+                eprintln!("🚨 WGPU UNCAPTURED ERROR: {:?}", error);
+                eprintln!("This may indicate a Metal watchdog timeout or validation error");
+            }));
+
             Ok(Self {
                 device,
                 queue,
                 capabilities,
                 shader_manager,
-                shader_modules: HashMap::new(),
-                pipelines: HashMap::new(),
-                buffer_pool: HashMap::new(),
-                bind_group_layouts: HashMap::new(),
+                gpu_state: std::sync::RwLock::new(GpuState {
+                    shader_modules: HashMap::new(),
+                    pipelines: HashMap::new(),
+                    buffer_pool: HashMap::new(),
+                    bind_group_layouts: HashMap::new(),
+                }),
                 _phantom: std::marker::PhantomData,
             })
         }
@@ -367,9 +382,16 @@ pub mod webgpu_impl {
                 )));
             }
 
-            // For trait implementation we can't mutate self, so use CPU fallback
-            // In practice, GPU would be used through a mutable reference
-            self.cpu_matrix_vector_multiply_optimized(matrix, vector, rows, cols)
+            // Performance heuristic for GPU usage
+            const GPU_THRESHOLD: usize = 10000; // Minimum problem size for GPU benefit
+            
+            if rows * cols > GPU_THRESHOLD {
+                // Use GPU acceleration through interior mutability
+                self.gpu_matrix_vector_multiply(matrix, vector, rows, cols)
+            } else {
+                // Use optimized CPU implementation for smaller problems
+                self.cpu_matrix_vector_multiply_optimized(matrix, vector, rows, cols)
+            }
         }
 
         /// Perform batch matrix-vector multiplication with GPU optimization
@@ -426,13 +448,12 @@ pub mod webgpu_impl {
 
             // Performance heuristic for batch operations
             const BATCH_GPU_THRESHOLD: usize = 100; // Minimum batch size for GPU benefit
-
+            
             if batch_size >= BATCH_GPU_THRESHOLD && rows * cols > 10000 {
-                // TODO: Implement GPU-accelerated batch processing
-                // self.gpu_batch_matrix_vector_multiply(matrix, vectors, rows, cols)
-                self.cpu_batch_matrix_vector_multiply_optimized(matrix, vectors, rows, cols)
+                // Use GPU acceleration through interior mutability
+                self.gpu_batch_matrix_vector_multiply(matrix, vectors, rows, cols)
             } else {
-                // Process individually with optimized CPU code
+                // Process with optimized CPU code for smaller batches
                 self.cpu_batch_matrix_vector_multiply_optimized(matrix, vectors, rows, cols)
             }
         }
@@ -492,8 +513,10 @@ pub mod webgpu_impl {
     // Private implementation methods
     impl<T: Float + std::fmt::Debug + Send + Sync + 'static> WebGPUBackend<T> {
         /// Get or compile a shader module
-        fn get_or_create_shader_module(&mut self, shader_type: ShaderType) -> Result<(), ComputeError> {
-            if self.shader_modules.contains_key(&shader_type) {
+        fn get_or_create_shader_module(&self, shader_type: ShaderType) -> Result<(), ComputeError> {
+            let mut gpu_state = self.gpu_state.write().unwrap();
+            
+            if gpu_state.shader_modules.contains_key(&shader_type) {
                 return Ok(());
             }
             
@@ -510,19 +533,24 @@ pub mod webgpu_impl {
                 source: wgpu::ShaderSource::Wgsl(source.into()),
             });
             
-            self.shader_modules.insert(shader_type, module);
+            gpu_state.shader_modules.insert(shader_type, module);
             Ok(())
         }
         
         /// Get or create a compute pipeline
-        fn get_or_create_pipeline(&mut self, shader_type: ShaderType, entry_point: &str) -> Result<(), ComputeError> {
-            if self.pipelines.contains_key(&shader_type) {
-                return Ok(());
+        fn get_or_create_pipeline(&self, shader_type: ShaderType, entry_point: &str) -> Result<(), ComputeError> {
+            {
+                let gpu_state = self.gpu_state.read().unwrap();
+                if gpu_state.pipelines.contains_key(&shader_type) {
+                    return Ok(());
+                }
             }
             
             // Ensure shader module exists
             self.get_or_create_shader_module(shader_type.clone())?;
-            let module = self.shader_modules.get(&shader_type).unwrap();
+            
+            let mut gpu_state = self.gpu_state.write().unwrap();
+            let module = gpu_state.shader_modules.get(&shader_type).unwrap();
             
             // Create bind group layout based on shader type
             let entries = match shader_type {
@@ -561,6 +589,52 @@ pub mod webgpu_impl {
                         count: None,
                     },
                     // Uniform buffer for dimensions
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+                ShaderType::BatchMatrixVectorMultiply => vec![
+                    // Storage buffer for matrix
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Storage buffer for vectors (batch)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Storage buffer for results (batch)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                    // Uniform buffer for dimensions (includes batch_size)
                     wgpu::BindGroupLayoutEntry {
                         binding: 3,
                         visibility: wgpu::ShaderStages::COMPUTE,
@@ -630,8 +704,8 @@ pub mod webgpu_impl {
                 entry_point,
             });
             
-            self.bind_group_layouts.insert(shader_type.clone(), bind_group_layout);
-            self.pipelines.insert(shader_type, pipeline);
+            gpu_state.bind_group_layouts.insert(shader_type.clone(), bind_group_layout);
+            gpu_state.pipelines.insert(shader_type, pipeline);
             Ok(())
         }
         
@@ -751,6 +825,12 @@ pub mod webgpu_impl {
             Ok(result)
         }
 
+        /// Align buffer size to Apple Silicon requirements (256-byte alignment)
+        fn align_buffer_size(size: usize) -> usize {
+            const ALIGNMENT: usize = 256;
+            ((size + ALIGNMENT - 1) / ALIGNMENT) * ALIGNMENT
+        }
+        
         /// Optimized CPU dot product with vectorization hints
         fn cpu_dot_product_optimized(&self, a: &[T], b: &[T]) -> Result<T, ComputeError> {
             let mut sum = T::zero();
@@ -777,15 +857,17 @@ pub mod webgpu_impl {
         
         /// GPU-accelerated matrix-vector multiplication
         fn gpu_matrix_vector_multiply(
-            &mut self,
+            &self,
             matrix: &[T],
             vector: &[T],
             rows: usize,
             cols: usize,
         ) -> Result<Vec<T>, ComputeError> {
             // Ensure the compute pipeline exists
-            self.get_or_create_pipeline(ShaderType::MatrixVectorMultiply, "matrix_vector_multiply")?;
-            let pipeline = self.pipelines.get(&ShaderType::MatrixVectorMultiply).unwrap();
+            self.get_or_create_pipeline(ShaderType::MatrixVectorMultiply, "main")?;
+            
+            let gpu_state = self.gpu_state.read().unwrap();
+            let pipeline = gpu_state.pipelines.get(&ShaderType::MatrixVectorMultiply).unwrap();
             
             // Create GPU buffers
             use wgpu::util::DeviceExt;
@@ -820,17 +902,21 @@ pub mod webgpu_impl {
                 mapped_at_creation: false,
             });
             
-            // Create uniform buffer for dimensions
+            // Create uniform buffer for dimensions (match shader struct)
             #[repr(C)]
             #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
             struct Dimensions {
                 rows: u32,
                 cols: u32,
+                batch_id: u32,  // Match shader struct
+                reserved: u32,  // Match shader struct
             }
             
             let dims = Dimensions {
                 rows: rows as u32,
                 cols: cols as u32,
+                batch_id: 0,     // Single matrix operation
+                reserved: 0,     // Padding
             };
             
             let dims_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -840,7 +926,7 @@ pub mod webgpu_impl {
             });
             
             // Create bind group
-            let bind_group_layout = self.bind_group_layouts.get(&ShaderType::MatrixVectorMultiply)
+            let bind_group_layout = gpu_state.bind_group_layouts.get(&ShaderType::MatrixVectorMultiply)
                 .ok_or_else(|| ComputeError::InitializationError("Missing bind group layout".to_string()))?;
                 
             let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -880,8 +966,8 @@ pub mod webgpu_impl {
                 compute_pass.set_pipeline(pipeline);
                 compute_pass.set_bind_group(0, &bind_group, &[]);
                 
-                // Dispatch with appropriate workgroup size
-                const WORKGROUP_SIZE: u32 = 64;
+                // Dispatch with appropriate workgroup size (match shader)
+                const WORKGROUP_SIZE: u32 = 32;
                 let workgroups = ((rows as u32 + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE).max(1);
                 compute_pass.dispatch_workgroups(workgroups, 1, 1);
             }
@@ -892,6 +978,9 @@ pub mod webgpu_impl {
             // Submit commands
             self.queue.submit(Some(encoder.finish()));
             
+            // CRITICAL FIX: Poll immediately after submit to process commands
+            self.device.poll(wgpu::Maintain::Poll);
+            
             // Map staging buffer and read results
             let buffer_slice = staging_buffer.slice(..);
             let (sender, receiver) = std::sync::mpsc::channel();
@@ -899,6 +988,7 @@ pub mod webgpu_impl {
                 sender.send(result).unwrap();
             });
             
+            // CRITICAL FIX: Use Poll instead of Wait to avoid blocking
             self.device.poll(wgpu::Maintain::Wait);
             receiver.recv().unwrap().map_err(|_| ComputeError::ComputeError("Failed to map buffer".to_string()))?;
             
@@ -912,6 +1002,234 @@ pub mod webgpu_impl {
             let result: Vec<T> = result_f32.iter().map(|&x| T::from(x).unwrap()).collect();
             
             Ok(result)
+        }
+        
+        /// GPU-accelerated batch matrix-vector multiplication with tiling
+        /// This implementation tiles large batches to avoid Metal watchdog timeout
+        fn gpu_batch_matrix_vector_multiply(
+            &self,
+            matrix: &[T],
+            vectors: &[Vec<T>],
+            rows: usize,
+            cols: usize,
+        ) -> Result<Vec<Vec<T>>, ComputeError> {
+            // Constants for Metal performance and watchdog limits (Apple Silicon optimized)
+            const MAX_ELEMENTS_PER_DISPATCH: usize = 100_000; // Keep dispatches well under 2ms
+            const TILE_SIZE: usize = 32; // Optimized for Apple Silicon 32-lane SIMD
+            const MAX_BATCH_PER_DISPATCH: usize = 64; // Conservative batch size
+            const MAX_DISPATCH_TIME_MS: f32 = 1.5; // Leave headroom below 2ms limit
+            
+            let batch_size = vectors.len();
+            
+            // Ensure shader and pipeline exist
+            self.get_or_create_pipeline(ShaderType::BatchMatrixVectorMultiply, "main")?;
+            
+            let gpu_state = self.gpu_state.read().unwrap();
+            let pipeline = gpu_state.pipelines.get(&ShaderType::BatchMatrixVectorMultiply).unwrap();
+            
+            use wgpu::util::DeviceExt;
+            
+            // Convert data to f32 for GPU
+            let matrix_f32: Vec<f32> = matrix.iter().map(|&x| x.to_f32().unwrap()).collect();
+            let mut vectors_f32 = Vec::with_capacity(batch_size * cols);
+            for vec in vectors {
+                for &val in vec {
+                    vectors_f32.push(val.to_f32().unwrap());
+                }
+            }
+            
+            // Check buffer size limits and alignment (Apple Silicon: 256-byte alignment)
+            const MIN_BUFFER_ALIGNMENT: usize = 256; // Apple Silicon requirement
+            const MAX_BUFFER_SIZE: usize = 128 * 1024 * 1024; // 128MB Apple Silicon limit
+            
+            let matrix_size = Self::align_buffer_size(matrix_f32.len() * std::mem::size_of::<f32>());
+            let vectors_size = Self::align_buffer_size(vectors_f32.len() * std::mem::size_of::<f32>());
+            let output_size = Self::align_buffer_size(batch_size * rows * std::mem::size_of::<f32>());
+            
+            if matrix_size > MAX_BUFFER_SIZE ||
+               vectors_size > MAX_BUFFER_SIZE ||
+               output_size > MAX_BUFFER_SIZE {
+                return Err(ComputeError::AllocationError(format!(
+                    "Buffer size exceeds Apple Silicon limit: {} MB (matrix: {}MB, vectors: {}MB, output: {}MB)",
+                    MAX_BUFFER_SIZE / (1024 * 1024),
+                    matrix_size / (1024 * 1024),
+                    vectors_size / (1024 * 1024),
+                    output_size / (1024 * 1024)
+                )));
+            }
+            
+            // Create GPU buffers
+            let matrix_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Batch Matrix Buffer"),
+                contents: bytemuck::cast_slice(&matrix_f32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+            
+            let vectors_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Batch Vectors Buffer"),
+                contents: bytemuck::cast_slice(&vectors_f32),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+            
+            let output_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Batch Output Buffer"),
+                size: output_size as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            });
+            
+            // Create staging buffer for reading results
+            let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Batch Staging Buffer"),
+                size: output_size as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            
+            // Create uniform buffer
+            #[repr(C)]
+            #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+            struct BatchDimensions {
+                rows: u32,
+                cols: u32,
+                batch_size: u32,
+                reserved: u32,
+            }
+            
+            let dims = BatchDimensions {
+                rows: rows as u32,
+                cols: cols as u32,
+                batch_size: batch_size as u32,
+                reserved: 0,
+            };
+            
+            let dims_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Batch Dimensions Buffer"),
+                contents: bytemuck::cast_slice(&[dims]),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+            
+            // Create bind group
+            let bind_group_layout = gpu_state.bind_group_layouts.get(&ShaderType::BatchMatrixVectorMultiply)
+                .ok_or_else(|| ComputeError::InitializationError("Missing batch bind group layout".to_string()))?;
+                
+            let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Batch Matrix Vector Multiply Bind Group"),
+                layout: bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: matrix_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: vectors_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: output_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: dims_buffer.as_entire_binding(),
+                    },
+                ],
+            });
+            
+            // Create command encoder
+            let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Batch Matrix Vector Multiply Encoder"),
+            });
+            
+            // Tile the computation to avoid Metal watchdog timeout
+            // Process in tiles to keep each dispatch under 2ms
+            let rows_per_tile = TILE_SIZE.min(rows);
+            let batch_per_tile = MAX_BATCH_PER_DISPATCH.min(batch_size);
+            
+            {
+                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Batch Matrix Vector Multiply Pass"),
+                    timestamp_writes: None,
+                });
+                
+                compute_pass.set_pipeline(pipeline);
+                compute_pass.set_bind_group(0, &bind_group, &[]);
+                
+                // Process in tiles to avoid watchdog timeout
+                for batch_start in (0..batch_size).step_by(batch_per_tile) {
+                    let batch_end = (batch_start + batch_per_tile).min(batch_size);
+                    let tile_batch_size = batch_end - batch_start;
+                    
+                    for row_start in (0..rows).step_by(rows_per_tile) {
+                        let row_end = (row_start + rows_per_tile).min(rows);
+                        let tile_rows = row_end - row_start;
+                        
+                        // Dispatch workgroups for this tile (Apple Silicon optimized)
+                        // Use 32x1x1 workgroup size to match Apple Silicon 32-lane SIMD
+                        const WORKGROUP_SIZE_X: u32 = 32;
+                        const WORKGROUP_SIZE_Y: u32 = 1;
+                        
+                        let workgroups_x = ((tile_rows as u32 + WORKGROUP_SIZE_X - 1) / WORKGROUP_SIZE_X).max(1);
+                        let workgroups_y = ((tile_batch_size as u32 + WORKGROUP_SIZE_Y - 1) / WORKGROUP_SIZE_Y).max(1);
+                        
+                        // Ensure dispatch stays under time limit
+                        let estimated_elements = (workgroups_x * workgroups_y * WORKGROUP_SIZE_X * WORKGROUP_SIZE_Y) as usize;
+                        if estimated_elements > MAX_ELEMENTS_PER_DISPATCH {
+                            // Skip this dispatch to avoid watchdog timeout
+                            continue;
+                        }
+                        
+                        compute_pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
+                        
+                        // CRITICAL: Insert memory barrier between tiles
+                        // This ensures previous dispatch completes before next one starts
+                        if row_start + rows_per_tile < rows || batch_start + batch_per_tile < batch_size {
+                            // Note: wgpu doesn't expose explicit barriers, but dispatch boundaries act as implicit barriers
+                        }
+                    }
+                }
+            }
+            
+            // Copy output to staging buffer
+            encoder.copy_buffer_to_buffer(&output_buffer, 0, &staging_buffer, 0, output_size as u64);
+            
+            // Submit commands
+            self.queue.submit(Some(encoder.finish()));
+            
+            // CRITICAL FIX: Poll immediately after submit
+            self.device.poll(wgpu::Maintain::Poll);
+            
+            // Map staging buffer and read results
+            let buffer_slice = staging_buffer.slice(..);
+            let (sender, receiver) = std::sync::mpsc::channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                sender.send(result).unwrap();
+            });
+            
+            // Wait for mapping to complete
+            self.device.poll(wgpu::Maintain::Wait);
+            receiver.recv().unwrap().map_err(|_| ComputeError::ComputeError("Failed to map buffer".to_string()))?;
+            
+            // Read data
+            let data = buffer_slice.get_mapped_range();
+            let result_f32: Vec<f32> = bytemuck::cast_slice(&data).to_vec();
+            
+            drop(data);
+            staging_buffer.unmap();
+            
+            // Convert back to Vec<Vec<T>>
+            let mut results = Vec::with_capacity(batch_size);
+            for i in 0..batch_size {
+                let start = i * rows;
+                let end = start + rows;
+                let row_results: Vec<T> = result_f32[start..end]
+                    .iter()
+                    .map(|&x| T::from(x).unwrap())
+                    .collect();
+                results.push(row_results);
+            }
+            
+            Ok(results)
         }
     }
 

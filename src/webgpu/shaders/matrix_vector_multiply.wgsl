@@ -15,8 +15,9 @@ struct Uniforms {
 
 @group(0) @binding(3) var<uniform> uniforms: Uniforms;
 
-// Workgroup size optimized for most GPUs (256 threads per workgroup)
-@compute @workgroup_size(256)
+// Workgroup size optimized for Apple Silicon (32 threads per workgroup)
+// Matches 32-lane SIMD on M-series GPUs for optimal performance
+@compute @workgroup_size(32)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let row = global_id.x;
     

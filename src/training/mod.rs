@@ -294,6 +294,10 @@ mod rprop;
 // GPU training module (when GPU features are enabled)
 #[cfg(feature = "gpu")]
 mod gpu_training;
+#[cfg(feature = "gpu")]
+mod gpu_backprop;
+#[cfg(feature = "gpu")]
+mod gpu_batch_training;
 
 // Re-export main types
 pub use adam::{Adam, AdamW};
