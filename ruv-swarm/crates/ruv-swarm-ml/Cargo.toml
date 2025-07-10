@@ -14,6 +14,7 @@ ruv-swarm-core = { path = "../ruv-swarm-core", version = "1.0.6" }
 # Core dependencies
 serde = { workspace = true }
 serde_json = { workspace = true }
+fastrand = "2.0"
 
 # Optional WASM dependencies
 wasm-bindgen = { workspace = true, optional = true }
