@@ -1,7 +1,7 @@
 //! Forecasting model definitions and factory
 //!
 //! This module provides definitions for all 27+ forecasting models supported
-//! by the neuro-divergent library and the factory for creating them.
+//! by ruv-fann neural networks and the factory for creating them.
 
 use alloc::{
     boxed::Box,
@@ -11,11 +11,14 @@ use alloc::{
 };
 use core::fmt;
 
+pub mod neural_models;
+pub mod neural_bridge;
+
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
 /// Enumeration of all supported forecasting model types
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ModelType {
     // Basic Models
     MLP,
@@ -102,7 +105,7 @@ pub trait ForecastModel {
     fn fit(&mut self, data: &TimeSeriesData) -> Result<(), String>;
 
     /// Generate predictions
-    fn predict(&self, horizon: usize) -> Result<Vec<f32>, String>;
+    fn predict(&mut self, horizon: usize) -> Result<Vec<f32>, String>;
 
     /// Get model parameters for serialization
     fn get_parameters(&self) -> ModelParameters;
@@ -134,6 +137,16 @@ pub struct TimeSeriesData {
 pub struct ModelFactory;
 
 impl ModelFactory {
+    /// Create a concrete neural network model instance
+    pub fn create_model(model_type: ModelType, input_size: usize, output_size: usize) -> Result<Box<dyn ForecastModel>, String> {
+        neural_models::create_model(model_type, input_size, output_size)
+    }
+    
+    /// Create a model with default parameters for time series forecasting
+    pub fn create_default_model(model_type: ModelType, sequence_length: usize, horizon: usize) -> Result<Box<dyn ForecastModel>, String> {
+        Self::create_model(model_type, sequence_length, horizon)
+    }
+    
     /// Get information about all available models
     pub fn get_available_models() -> Vec<ModelInfo> {
         vec![
@@ -174,7 +187,31 @@ impl ModelFactory {
                 typical_training_time: TrainingTime::Fast,
                 interpretability_score: 0.8,
             },
+            ModelInfo {
+                name: "MLP Multivariate".to_string(),
+                model_type: ModelType::MLPMultivariate,
+                category: ModelCategory::Basic,
+                min_samples: 50,
+                supports_multivariate: true,
+                supports_static_features: true,
+                supports_probabilistic: false,
+                typical_memory_mb: 1.5,
+                typical_training_time: TrainingTime::Fast,
+                interpretability_score: 0.3,
+            },
             // Recurrent Models
+            ModelInfo {
+                name: "Recurrent Neural Network".to_string(),
+                model_type: ModelType::RNN,
+                category: ModelCategory::Recurrent,
+                min_samples: 100,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 4.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.2,
+            },
             ModelInfo {
                 name: "Long Short-Term Memory".to_string(),
                 model_type: ModelType::LSTM,
@@ -200,6 +237,30 @@ impl ModelFactory {
                 interpretability_score: 0.2,
             },
             // Advanced Models
+            ModelInfo {
+                name: "Neural Basis Expansion Analysis Extended".to_string(),
+                model_type: ModelType::NBEATSx,
+                category: ModelCategory::Advanced,
+                min_samples: 200,
+                supports_multivariate: false,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 12.0,
+                typical_training_time: TrainingTime::Slow,
+                interpretability_score: 0.6,
+            },
+            ModelInfo {
+                name: "Time Series Dense Encoder".to_string(),
+                model_type: ModelType::TiDE,
+                category: ModelCategory::Advanced,
+                min_samples: 200,
+                supports_multivariate: true,
+                supports_static_features: true,
+                supports_probabilistic: false,
+                typical_memory_mb: 10.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.5,
+            },
             ModelInfo {
                 name: "Neural Basis Expansion Analysis".to_string(),
                 model_type: ModelType::NBEATS,
@@ -249,7 +310,163 @@ impl ModelFactory {
                 typical_training_time: TrainingTime::Slow,
                 interpretability_score: 0.4,
             },
+            ModelInfo {
+                name: "AutoFormer".to_string(),
+                model_type: ModelType::AutoFormer,
+                category: ModelCategory::Transformer,
+                min_samples: 500,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 18.0,
+                typical_training_time: TrainingTime::Slow,
+                interpretability_score: 0.4,
+            },
+            ModelInfo {
+                name: "FedFormer".to_string(),
+                model_type: ModelType::FedFormer,
+                category: ModelCategory::Transformer,
+                min_samples: 500,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 16.0,
+                typical_training_time: TrainingTime::Slow,
+                interpretability_score: 0.4,
+            },
+            ModelInfo {
+                name: "PatchTST".to_string(),
+                model_type: ModelType::PatchTST,
+                category: ModelCategory::Transformer,
+                min_samples: 400,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 14.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.3,
+            },
+            ModelInfo {
+                name: "iTransformer".to_string(),
+                model_type: ModelType::ITransformer,
+                category: ModelCategory::Transformer,
+                min_samples: 400,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 15.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.3,
+            },
             // Specialized Models
+            ModelInfo {
+                name: "Deep Neural Point Temporal Smoothing".to_string(),
+                model_type: ModelType::DeepNPTS,
+                category: ModelCategory::Specialized,
+                min_samples: 300,
+                supports_multivariate: true,
+                supports_static_features: true,
+                supports_probabilistic: true,
+                typical_memory_mb: 9.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.4,
+            },
+            ModelInfo {
+                name: "Bidirectional Temporal Convolutional Network".to_string(),
+                model_type: ModelType::BiTCN,
+                category: ModelCategory::Specialized,
+                min_samples: 200,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 7.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.3,
+            },
+            ModelInfo {
+                name: "TimesNet".to_string(),
+                model_type: ModelType::TimesNet,
+                category: ModelCategory::Specialized,
+                min_samples: 300,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 12.0,
+                typical_training_time: TrainingTime::Slow,
+                interpretability_score: 0.4,
+            },
+            ModelInfo {
+                name: "Spectral Temporal Graph Neural Network".to_string(),
+                model_type: ModelType::StemGNN,
+                category: ModelCategory::Specialized,
+                min_samples: 400,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 15.0,
+                typical_training_time: TrainingTime::Slow,
+                interpretability_score: 0.3,
+            },
+            ModelInfo {
+                name: "Time Series Mixer".to_string(),
+                model_type: ModelType::TSMixer,
+                category: ModelCategory::Specialized,
+                min_samples: 200,
+                supports_multivariate: true,
+                supports_static_features: true,
+                supports_probabilistic: false,
+                typical_memory_mb: 8.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.5,
+            },
+            ModelInfo {
+                name: "Time Series Mixer Extended".to_string(),
+                model_type: ModelType::TSMixerx,
+                category: ModelCategory::Specialized,
+                min_samples: 200,
+                supports_multivariate: true,
+                supports_static_features: true,
+                supports_probabilistic: false,
+                typical_memory_mb: 10.0,
+                typical_training_time: TrainingTime::Medium,
+                interpretability_score: 0.5,
+            },
+            ModelInfo {
+                name: "Patch Mixer".to_string(),
+                model_type: ModelType::PatchMixer,
+                category: ModelCategory::Specialized,
+                min_samples: 200,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 6.0,
+                typical_training_time: TrainingTime::Fast,
+                interpretability_score: 0.4,
+            },
+            ModelInfo {
+                name: "Segment Recurrent Neural Network".to_string(),
+                model_type: ModelType::SegRNN,
+                category: ModelCategory::Specialized,
+                min_samples: 150,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 5.0,
+                typical_training_time: TrainingTime::Fast,
+                interpretability_score: 0.6,
+            },
+            ModelInfo {
+                name: "Dish Time Series".to_string(),
+                model_type: ModelType::DishTS,
+                category: ModelCategory::Specialized,
+                min_samples: 100,
+                supports_multivariate: true,
+                supports_static_features: false,
+                supports_probabilistic: false,
+                typical_memory_mb: 4.0,
+                typical_training_time: TrainingTime::Fast,
+                interpretability_score: 0.7,
+            },
             ModelInfo {
                 name: "Deep AutoRegressive".to_string(),
                 model_type: ModelType::DeepAR,

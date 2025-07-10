@@ -155,6 +155,9 @@ fn test_ensemble_forecasting() {
         weights: None,
         meta_learner: None,
         optimization_metric: OptimizationMetric::MAE,
+        stacking_cv_folds: 5,
+        bootstrap_samples: 1000,
+        quantile_levels: vec![0.1, 0.25, 0.5, 0.75, 0.9],
     };
 
     let forecaster = EnsembleForecaster::new(config).unwrap();
@@ -179,6 +182,9 @@ fn test_ensemble_forecasting() {
         weights: Some(vec![0.7, 0.3]),
         meta_learner: None,
         optimization_metric: OptimizationMetric::MAE,
+        stacking_cv_folds: 5,
+        bootstrap_samples: 1000,
+        quantile_levels: vec![0.1, 0.25, 0.5, 0.75, 0.9],
     };
 
     let forecaster_weighted = EnsembleForecaster::new(config_weighted).unwrap();
@@ -304,6 +310,9 @@ fn test_ensemble_prediction_intervals() {
         weights: None,
         meta_learner: None,
         optimization_metric: OptimizationMetric::MAE,
+        stacking_cv_folds: 5,
+        bootstrap_samples: 1000,
+        quantile_levels: vec![0.1, 0.25, 0.5, 0.75, 0.9],
     };
 
     let forecaster = EnsembleForecaster::new(config).unwrap();

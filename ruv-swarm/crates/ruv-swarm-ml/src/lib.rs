@@ -4,7 +4,6 @@
 //! ensemble methods, and swarm-level forecasting coordination.
 
 #![cfg_attr(target_arch = "wasm32", no_std)]
-#![allow(unused_imports)] // TODO: Remove when implementation is complete
 
 extern crate alloc;
 
@@ -33,6 +32,7 @@ pub mod agent_forecasting;
 pub mod ensemble;
 pub mod models;
 pub mod time_series;
+pub mod integration_example;
 
 #[cfg(target_arch = "wasm32")]
 pub mod wasm_bindings;
