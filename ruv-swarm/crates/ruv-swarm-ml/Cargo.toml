@@ -10,6 +10,7 @@ description = "Machine learning integration for RUV Swarm"
 
 [dependencies]
 ruv-swarm-core = { path = "../ruv-swarm-core", version = "1.0.6" }
+ruv-fann = { path = "../../..", features = ["gpu", "serde"] }
 
 # Core dependencies
 serde = { workspace = true }
@@ -22,9 +23,8 @@ serde-wasm-bindgen = { version = "0.6", optional = true }
 js-sys = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true }
 
-# Neural network and ML dependencies (placeholders for now)
-# TODO: Add actual neuro-divergent dependency when available
-# neuro-divergent = { version = "0.1", features = ["wasm"] }
+# Neural network and ML dependencies
+# ruv-fann provides the actual neural network implementation
 
 [features]
 default = []

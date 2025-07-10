@@ -1,7 +1,7 @@
 //! Forecasting model definitions and factory
 //!
 //! This module provides definitions for all 27+ forecasting models supported
-//! by the neuro-divergent library and the factory for creating them.
+//! by ruv-fann neural networks and the factory for creating them.
 
 use alloc::{
     boxed::Box,
@@ -11,11 +11,14 @@ use alloc::{
 };
 use core::fmt;
 
+pub mod neural_models;
+pub mod neural_bridge;
+
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
 /// Enumeration of all supported forecasting model types
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ModelType {
     // Basic Models
     MLP,
@@ -102,7 +105,7 @@ pub trait ForecastModel {
     fn fit(&mut self, data: &TimeSeriesData) -> Result<(), String>;
 
     /// Generate predictions
-    fn predict(&self, horizon: usize) -> Result<Vec<f32>, String>;
+    fn predict(&mut self, horizon: usize) -> Result<Vec<f32>, String>;
 
     /// Get model parameters for serialization
     fn get_parameters(&self) -> ModelParameters;
@@ -134,6 +137,16 @@ pub struct TimeSeriesData {
 pub struct ModelFactory;
 
 impl ModelFactory {
+    /// Create a concrete neural network model instance
+    pub fn create_model(model_type: ModelType, input_size: usize, output_size: usize) -> Result<Box<dyn ForecastModel>, String> {
+        neural_models::create_model(model_type, input_size, output_size)
+    }
+    
+    /// Create a model with default parameters for time series forecasting
+    pub fn create_default_model(model_type: ModelType, sequence_length: usize, horizon: usize) -> Result<Box<dyn ForecastModel>, String> {
+        Self::create_model(model_type, sequence_length, horizon)
+    }
+    
     /// Get information about all available models
     pub fn get_available_models() -> Vec<ModelInfo> {
         vec![

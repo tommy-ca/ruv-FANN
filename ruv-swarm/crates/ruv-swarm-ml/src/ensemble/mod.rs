@@ -15,7 +15,7 @@ use core::cmp::Ordering;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
-use crate::models::ModelType;
+use crate::models::{ModelType, ForecastModel, ModelFactory, TimeSeriesData};
 
 /// Ensemble forecaster for combining multiple models
 #[derive(Debug)]
@@ -145,6 +145,108 @@ impl EnsembleForecaster {
     /// Add a model to the ensemble
     pub fn add_model(&mut self, model: EnsembleModel) {
         self.models.push(model);
+    }
+    
+    /// Create ensemble from neural network models
+    pub fn from_neural_models(
+        config: EnsembleConfig,
+        model_types: Vec<ModelType>,
+        input_size: usize,
+        output_size: usize,
+    ) -> Result<(Self, Vec<Box<dyn ForecastModel>>), String> {
+        let mut forecaster = Self::new(config)?;
+        let mut neural_models = Vec::new();
+        
+        for model_type in model_types {
+            // Create the neural network model
+            let model = ModelFactory::create_model(model_type, input_size, output_size)?;
+            
+            // Create ensemble model metadata
+            let ensemble_model = EnsembleModel {
+                name: model_type.to_string(),
+                model_type,
+                weight: 1.0 / forecaster.config.models.len() as f32,
+                performance_metrics: ModelPerformanceMetrics {
+                    mae: 0.0,
+                    mse: 0.0,
+                    mape: 0.0,
+                    smape: 0.0,
+                    coverage: 0.0,
+                },
+                out_of_sample_predictions: Vec::new(),
+                training_predictions: Vec::new(),
+            };
+            
+            forecaster.add_model(ensemble_model);
+            neural_models.push(model);
+        }
+        
+        Ok((forecaster, neural_models))
+    }
+    
+    /// Train ensemble of neural network models
+    pub fn train_ensemble(
+        &mut self,
+        models: &mut [Box<dyn ForecastModel>],
+        training_data: &TimeSeriesData,
+        validation_data: Option<&TimeSeriesData>,
+    ) -> Result<(), String> {
+        if models.len() != self.models.len() {
+            return Err("Number of neural models must match ensemble models".to_string());
+        }
+        
+        // Train each model
+        for (i, model) in models.iter_mut().enumerate() {
+            match model.fit(training_data) {
+                Ok(_) => {
+                    // Update model performance if validation data is available
+                    if let Some(val_data) = validation_data {
+                        // Use a reasonable horizon that matches model output size
+                        let horizon = val_data.values.len().min(3); // Limit to 3 for this example
+                        let predictions = model.predict(horizon)?;
+                        let metrics = calculate_model_metrics(&predictions, &val_data.values);
+                        self.models[i].performance_metrics = metrics;
+                        self.models[i].training_predictions.push(predictions);
+                    }
+                }
+                Err(e) => {
+                    return Err(format!("Failed to train model {}: {}", self.models[i].name, e));
+                }
+            }
+        }
+        
+        // Optimize ensemble weights if validation data is available
+        if let Some(val_data) = validation_data {
+            let horizon = val_data.values.len().min(3); // Limit to 3 for this example
+            let predictions: Vec<Vec<f32>> = models
+                .iter_mut()
+                .map(|model| model.predict(horizon).unwrap_or_default())
+                .collect();
+            
+            self.optimize_weights(&predictions, &val_data.values, self.config.optimization_metric)?;
+        }
+        
+        Ok(())
+    }
+    
+    /// Generate ensemble predictions from neural network models
+    pub fn predict_with_models(
+        &self,
+        models: &mut [Box<dyn ForecastModel>],
+        horizon: usize,
+    ) -> Result<EnsembleForecast, String> {
+        if models.len() != self.models.len() {
+            return Err("Number of neural models must match ensemble models".to_string());
+        }
+        
+        // Generate predictions from each model
+        let predictions: Result<Vec<Vec<f32>>, String> = models
+            .iter_mut()
+            .map(|model| model.predict(horizon))
+            .collect();
+        
+        let predictions = predictions?;
+        self.ensemble_predict(&predictions)
     }
 
     /// Generate ensemble forecast
@@ -830,6 +932,25 @@ fn calculate_smape(forecast: &[f32], actuals: &[f32]) -> f32 {
         .sum::<f32>()
         / forecast.len() as f32
         * 100.0
+}
+
+/// Calculate comprehensive model performance metrics
+fn calculate_model_metrics(predictions: &[f32], actuals: &[f32]) -> ModelPerformanceMetrics {
+    let mae = calculate_mae(predictions, actuals);
+    let mse = calculate_mse(predictions, actuals);
+    let mape = calculate_mape(predictions, actuals);
+    let smape = calculate_smape(predictions, actuals);
+    
+    // Calculate coverage (simplified - in practice would use prediction intervals)
+    let coverage = 0.95; // Placeholder
+    
+    ModelPerformanceMetrics {
+        mae,
+        mse,
+        mape,
+        smape,
+        coverage,
+    }
 }
 
 

@@ -17,7 +17,7 @@ use core::fmt;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
-use crate::models::{ForecastModel, ModelType};
+use crate::models::{ForecastModel, ModelType, ModelFactory, TimeSeriesData};
 
 /// Manages forecasting models for individual agents
 pub struct AgentForecastingManager {
@@ -474,6 +474,101 @@ impl AgentForecastingManager {
             total_forecasts: context.performance_history.total_forecasts,
             num_model_switches: context.performance_history.model_switches.len(),
         })
+    }
+    
+    /// Create a neural network model for an agent
+    pub fn create_agent_model(&self, agent_id: &str, input_size: usize, output_size: usize) -> Result<Box<dyn ForecastModel>, String> {
+        let context = self
+            .agent_models
+            .get(agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+        
+        ModelFactory::create_model(context.primary_model, input_size, output_size)
+    }
+    
+    /// Train an agent's neural network model
+    pub fn train_agent_model(
+        &mut self,
+        agent_id: &str,
+        model: &mut Box<dyn ForecastModel>,
+        training_data: &TimeSeriesData,
+    ) -> Result<(), String> {
+        let context = self
+            .agent_models
+            .get_mut(agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+        
+        // Train the model
+        model.fit(training_data)?;
+        
+        // Update training metrics
+        context.performance_history.total_forecasts += 1;
+        
+        Ok(())
+    }
+    
+    /// Generate forecasts using an agent's neural network model
+    pub fn forecast_with_agent_model(
+        &self,
+        agent_id: &str,
+        model: &mut Box<dyn ForecastModel>,
+        horizon: usize,
+    ) -> Result<Vec<f32>, String> {
+        let _context = self
+            .agent_models
+            .get(agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+        
+        model.predict(horizon)
+    }
+    
+    /// Create ensemble of models for an agent
+    pub fn create_agent_ensemble(
+        &self,
+        agent_id: &str,
+        input_size: usize,
+        output_size: usize,
+    ) -> Result<Vec<Box<dyn ForecastModel>>, String> {
+        let context = self
+            .agent_models
+            .get(agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+        
+        let mut models = Vec::new();
+        
+        // Create primary model
+        let primary_model = ModelFactory::create_model(context.primary_model, input_size, output_size)?;
+        models.push(primary_model);
+        
+        // Create ensemble models if specified
+        for &model_type in &context.ensemble_models {
+            let model = ModelFactory::create_model(model_type, input_size, output_size)?;
+            models.push(model);
+        }
+        
+        // If no ensemble models, create default ensemble based on agent type
+        if context.ensemble_models.is_empty() {
+            let candidate_models = self.get_candidate_models(&context.agent_type);
+            for model_type in candidate_models.into_iter().take(3) { // Limit to 3 additional models
+                if model_type != context.primary_model {
+                    let model = ModelFactory::create_model(model_type, input_size, output_size)?;
+                    models.push(model);
+                }
+            }
+        }
+        
+        Ok(models)
+    }
+    
+    /// Update agent ensemble models based on performance
+    pub fn update_agent_ensemble(&mut self, agent_id: &str, model_types: Vec<ModelType>) -> Result<(), String> {
+        let context = self
+            .agent_models
+            .get_mut(agent_id)
+            .ok_or_else(|| format!("Agent {} not found", agent_id))?;
+        
+        context.ensemble_models = model_types;
+        Ok(())
     }
 }
 
