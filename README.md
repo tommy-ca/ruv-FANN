@@ -155,9 +155,9 @@ We use an innovative swarm-based contribution system powered by ruv-swarm itself
 ### Special Thanks To
 
 #### Core Contributors
-- **Bron** - Architecture design and swarm algorithms
-- **Ocean** - Neural model implementations
-- **Jed** - WASM optimization and performance
+- **Ocean** - Transformed FANN from mock implementations to real neural networks with actual CPU and GPU training. Built the Rust implementation from placeholder code into a functional neural computing engine.
+- **Bron** - Made the JavaScript/WASM integration actually work by removing mock functions and building real functionality. Transformed broken prototypes into production-ready systems.
+- **Jed** - Platform integration and scope management
 - **Shep** - Testing framework and quality assurance
 
 #### Projects We Built Upon
