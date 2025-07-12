@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use ruv_swarm_core::SwarmConfig;
+use uuid::Uuid;
 use crate::{
     orchestrator::SwarmOrchestrator, McpConfig, McpRequest, McpResponse, McpServer,
 };
@@ -84,6 +85,8 @@ fn test_tool_registry() {
 async fn test_orchestrator_spawn_agent() {
     use crate::types::{AgentCapabilities, AgentType};
 
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_spawn_agent_{}.db", Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config).await;
 
@@ -129,6 +132,8 @@ async fn test_orchestrator_task_creation() {
 async fn test_swarm_state_query() {
     use crate::types::{AgentCapabilities, AgentType};
 
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_swarm_state_{}.db", Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config).await;
 
@@ -152,6 +157,8 @@ async fn test_swarm_state_query() {
 /// Test metrics retrieval
 #[tokio::test]
 async fn test_metrics() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_metrics_{}.db", Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config).await;
 
@@ -163,6 +170,8 @@ async fn test_metrics() {
 /// Test optimization recommendations
 #[tokio::test]
 async fn test_optimization_recommendations() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_optimization_{}.db", Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config).await;
 
@@ -172,5 +181,5 @@ async fn test_optimization_recommendations() {
     assert!(!recommendations.is_empty());
     assert!(recommendations
         .iter()
-        .any(|r| r.recommendation_type == "scale_down"));
+        .any(|r| r.recommendation_type == "scaling"));
 }

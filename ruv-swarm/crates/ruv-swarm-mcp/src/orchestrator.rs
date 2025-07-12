@@ -99,8 +99,19 @@ impl SwarmOrchestrator {
         capabilities: AgentCapabilities,
     ) -> Result<Uuid, SwarmError> {
         let start_time = Instant::now();
-        let agent_id = Uuid::new_v4();
-        let agent_id_str = format!("{}-{}", name, agent_id);
+        
+        // Create agent model first to get consistent ID
+        let agent_model = AgentModel::new(
+            name.clone(),
+            agent_type.to_string(),
+            capabilities.tools.clone()
+        );
+        
+        // Parse the agent ID from the model
+        let agent_uuid = Uuid::parse_str(&agent_model.id)
+            .map_err(|e| SwarmError::custom(format!("Invalid agent ID format: {}", e)))?;
+        
+        let agent_id_str = format!("{}-{}", name, agent_uuid);
         
         // Create DynamicAgent
         let dynamic_agent = DynamicAgent::new(agent_id_str.clone(), capabilities.tools.clone());
@@ -110,12 +121,6 @@ impl SwarmOrchestrator {
         swarm.register_agent(dynamic_agent)?;
         
         // Persist agent to database
-        let agent_model = AgentModel::new(
-            name.clone(),
-            agent_type.to_string(),
-            capabilities.tools.clone()
-        );
-        
         self.storage.store_agent(&agent_model).await
             .map_err(|e| SwarmError::custom(e.to_string()))?;
         
@@ -147,7 +152,7 @@ impl SwarmOrchestrator {
             agent_type: agent_type.to_string(),
         });
 
-        Ok(agent_id)
+        Ok(agent_uuid)
     }
 
     /// Create a new task with persistence
@@ -428,6 +433,14 @@ impl SwarmOrchestrator {
     /// Get agent metrics with real data
     pub async fn get_agent_metrics(&self, agent_id: Uuid) -> Result<AgentMetrics, SwarmError> {
         let agent_id_str = agent_id.to_string();
+        
+        // Check if agent exists first
+        let agents = self.storage.list_agents().await
+            .map_err(|e| SwarmError::custom(e.to_string()))?;
+        
+        if !agents.iter().any(|a| a.id == agent_id_str) {
+            return Err(SwarmError::custom(format!("Agent {} not found", agent_id)));
+        }
         
         // Get real metrics from database
         let response_metrics = self.storage.get_metrics_by_agent(

@@ -16,6 +16,8 @@ use tokio::time::timeout;
 /// Test input validation for malformed requests
 #[tokio::test]
 async fn test_malformed_request_handling() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_malformed_request_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -36,6 +38,8 @@ async fn test_malformed_request_handling() {
 /// Test input validation for tool parameters
 #[tokio::test]
 async fn test_tool_parameter_validation() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_tool_parameter_validation_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -62,6 +66,8 @@ async fn test_tool_parameter_validation() {
 /// Test resource exhaustion protection
 #[tokio::test]
 async fn test_resource_limits() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_resource_limits_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -93,6 +99,8 @@ async fn test_resource_limits() {
 /// Test session isolation
 #[tokio::test]
 async fn test_session_isolation() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_session_isolation_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -133,6 +141,8 @@ async fn test_session_isolation() {
 /// Test error handling without information leakage
 #[tokio::test]
 async fn test_secure_error_handling() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_secure_error_handling_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -156,6 +166,8 @@ async fn test_secure_error_handling() {
 /// Test memory storage limits (protection against memory exhaustion)
 #[tokio::test]
 async fn test_memory_storage_limits() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_memory_storage_limits_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -185,6 +197,8 @@ async fn test_memory_storage_limits() {
 /// Test workflow path validation (protection against path traversal)
 #[tokio::test]
 async fn test_workflow_path_validation() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_workflow_path_validation_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -221,6 +235,8 @@ async fn test_workflow_path_validation() {
 /// Test rate limiting behavior
 #[tokio::test]
 async fn test_rate_limiting_behavior() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_rate_limiting_behavior_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -250,6 +266,8 @@ async fn test_rate_limiting_behavior() {
 /// Test boundary conditions for numeric parameters
 #[tokio::test]
 async fn test_numeric_parameter_boundaries() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_numeric_parameter_boundaries_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -286,6 +304,8 @@ async fn test_numeric_parameter_boundaries() {
 /// Test concurrent connection handling
 #[tokio::test]
 async fn test_concurrent_connections() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_concurrent_connections_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -312,6 +332,8 @@ async fn test_concurrent_connections() {
 /// Test agent metrics security
 #[tokio::test]
 async fn test_agent_metrics_security() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_agent_metrics_security_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -328,6 +350,8 @@ async fn test_agent_metrics_security() {
 /// Test WebSocket message size limits
 #[tokio::test]
 async fn test_websocket_message_limits() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_websocket_message_limits_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
@@ -356,6 +380,8 @@ async fn test_websocket_message_limits() {
 /// Test monitoring duration limits
 #[tokio::test]
 async fn test_monitoring_duration_limits() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_monitoring_duration_limits_{}.db", uuid::Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = Arc::new(SwarmOrchestrator::new(swarm_config).await);
     let mcp_config = McpConfig::default();
