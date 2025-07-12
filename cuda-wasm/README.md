@@ -12,6 +12,43 @@ A **revolutionary** high-performance transpiler that converts CUDA code to WebAs
 
 > **✨ NEW:** Now with ruv-FANN neural network integration, advanced profiling, and automatic optimization!
 
+## 🔒 Legal Notice & Independent Implementation
+
+### Trademark Disclaimer
+**CUDA** is a trademark of NVIDIA Corporation. This project is **not affiliated with, endorsed by, or sponsored by NVIDIA Corporation**. We acknowledge NVIDIA's ownership of the CUDA trademark and related intellectual property.
+
+### Independent Implementation
+CUDA-Rust-WASM is an **independent, clean-room implementation** that:
+- **Does NOT** use any NVIDIA proprietary code, libraries, or runtime
+- **Does NOT** link against or include NVIDIA CUDA libraries  
+- **Does NOT** require NVIDIA drivers or CUDA toolkit installation
+- **Is** a source-to-source transpiler using publicly available specifications
+- **Provides** compatibility through language syntax translation, not binary compatibility
+
+### Technical Approach
+This project implements CUDA language compatibility through:
+- **Syntax Translation**: Converting CUDA C++ syntax to equivalent Rust/WebGPU code
+- **Pattern Recognition**: Identifying common CUDA programming patterns and translating them
+- **Independent Runtime**: Providing our own execution environment for WebGPU/WebAssembly
+- **No Binary Compatibility**: We do not execute CUDA binaries or PTX code
+
+### CUDA Specifications Referenced
+This implementation is based on **publicly available CUDA documentation** and specifications:
+- [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/) (v12.3)
+- [CUDA Runtime API Reference](https://docs.nvidia.com/cuda/cuda-runtime-api/) (v12.3)  
+- [CUDA C++ Best Practices Guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/) (v12.3)
+- [PTX Instruction Set Architecture](https://docs.nvidia.com/cuda/parallel-thread-execution/) (v8.3)
+- [CUDA Memory Management Documentation](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-management)
+
+### Relationship to CUDA Ecosystem
+- **Language Compatibility**: We aim to support CUDA C++ language constructs
+- **API Compatibility**: We provide similar APIs but implemented independently  
+- **Ecosystem Integration**: We do not integrate with NVIDIA's CUDA ecosystem
+- **Performance Target**: We target similar performance characteristics where possible
+
+### License & Distribution
+This project is distributed under dual MIT/Apache-2.0 licenses. Users may choose either license. This software is provided "as-is" without warranties. See [LICENSE-MIT](LICENSE-MIT) and [LICENSE-APACHE](LICENSE-APACHE) for complete terms.
+
 ## 🎯 Why CUDA-Rust-WASM?
 
 **Problem**: CUDA code is locked to NVIDIA GPUs and desktop environments. Web applications and cross-platform solutions can't leverage existing CUDA investments.
