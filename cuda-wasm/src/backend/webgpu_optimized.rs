@@ -162,7 +162,7 @@ impl OptimizedWebGPUBackend {
                 None,
             )
             .await
-            .map_err(|e| CudaRustError::Backend(format!("Failed to create WebGPU device: {}", e)))?;
+            .map_err(|e| CudaRustError::Backend(format!("Failed to create WebGPU device: {e}")))?;
 
         Ok(Self {
             device: Arc::new(device),
@@ -442,7 +442,7 @@ impl OptimizedWebGPUBackend {
         let size = buffer.size();
         let mut buffer_cache = self.buffer_cache.lock().unwrap();
         
-        let buffers = buffer_cache.entry(size).or_insert_with(Vec::new);
+        let buffers = buffer_cache.entry(size).or_default();
         
         // Limit cache size to prevent memory bloat
         if buffers.len() < 10 {

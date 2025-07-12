@@ -795,7 +795,7 @@ mod tests {
     #[test]
     fn test_config_conversion() {
         let wasm_config = crate::neural_integration::wasm_types::WasmBridgeConfig::default();
-        let rust_config: BridgeConfig = wasm_config.into();
+        let rust_config: BridgeConfig = wasm_config;
         
         assert_eq!(rust_config.batch_size, 32);
         assert!(rust_config.enable_gpu);

@@ -91,9 +91,9 @@ pub fn neural_network_example() -> NeuralResult<()> {
     
     let result = bridge.execute_neural_operation(operation, &input_data)?;
     
-    println!("Network architecture: {:?}", layer_sizes);
-    println!("Input: {:?}", input_data);
-    println!("Output: {:?}", result);
+    println!("Network architecture: {layer_sizes:?}");
+    println!("Input: {input_data:?}");
+    println!("Output: {result:?}");
     
     // Test different activation functions
     let activation_functions = [
@@ -114,7 +114,7 @@ pub fn neural_network_example() -> NeuralResult<()> {
         };
         
         let result = bridge.execute_neural_operation(operation, &test_input)?;
-        println!("{:>8}: {:?}", name, result);
+        println!("{name:>8}: {result:?}");
     }
     
     Ok(())
@@ -144,7 +144,7 @@ pub fn performance_benchmark_example() -> NeuralResult<()> {
         let duration = start.elapsed();
         
         let throughput = *size as f64 / duration.as_secs_f64();
-        println!("  Size {:6}: {:8.2} elements/sec", size, throughput);
+        println!("  Size {size:6}: {throughput:8.2} elements/sec");
     }
     
     // Matrix multiplication benchmark
@@ -172,7 +172,7 @@ pub fn performance_benchmark_example() -> NeuralResult<()> {
         let flops = 2.0 * (*size as f64).powi(3); // 2 * n^3 operations
         let gflops = flops / duration.as_secs_f64() / 1e9;
         
-        println!("  {}x{}: {:8.2} GFLOPS", size, size, gflops);
+        println!("  {size}x{size}: {gflops:8.2} GFLOPS");
     }
     
     let memory_stats = bridge.get_memory_stats();
@@ -264,12 +264,12 @@ pub fn custom_kernel_example() -> NeuralResult<()> {
     let result = bridge.execute_neural_operation(operation, &input_data)?;
     
     println!("Custom Kernel: Element-wise Square");
-    println!("Input:  {:?}", input_data);
-    println!("Output: {:?}", result);
+    println!("Input:  {input_data:?}");
+    println!("Output: {result:?}");
     
     // Verify results
     let expected: Vec<f32> = input_data.iter().map(|x| x * x).collect();
-    println!("Expected: {:?}", expected);
+    println!("Expected: {expected:?}");
     
     Ok(())
 }
@@ -299,7 +299,7 @@ pub fn error_handling_example() -> NeuralResult<()> {
             println!("First 5 results: {:?}", &result[0..5]);
         }
         Err(e) => {
-            println!("Error: {}", e);
+            println!("Error: {e}");
         }
     }
     
@@ -312,7 +312,7 @@ pub fn error_handling_example() -> NeuralResult<()> {
     
     match bridge.execute_neural_operation(operation, &invalid_input) {
         Ok(_) => println!("Unexpected success with invalid input"),
-        Err(e) => println!("Expected error: {}", e),
+        Err(e) => println!("Expected error: {e}"),
     }
     
     Ok(())
@@ -329,9 +329,9 @@ pub fn training_simulation_example() -> NeuralResult<()> {
     let learning_rate = 0.01;
     let epochs = 100;
     
-    println!("Neural Network: {:?}", layer_sizes);
-    println!("Learning Rate: {}", learning_rate);
-    println!("Epochs: {}", epochs);
+    println!("Neural Network: {layer_sizes:?}");
+    println!("Learning Rate: {learning_rate}");
+    println!("Epochs: {epochs}");
     
     // Generate synthetic training data
     let batch_size = 32;
@@ -372,7 +372,7 @@ pub fn training_simulation_example() -> NeuralResult<()> {
         let avg_loss = total_loss / (training_samples / batch_size) as f32;
         
         if epoch % 20 == 0 {
-            println!("Epoch {}: Loss = {:.6}", epoch, avg_loss);
+            println!("Epoch {epoch}: Loss = {avg_loss:.6}");
         }
     }
     
@@ -410,18 +410,18 @@ mod tests {
     #[test]
     fn test_matrix_operations_example() {
         let result = matrix_operations_example();
-        assert!(result.is_ok(), "Matrix operations example failed: {:?}", result);
+        assert!(result.is_ok(), "Matrix operations example failed: {result:?}");
     }
     
     #[test]
     fn test_neural_network_example() {
         let result = neural_network_example();
-        assert!(result.is_ok(), "Neural network example failed: {:?}", result);
+        assert!(result.is_ok(), "Neural network example failed: {result:?}");
     }
     
     #[test]
     fn test_error_handling_example() {
         let result = error_handling_example();
-        assert!(result.is_ok(), "Error handling example failed: {:?}", result);
+        assert!(result.is_ok(), "Error handling example failed: {result:?}");
     }
 }

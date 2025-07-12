@@ -88,7 +88,7 @@ impl MemoryPool {
             if size >= self.config.min_pooled_size && size <= self.config.max_pooled_size {
                 let pool_size = self.round_to_power_of_2(size);
                 let mut pools = self.pools.lock().unwrap();
-                let pool = pools.entry(pool_size).or_insert_with(Vec::new);
+                let pool = pools.entry(pool_size).or_default();
                 
                 for _ in 0..self.config.prealloc_count {
                     pool.push(vec![0; pool_size]);
@@ -160,7 +160,7 @@ impl MemoryPool {
         buffer.resize(pool_size, 0);
 
         let mut pools = self.pools.lock().unwrap();
-        let pool = pools.entry(pool_size).or_insert_with(Vec::new);
+        let pool = pools.entry(pool_size).or_default();
         
         // Limit pool size to prevent memory bloat
         if pool.len() < self.config.max_pool_size / pool_size {
@@ -234,7 +234,7 @@ static GLOBAL_POOL: std::sync::OnceLock<MemoryPool> = std::sync::OnceLock::new()
 
 /// Get or initialize the global memory pool
 pub fn global_pool() -> &'static MemoryPool {
-    GLOBAL_POOL.get_or_init(|| MemoryPool::new())
+    GLOBAL_POOL.get_or_init(MemoryPool::new)
 }
 
 /// Allocate from the global pool
@@ -286,6 +286,10 @@ impl KernelMemoryManager {
     }
 
     /// Deallocate kernel memory
+    /// 
+    /// # Safety
+    /// The caller must ensure that the pointer was allocated by this memory pool
+    /// and is not used after this function returns.
     pub unsafe fn deallocate_kernel_memory(&self, ptr: *mut u8) -> Result<()> {
         let size = {
             let mut allocations = self.allocations.lock().unwrap();

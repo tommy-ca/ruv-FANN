@@ -233,7 +233,7 @@ impl NeuralBridge {
                 Ok(backend) => Some(Arc::new(backend) as Arc<dyn GpuBackendTrait>),
                 Err(e) => {
                     if config.auto_fallback {
-                        log::warn!("GPU initialization failed, falling back to CPU: {}", e);
+                        log::warn!("GPU initialization failed, falling back to CPU: {e}");
                         None
                     } else {
                         return Err(NeuralIntegrationError::GpuInitError(e.to_string()));
@@ -265,7 +265,7 @@ impl NeuralBridge {
     
     /// Check if GPU acceleration is available
     pub fn is_gpu_available(&self) -> bool {
-        self.gpu_backend.as_ref().map_or(false, |b| b.is_available())
+        self.gpu_backend.as_ref().is_some_and(|b| b.is_available())
     }
     
     /// Get device information
@@ -301,7 +301,7 @@ impl NeuralBridge {
                 Ok(result) => result,
                 Err(e) => {
                     if self.config.auto_fallback {
-                        log::warn!("GPU execution failed, falling back to CPU: {}", e);
+                        log::warn!("GPU execution failed, falling back to CPU: {e}");
                         self.execute_on_cpu(operation, inputs)?
                     } else {
                         return Err(e);
@@ -389,7 +389,7 @@ impl<T> NeuralOperation<T> {
         match self {
             Self::MatrixMultiply { .. } => "matrix_multiply".to_string(),
             Self::VectorAdd { .. } => "vector_add".to_string(),
-            Self::ActivationFunction { function, .. } => format!("activation_{:?}", function),
+            Self::ActivationFunction { function, .. } => format!("activation_{function:?}"),
             Self::Convolution { .. } => "convolution".to_string(),
             Self::ForwardPropagation { .. } => "forward_propagation".to_string(),
             Self::BackwardPropagation { .. } => "backward_propagation".to_string(),

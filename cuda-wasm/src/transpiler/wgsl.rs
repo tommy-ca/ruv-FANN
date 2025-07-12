@@ -70,8 +70,7 @@ impl WgslGenerator {
                 for param in &kernel.params {
                     if matches!(param.ty, Type::Pointer(_)) {
                         self.writeln(&format!(
-                            "@group(0) @binding({})",
-                            binding_index
+                            "@group(0) @binding({binding_index})"
                         ))?;
                         
                         let buffer_type = match &param.ty {
@@ -326,19 +325,19 @@ impl WgslGenerator {
                 self.write("(")?;
                 self.generate_expression(left)?;
                 self.write(" ")?;
-                self.write(&self.binary_op_to_wgsl(op)?)?;
+                self.write(self.binary_op_to_wgsl(op)?)?;
                 self.write(" ")?;
                 self.generate_expression(right)?;
                 self.write(")")?;
             },
             Expression::Unary { op, expr } => {
                 self.write("(")?;
-                self.write(&self.unary_op_to_wgsl(op)?)?;
+                self.write(self.unary_op_to_wgsl(op)?)?;
                 self.generate_expression(expr)?;
                 self.write(")")?;
             },
             Expression::Call { name, args } => {
-                self.write(&format!("{}(", name))?;
+                self.write(&format!("{name}("))?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
                         self.write(", ")?;
@@ -355,11 +354,11 @@ impl WgslGenerator {
             },
             Expression::Member { object, field } => {
                 self.generate_expression(object)?;
-                self.write(&format!(".{}", field))?;
+                self.write(&format!(".{field}"))?;
             },
             Expression::Cast { ty, expr } => {
                 let wgsl_type = self.type_to_wgsl(ty)?;
-                self.write(&format!("{}(", wgsl_type))?;
+                self.write(&format!("{wgsl_type}("))?;
                 self.generate_expression(expr)?;
                 self.write(")")?;
             },
@@ -377,7 +376,7 @@ impl WgslGenerator {
             },
             Expression::WarpPrimitive { op, args } => {
                 // WGSL doesn't have direct warp primitives, emit a comment
-                self.write(&format!("/* warp_{:?}(", op))?;
+                self.write(&format!("/* warp_{op:?}("))?;
                 for (i, arg) in args.iter().enumerate() {
                     if i > 0 {
                         self.write(", ")?;
@@ -396,11 +395,11 @@ impl WgslGenerator {
     /// Generate literal
     fn generate_literal(&mut self, lit: &Literal) -> Result<()> {
         match lit {
-            Literal::Bool(b) => self.write(&format!("{}", b))?,
-            Literal::Int(i) => self.write(&format!("{}i", i))?,
-            Literal::UInt(u) => self.write(&format!("{}u", u))?,
-            Literal::Float(f) => self.write(&format!("{}f", f))?,
-            Literal::String(s) => self.write(&format!("\"{}\"", s))?,
+            Literal::Bool(b) => self.write(&format!("{b}"))?,
+            Literal::Int(i) => self.write(&format!("{i}i"))?,
+            Literal::UInt(u) => self.write(&format!("{u}u"))?,
+            Literal::Float(f) => self.write(&format!("{f}f"))?,
+            Literal::String(s) => self.write(&format!("\"{s}\""))?,
         }
         Ok(())
     }

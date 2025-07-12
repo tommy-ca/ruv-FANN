@@ -2,7 +2,7 @@
 
 /// Round up to nearest multiple
 pub fn round_up(value: usize, multiple: usize) -> usize {
-    ((value + multiple - 1) / multiple) * multiple
+    value.div_ceil(multiple) * multiple
 }
 
 /// Calculate optimal block size for given problem size
@@ -22,5 +22,5 @@ pub fn calculate_block_size(problem_size: usize, max_threads: usize) -> usize {
 
 /// Calculate grid size for given problem and block size
 pub fn calculate_grid_size(problem_size: usize, block_size: usize) -> usize {
-    (problem_size + block_size - 1) / block_size
+    problem_size.div_ceil(block_size)
 }

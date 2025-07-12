@@ -11,6 +11,12 @@ pub struct CodeGenerator {
     code: TokenStream,
 }
 
+impl Default for CodeGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CodeGenerator {
     /// Create a new code generator
     pub fn new() -> Self {

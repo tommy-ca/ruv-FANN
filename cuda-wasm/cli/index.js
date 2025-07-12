@@ -1,19 +1,32 @@
 #!/usr/bin/env node
 
 const { Command } = require('commander');
-const chalk = require('chalk');
-const ora = require('ora');
+const chalk = require('chalk').default || require('chalk');
 const fs = require('fs').promises;
 const path = require('path');
 const semver = require('semver');
 const { transpileCuda, analyzeKernel, benchmark, getVersion } = require('../dist');
+
+// Simple spinner replacement for ora
+const createSpinner = (text) => ({
+  start() {
+    console.log(text);
+    return this;
+  },
+  succeed(text) {
+    console.log(chalk.green('✓'), text || 'Done!');
+  },
+  fail(text) {
+    console.log(chalk.red('✗'), text || 'Failed!');
+  }
+});
 
 const program = new Command();
 
 program
   .name('cuda-wasm')
   .description('High-performance CUDA to WebAssembly/WebGPU transpiler')
-  .version('1.0.0');
+  .version('1.1.0');
 
 program
   .command('transpile <input>')
@@ -23,14 +36,15 @@ program
   .option('-O, --optimize', 'Enable optimizations', false)
   .option('--profile', 'Generate profiling data', false)
   .action(async (input, options) => {
-    const spinner = ora('Transpiling CUDA code...').start();
+    const spinner = createSpinner('🚀 Transpiling CUDA code...').start();
     
     try {
       // Read input file
       const cudaCode = await fs.readFile(input, 'utf8');
       
       // Transpile code
-      const result = await transpileCuda(cudaCode, {
+      const result = transpileCuda(input, {
+        output: options.output,
         target: options.target,
         optimize: options.optimize,
         profile: options.profile
@@ -39,18 +53,23 @@ program
       // Determine output path
       const outputPath = options.output || input.replace(/\.(cu|cuh)$/, '.wasm');
       
-      // Write output
-      await fs.writeFile(outputPath, result.code);
-      
-      if (result.wasmBinary) {
-        await fs.writeFile(outputPath.replace(/\.wasm$/, '.wasm.bin'), result.wasmBinary);
-      }
+      // Output path is handled by transpileCuda
       
       spinner.succeed(chalk.green(`✓ Transpiled successfully to ${outputPath}`));
       
-      if (result.profile) {
-        console.log(chalk.blue('\nProfiling data:'));
-        console.log(result.profile);
+      // Show results
+      console.log(chalk.blue('\nTranspilation Results:'));
+      console.log(`  Input: ${result.inputFile}`);
+      console.log(`  Output: ${result.outputFile}`);
+      console.log(`  Size: ${result.size} bytes`);
+      console.log(`  Optimizations: ${result.optimizations.join(', ')}`);
+      if (result.kernels) {
+        console.log(`  Kernels: ${result.kernels.join(', ')}`);
+      }
+      
+      if (result.warnings && result.warnings.length > 0) {
+        console.log(chalk.yellow('\nWarnings:'));
+        result.warnings.forEach(warning => console.log(`  - ${warning}`));
       }
     } catch (error) {
       spinner.fail(chalk.red(`✗ Transpilation failed: ${error.message}`));
@@ -62,23 +81,29 @@ program
   .command('analyze <input>')
   .description('Analyze CUDA kernel for optimization opportunities')
   .action(async (input) => {
-    const spinner = ora('Analyzing CUDA kernel...').start();
+    const spinner = createSpinner('🔍 Analyzing CUDA kernel...').start();
     
     try {
       const cudaCode = await fs.readFile(input, 'utf8');
-      const analysis = await analyzeKernel(cudaCode);
+      const analysis = analyzeKernel(input);
       
       spinner.succeed(chalk.green('✓ Analysis complete'));
       
       console.log(chalk.blue('\nKernel Analysis:'));
-      console.log(chalk.yellow('Memory Access Pattern:'), analysis.memoryPattern);
-      console.log(chalk.yellow('Thread Utilization:'), `${analysis.threadUtilization}%`);
-      console.log(chalk.yellow('Shared Memory Usage:'), `${analysis.sharedMemoryUsage} bytes`);
-      console.log(chalk.yellow('Register Usage:'), analysis.registerUsage);
+      console.log(chalk.yellow('Kernel Name:'), analysis.kernelName);
+      console.log(chalk.yellow('Complexity:'), analysis.complexity);
+      console.log(chalk.yellow('Memory Access:'), analysis.memoryAccess);
       
-      if (analysis.suggestions.length > 0) {
+      if (analysis.metrics) {
+        console.log(chalk.blue('\nPerformance Metrics:'));
+        console.log(chalk.yellow('Thread Utilization:'), analysis.metrics.threadUtilization);
+        console.log(chalk.yellow('Shared Memory Usage:'), analysis.metrics.sharedMemoryUsage);
+        console.log(chalk.yellow('Register Usage:'), analysis.metrics.estimatedRegisterUsage);
+      }
+      
+      if (analysis.optimization_suggestions.length > 0) {
         console.log(chalk.blue('\nOptimization Suggestions:'));
-        analysis.suggestions.forEach((suggestion, i) => {
+        analysis.optimization_suggestions.forEach((suggestion, i) => {
           console.log(chalk.yellow(`${i + 1}.`), suggestion);
         });
       }
@@ -93,22 +118,23 @@ program
   .description('Benchmark CUDA kernel performance')
   .option('-i, --iterations <n>', 'Number of iterations', '100')
   .action(async (input, options) => {
-    const spinner = ora('Running benchmarks...').start();
+    const spinner = createSpinner('⚡ Running benchmarks...').start();
     
     try {
       const cudaCode = await fs.readFile(input, 'utf8');
       const iterations = parseInt(options.iterations);
       
       // Run benchmarks
-      const results = await require('../dist').benchmark(cudaCode, { iterations });
+      const results = await benchmark(input, { iterations });
       
       spinner.succeed(chalk.green('✓ Benchmarks complete'));
       
       console.log(chalk.blue('\nBenchmark Results:'));
-      console.log(chalk.yellow('Average execution time:'), `${results.avgTime.toFixed(3)}ms`);
-      console.log(chalk.yellow('Min execution time:'), `${results.minTime.toFixed(3)}ms`);
-      console.log(chalk.yellow('Max execution time:'), `${results.maxTime.toFixed(3)}ms`);
-      console.log(chalk.yellow('Throughput:'), `${results.throughput.toFixed(2)} ops/sec`);
+      console.log(chalk.yellow('Native execution time:'), `${results.nativeTime}ms`);
+      console.log(chalk.yellow('WASM execution time:'), `${results.wasmTime}ms`);
+      console.log(chalk.yellow('Speedup:'), `${results.speedup}x`);
+      console.log(chalk.yellow('Throughput:'), results.throughput);
+      console.log(chalk.yellow('Efficiency:'), results.efficiency);
     } catch (error) {
       spinner.fail(chalk.red(`✗ Benchmark failed: ${error.message}`));
       process.exit(1);
@@ -120,7 +146,7 @@ program
   .description('Initialize a new CUDA-Rust-WASM project')
   .option('-n, --name <name>', 'Project name', 'my-cuda-wasm-project')
   .action(async (options) => {
-    const spinner = ora('Initializing project...').start();
+    const spinner = createSpinner('📦 Initializing project...').start();
     
     try {
       const projectPath = path.join(process.cwd(), options.name);
@@ -142,7 +168,7 @@ program
           benchmark: 'cuda-wasm benchmark kernels/*.cu'
         },
         dependencies: {
-          '@cuda-wasm/core': '^1.0.0'
+          'cuda-wasm': '^1.0.1'
         }
       };
       

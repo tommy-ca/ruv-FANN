@@ -1,12 +1,17 @@
 # CUDA-Rust-WASM 🚀
 
-[![npm version](https://badge.fury.io/js/cuda-rust-wasm.svg)](https://badge.fury.io/js/cuda-rust-wasm)
+[![Crates.io](https://img.shields.io/crates/v/cuda-rust-wasm.svg)](https://crates.io/crates/cuda-rust-wasm)
+[![npm version](https://badge.fury.io/js/cuda-wasm.svg)](https://badge.fury.io/js/cuda-wasm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)](https://webassembly.org/)
 [![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![GitHub Tests](https://github.com/vibecast/cuda-rust-wasm/workflows/CI/badge.svg)](https://github.com/vibecast/cuda-rust-wasm/actions)
 [![Coverage](https://codecov.io/gh/vibecast/cuda-rust-wasm/branch/main/graph/badge.svg)](https://codecov.io/gh/vibecast/cuda-rust-wasm)
 [![Documentation](https://docs.rs/cuda-rust-wasm/badge.svg)](https://docs.rs/cuda-rust-wasm)
+
+> **📦 Package Names:**
+> - **Rust Crate**: `cuda-rust-wasm` on [crates.io](https://crates.io/crates/cuda-rust-wasm)
+> - **NPM Package**: `cuda-wasm` on [npm](https://www.npmjs.com/package/cuda-wasm)
 
 A **revolutionary** high-performance transpiler that converts CUDA code to WebAssembly and WebGPU, enabling GPU-accelerated computing in web browsers and Node.js environments with near-native performance.
 
@@ -80,19 +85,41 @@ This project is distributed under dual MIT/Apache-2.0 licenses. Users may choose
 
 ## 📦 Installation
 
-### NPX (Recommended - No Installation Required)
+### For JavaScript/CLI Users (NPM)
+
+The CLI and JavaScript API are available as the `cuda-wasm` npm package:
+
+#### NPX (Recommended - No Installation Required)
 ```bash
-npx cuda-rust-wasm transpile kernel.cu -o kernel.wasm
+# For files in current directory
+npx cuda-wasm transpile kernel.cu -o kernel.wasm
+
+# For files in other directories (use absolute or relative paths)
+npx cuda-wasm transpile ../path/to/kernel.cu -o ./kernel.wasm
+
+# With optimization
+npx cuda-wasm transpile kernel.cu -o kernel.wasm --optimize
 ```
 
-### NPM Global Installation
+#### NPM Global Installation
 ```bash
-npm install -g cuda-rust-wasm
+npm install -g cuda-wasm
+
+# Then use directly
+cuda-wasm transpile kernel.cu -o kernel.wasm
 ```
 
-### As a Project Dependency
+#### As a Project Dependency
 ```bash
-npm install cuda-rust-wasm
+npm install cuda-wasm
+```
+
+### For Rust Developers (Crates.io)
+
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+cuda-rust-wasm = "0.1.5"
 ```
 
 ## 🎯 Quick Start
@@ -101,22 +128,22 @@ npm install cuda-rust-wasm
 
 **Transpile a CUDA kernel:**
 ```bash
-npx cuda-rust-wasm transpile vector_add.cu -o vector_add.wasm --optimize
+npx cuda-wasm transpile vector_add.cu -o vector_add.wasm --optimize
 ```
 
 **Analyze kernel performance:**
 ```bash
-npx cuda-rust-wasm analyze matrix_multiply.cu
+npx cuda-wasm analyze matrix_multiply.cu
 ```
 
 **Run benchmarks:**
 ```bash
-npx cuda-rust-wasm benchmark kernel.cu --iterations 1000
+npx cuda-wasm benchmark kernel.cu --iterations 1000
 ```
 
 **Initialize a new project:**
 ```bash
-npx cuda-rust-wasm init --name my-gpu-project
+npx cuda-wasm init --name my-gpu-project
 cd my-gpu-project
 npm install
 npm run build
@@ -126,7 +153,7 @@ npm run build
 
 #### Basic Usage
 ```javascript
-const { transpileCuda, analyzeKernel, createWebGPUKernel } = require('cuda-rust-wasm');
+const { transpileCuda, analyzeKernel, createWebGPUKernel } = require('cuda-wasm');
 
 // Example CUDA kernel
 const cudaCode = `
@@ -158,7 +185,7 @@ example();
 
 #### Advanced Usage with Neural Networks
 ```javascript
-const { CudaRust, NeuralAccelerator } = require('cuda-rust-wasm');
+const { CudaRust, NeuralAccelerator } = require('cuda-wasm');
 const { RuvFANN } = require('ruv-fann');
 
 // Create neural network-accelerated transpiler
@@ -213,7 +240,7 @@ result.monitor.on('performance', (metrics) => {
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://unpkg.com/cuda-rust-wasm/dist/browser.js"></script>
+  <script src="https://unpkg.com/cuda-wasm/dist/browser.js"></script>
 </head>
 <body>
   <script>
@@ -416,7 +443,7 @@ __global__ void backpropagation(
 `;
 
 // Neural network setup with ruv-FANN
-const { RuvFANN, CudaRustWasm } = require('cuda-rust-wasm');
+const { RuvFANN, CudaRustWasm } = require('cuda-wasm');
 
 class NeuralAcceleratedNetwork {
   constructor(topology) {
@@ -1370,7 +1397,7 @@ Comprehensive documentation is available:
 ![GitHub issues](https://img.shields.io/github/issues/vibecast/cuda-rust-wasm)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/vibecast/cuda-rust-wasm)
 ![Code coverage](https://img.shields.io/codecov/c/github/vibecast/cuda-rust-wasm)
-![npm downloads](https://img.shields.io/npm/dm/cuda-rust-wasm)
+![npm downloads](https://img.shields.io/npm/dm/cuda-wasm)
 
 ## 📝 License
 

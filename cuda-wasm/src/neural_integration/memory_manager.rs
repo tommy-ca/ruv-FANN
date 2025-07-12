@@ -347,7 +347,7 @@ impl CpuMemoryPool {
         buffer.clear();
         buffer.resize(pool_size, 0.0);
         
-        self.pools.entry(pool_size).or_insert_with(VecDeque::new).push_back(buffer);
+        self.pools.entry(pool_size).or_default().push_back(buffer);
         self.deallocations += 1;
     }
     
@@ -454,7 +454,7 @@ impl GpuMemoryPool {
                 
                 // Add to free pool
                 self.free_buffers.entry(gpu_buffer.size)
-                    .or_insert_with(VecDeque::new)
+                    .or_default()
                     .push_back(handle);
             }
         }

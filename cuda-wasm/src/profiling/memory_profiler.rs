@@ -32,6 +32,12 @@ pub struct MemoryProfiler {
     enabled: bool,
 }
 
+impl Default for MemoryProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MemoryProfiler {
     pub fn new() -> Self {
         let mut current_usage = HashMap::new();
@@ -250,10 +256,10 @@ impl MemoryProfiler {
 
         let history = self.allocation_history.lock().unwrap();
         let mut file = File::create(path)
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {e}")))?;
 
         writeln!(file, "timestamp_us,event_type,size,allocation_type,tag")
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write header: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write header: {e}")))?;
 
         let start_time = history.first().map(|e| e.timestamp).unwrap_or_else(Instant::now);
 
@@ -266,7 +272,7 @@ impl MemoryProfiler {
                 event.size,
                 event.allocation_type,
                 event.tag.as_ref().unwrap_or(&"".to_string())
-            ).map_err(|e| CudaRustError::RuntimeError(format!("Failed to write data: {}", e)))?;
+            ).map_err(|e| CudaRustError::RuntimeError(format!("Failed to write data: {e}")))?;
         }
 
         Ok(())
@@ -305,7 +311,7 @@ impl FragmentationAnalysis {
         categories.sort_by_key(|(k, _)| k.as_str());
         
         for (category, count) in categories {
-            println!("  {}: {} allocations", category, count);
+            println!("  {category}: {count} allocations");
         }
     }
 }

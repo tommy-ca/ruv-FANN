@@ -75,7 +75,7 @@ impl WebGpuBackend {
     /// Create a new WebGPU backend
     pub fn new(config: &BridgeConfig) -> NeuralResult<Self> {
         let runtime = Arc::new(Runtime::new().map_err(|e| {
-            NeuralIntegrationError::GpuInitError(format!("Failed to create runtime: {}", e))
+            NeuralIntegrationError::GpuInitError(format!("Failed to create runtime: {e}"))
         })?);
         
         let mut backend = Self {
@@ -90,7 +90,7 @@ impl WebGpuBackend {
         
         // Initialize WebGPU if possible
         if let Err(e) = backend.init_webgpu() {
-            log::warn!("WebGPU initialization failed: {}", e);
+            log::warn!("WebGPU initialization failed: {e}");
             if !config.auto_fallback {
                 return Err(e);
             }
@@ -133,7 +133,7 @@ impl WebGpuBackend {
             },
             None,
         ).block_on().map_err(|e| {
-            NeuralIntegrationError::GpuInitError(format!("Failed to create device: {}", e))
+            NeuralIntegrationError::GpuInitError(format!("Failed to create device: {e}"))
         })?;
         
         self.device = Some(device);

@@ -101,6 +101,12 @@ pub struct KernelProfiler {
     enabled: bool,
 }
 
+impl Default for KernelProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KernelProfiler {
     pub fn new() -> Self {
         Self {
@@ -172,8 +178,8 @@ impl KernelProfiler {
         
         println!("\n=== Overall Statistics ===");
         println!("Total kernels: {}", stats.len());
-        println!("Total launches: {}", total_launches);
-        println!("Total GPU time: {:?}", total_time);
+        println!("Total launches: {total_launches}");
+        println!("Total GPU time: {total_time:?}");
         
         println!("==============================================\n");
     }
@@ -216,9 +222,9 @@ impl KernelProfiler {
         }
 
         let mut file = File::create(path)
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {e}")))?;
         writeln!(file, "[{}]", data.join(",\n"))
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write data: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write data: {e}")))?;
 
         Ok(())
     }

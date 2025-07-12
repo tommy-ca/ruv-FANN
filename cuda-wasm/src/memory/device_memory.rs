@@ -146,11 +146,19 @@ impl<T: Copy> DeviceBuffer<T> {
     }
 
     /// Get raw device pointer
+    /// 
+    /// # Safety
+    /// The caller must ensure that the returned pointer is not used after the `DeviceBuffer` is dropped.
+    /// The caller must also ensure that the memory is not accessed concurrently.
     pub unsafe fn as_ptr(&self) -> *const T {
         self.ptr.as_ptr() as *const T
     }
 
     /// Get mutable raw device pointer
+    /// 
+    /// # Safety
+    /// The caller must ensure that the returned pointer is not used after the `DeviceBuffer` is dropped.
+    /// The caller must also ensure that the memory is not accessed concurrently.
     pub unsafe fn as_mut_ptr(&mut self) -> *mut T {
         self.ptr.as_mut_ptr() as *mut T
     }

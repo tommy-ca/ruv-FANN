@@ -20,6 +20,12 @@ pub struct NativeGPUBackend {
     capabilities: BackendCapabilities,
 }
 
+impl Default for NativeGPUBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NativeGPUBackend {
     /// Create a new native GPU backend
     pub fn new() -> Self {

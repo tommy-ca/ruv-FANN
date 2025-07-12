@@ -67,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 fs::write(&output_path, rust_code)?;
                 println!("Transpiled CUDA to Rust: {} -> {}", input.display(), output_path.display());
             } else {
-                println!("{}", rust_code);
+                println!("{rust_code}");
             }
         }
         
@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 fs::write(&output_path, wgsl_code)?;
                 println!("Generated WGSL shader: {} -> {}", input.display(), output_path.display());
             } else {
-                println!("{}", wgsl_code);
+                println!("{wgsl_code}");
             }
         }
     }

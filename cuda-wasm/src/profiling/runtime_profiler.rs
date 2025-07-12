@@ -70,6 +70,12 @@ impl OperationStats {
     }
 }
 
+impl Default for RuntimeProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RuntimeProfiler {
     pub fn new() -> Self {
         Self {
@@ -151,7 +157,7 @@ impl RuntimeProfiler {
         let stats = self.get_stats();
         let total_runtime = self.get_total_runtime();
         
-        println!("\nTotal Runtime: {:?}", total_runtime);
+        println!("\nTotal Runtime: {total_runtime:?}");
         
         // Sort operations by total time
         let mut sorted_ops: Vec<_> = stats.iter().collect();
@@ -161,7 +167,7 @@ impl RuntimeProfiler {
         for (op_type, stat) in sorted_ops {
             let percentage = (stat.total_time.as_secs_f64() / total_runtime.as_secs_f64()) * 100.0;
             
-            println!("\n{:?}:", op_type);
+            println!("\n{op_type:?}:");
             println!("  Count: {}", stat.count);
             println!("  Total time: {:?} ({:.1}%)", stat.total_time, percentage);
             println!("  Average: {:?}", stat.average_time);
@@ -194,7 +200,7 @@ impl RuntimeProfiler {
             }
         }
         
-        println!("  Critical path time: {:?}", critical_path_time);
+        println!("  Critical path time: {critical_path_time:?}");
         println!("  Parallelization efficiency: {:.1}%", 
             (critical_path_time.as_secs_f64() / self.get_total_runtime().as_secs_f64()) * 100.0
         );
@@ -220,11 +226,11 @@ impl RuntimeProfiler {
 
         let events = self.get_events();
         let mut file = File::create(path)
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {e}")))?;
 
         // Write Chrome Tracing Format
         writeln!(file, "[")
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write header: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write header: {e}")))?;
 
         for (i, event) in events.iter().enumerate() {
             let start_us = event.start_time.duration_since(self.start_time).as_micros();
@@ -248,16 +254,16 @@ impl RuntimeProfiler {
             );
             
             if i < events.len() - 1 {
-                writeln!(file, "{},", trace_event)
-                    .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write event: {}", e)))?;
+                writeln!(file, "{trace_event},")
+                    .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write event: {e}")))?;
             } else {
-                writeln!(file, "{}", trace_event)
-                    .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write event: {}", e)))?;
+                writeln!(file, "{trace_event}")
+                    .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write event: {e}")))?;
             }
         }
 
         writeln!(file, "]")
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write footer: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write footer: {e}")))?;
 
         Ok(())
     }
@@ -348,13 +354,13 @@ impl BottleneckAnalysis {
         sorted_dist.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
         
         for (op, percentage) in sorted_dist {
-            println!("  {:?}: {:.1}%", op, percentage);
+            println!("  {op:?}: {percentage:.1}%");
         }
         
         if !self.high_variance_operations.is_empty() {
             println!("\nHigh variance operations:");
             for (op, ratio) in &self.high_variance_operations {
-                println!("  {:?}: {:.1}x variance", op, ratio);
+                println!("  {op:?}: {ratio:.1}x variance");
             }
         }
     }
@@ -444,7 +450,7 @@ impl OptimizationSuggestions {
             println!("\n{}. {:?} - {:?}", i + 1, suggestion.severity, suggestion.category);
             println!("   {}", suggestion.message);
             if let Some(improvement) = suggestion.expected_improvement {
-                println!("   Expected improvement: {:.1}%", improvement);
+                println!("   Expected improvement: {improvement:.1}%");
             }
         }
     }

@@ -81,7 +81,7 @@ impl ProfileMetrics {
         if !self.custom_metrics.is_empty() {
             println!("\nCustom metrics:");
             for (key, value) in &self.custom_metrics {
-                println!("  {}: {:.2}", key, value);
+                println!("  {key}: {value:.2}");
             }
         }
     }
@@ -91,6 +91,12 @@ impl ProfileMetrics {
 pub struct GlobalProfiler {
     profiles: Arc<Mutex<HashMap<String, ProfileMetrics>>>,
     enabled: Arc<Mutex<bool>>,
+}
+
+impl Default for GlobalProfiler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GlobalProfiler {
@@ -185,11 +191,11 @@ impl GlobalProfiler {
 
         let profiles = self.profiles.lock().unwrap();
         let mut file = File::create(path)
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to create file: {e}")))?;
 
         // Write CSV header
         writeln!(file, "Name,Count,Total_us,Average_us,Min_us,Max_us,Memory_Allocated,Memory_Freed,Peak_Memory")
-            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write header: {}", e)))?;
+            .map_err(|e| CudaRustError::RuntimeError(format!("Failed to write header: {e}")))?;
 
         // Write data
         for profile in profiles.values() {
@@ -205,7 +211,7 @@ impl GlobalProfiler {
                 profile.memory_allocated,
                 profile.memory_freed,
                 profile.peak_memory
-            ).map_err(|e| CudaRustError::RuntimeError(format!("Failed to write data: {}", e)))?;
+            ).map_err(|e| CudaRustError::RuntimeError(format!("Failed to write data: {e}")))?;
         }
 
         Ok(())

@@ -58,8 +58,8 @@ pub struct Program {
 impl fmt::Display for ForInit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ForInit::VarDecl { name, ty, init } => write!(f, "{} {} = {:?}", ty, name, init),
-            ForInit::Expr(expr) => write!(f, "{:?}", expr),
+            ForInit::VarDecl { name, ty, init } => write!(f, "{ty} {name} = {init:?}"),
+            ForInit::Expr(expr) => write!(f, "{expr:?}"),
         }
     }
 }

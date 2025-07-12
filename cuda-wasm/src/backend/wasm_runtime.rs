@@ -10,6 +10,12 @@ pub struct WasmRuntime {
     capabilities: BackendCapabilities,
 }
 
+impl Default for WasmRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WasmRuntime {
     /// Create a new WASM runtime backend
     pub fn new() -> Self {
@@ -91,6 +97,8 @@ impl BackendTrait for WasmRuntime {
         size: usize,
         _kind: MemcpyKind,
     ) -> Result<()> {
+        // Safety: This function assumes the caller has verified the pointers are valid
+        // and don't overlap, as required by the trait contract
         unsafe {
             std::ptr::copy_nonoverlapping(src, dst, size);
         }
