@@ -88,6 +88,12 @@ struct PerformanceBaseline {
 /// No-op monitor for when monitoring is disabled
 pub struct NoOpMonitor;
 
+impl Default for NoOpMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NoOpMonitor {
     pub fn new() -> Self {
         NoOpMonitor

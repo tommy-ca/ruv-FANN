@@ -771,8 +771,8 @@ impl KernelConfig {
     pub fn for_matrix_multiply(rows: usize, cols: usize) -> Self {
         let block_x = 32u32;
         let block_y = 32u32;
-        let grid_x = (cols as u32 + block_x - 1) / block_x;
-        let grid_y = (rows as u32 + block_y - 1) / block_y;
+        let grid_x = (cols as u32).div_ceil(block_x);
+        let grid_y = (rows as u32).div_ceil(block_y);
         
         Self {
             block_size: (block_x, block_y, 1),
@@ -784,7 +784,7 @@ impl KernelConfig {
     /// Create optimal configuration for vector operations
     pub fn for_vector_operation(size: usize) -> Self {
         let block_size = 256u32;
-        let grid_size = (size as u32 + block_size - 1) / block_size;
+        let grid_size = (size as u32).div_ceil(block_size);
         
         Self {
             block_size: (block_size, 1, 1),
@@ -797,8 +797,8 @@ impl KernelConfig {
     pub fn for_convolution(batch_size: usize, out_channels: usize, out_height: usize, out_width: usize) -> Self {
         let block_x = 16u32;
         let block_y = 16u32;
-        let grid_x = (out_width as u32 + block_x - 1) / block_x;
-        let grid_y = (out_channels as u32 + block_y - 1) / block_y;
+        let grid_x = (out_width as u32).div_ceil(block_x);
+        let grid_y = (out_channels as u32).div_ceil(block_y);
         let grid_z = batch_size as u32;
         
         Self {

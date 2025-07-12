@@ -1,6 +1,7 @@
 # CUDA-Rust-WASM 🚀
 
-[![npm version](https://badge.fury.io/js/cuda-rust-wasm.svg)](https://badge.fury.io/js/cuda-rust-wasm)
+[![Crates.io](https://img.shields.io/crates/v/cuda-rust-wasm.svg)](https://crates.io/crates/cuda-rust-wasm)
+[![npm version](https://badge.fury.io/js/cuda-wasm.svg)](https://badge.fury.io/js/cuda-wasm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)](https://webassembly.org/)
 [![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
@@ -8,9 +9,50 @@
 [![Coverage](https://codecov.io/gh/vibecast/cuda-rust-wasm/branch/main/graph/badge.svg)](https://codecov.io/gh/vibecast/cuda-rust-wasm)
 [![Documentation](https://docs.rs/cuda-rust-wasm/badge.svg)](https://docs.rs/cuda-rust-wasm)
 
+> **📦 Package Names:**
+> - **Rust Crate**: `cuda-rust-wasm` on [crates.io](https://crates.io/crates/cuda-rust-wasm)
+> - **NPM Package**: `cuda-wasm` on [npm](https://www.npmjs.com/package/cuda-wasm)
+
 A **revolutionary** high-performance transpiler that converts CUDA code to WebAssembly and WebGPU, enabling GPU-accelerated computing in web browsers and Node.js environments with near-native performance.
 
 > **✨ NEW:** Now with ruv-FANN neural network integration, advanced profiling, and automatic optimization!
+
+## 🔒 Legal Notice & Independent Implementation
+
+### Trademark Disclaimer
+**CUDA** is a trademark of NVIDIA Corporation. This project is **not affiliated with, endorsed by, or sponsored by NVIDIA Corporation**. We acknowledge NVIDIA's ownership of the CUDA trademark and related intellectual property.
+
+### Independent Implementation
+CUDA-Rust-WASM is an **independent, clean-room implementation** that:
+- **Does NOT** use any NVIDIA proprietary code, libraries, or runtime
+- **Does NOT** link against or include NVIDIA CUDA libraries  
+- **Does NOT** require NVIDIA drivers or CUDA toolkit installation
+- **Is** a source-to-source transpiler using publicly available specifications
+- **Provides** compatibility through language syntax translation, not binary compatibility
+
+### Technical Approach
+This project implements CUDA language compatibility through:
+- **Syntax Translation**: Converting CUDA C++ syntax to equivalent Rust/WebGPU code
+- **Pattern Recognition**: Identifying common CUDA programming patterns and translating them
+- **Independent Runtime**: Providing our own execution environment for WebGPU/WebAssembly
+- **No Binary Compatibility**: We do not execute CUDA binaries or PTX code
+
+### CUDA Specifications Referenced
+This implementation is based on **publicly available CUDA documentation** and specifications:
+- [CUDA C++ Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/) (v12.3)
+- [CUDA Runtime API Reference](https://docs.nvidia.com/cuda/cuda-runtime-api/) (v12.3)  
+- [CUDA C++ Best Practices Guide](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/) (v12.3)
+- [PTX Instruction Set Architecture](https://docs.nvidia.com/cuda/parallel-thread-execution/) (v8.3)
+- [CUDA Memory Management Documentation](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#memory-management)
+
+### Relationship to CUDA Ecosystem
+- **Language Compatibility**: We aim to support CUDA C++ language constructs
+- **API Compatibility**: We provide similar APIs but implemented independently  
+- **Ecosystem Integration**: We do not integrate with NVIDIA's CUDA ecosystem
+- **Performance Target**: We target similar performance characteristics where possible
+
+### License & Distribution
+This project is distributed under dual MIT/Apache-2.0 licenses. Users may choose either license. This software is provided "as-is" without warranties. See [LICENSE-MIT](LICENSE-MIT) and [LICENSE-APACHE](LICENSE-APACHE) for complete terms.
 
 ## 🎯 Why CUDA-Rust-WASM?
 
@@ -43,19 +85,41 @@ A **revolutionary** high-performance transpiler that converts CUDA code to WebAs
 
 ## 📦 Installation
 
-### NPX (Recommended - No Installation Required)
+### For JavaScript/CLI Users (NPM)
+
+The CLI and JavaScript API are available as the `cuda-wasm` npm package:
+
+#### NPX (Recommended - No Installation Required)
 ```bash
-npx cuda-rust-wasm transpile kernel.cu -o kernel.wasm
+# For files in current directory
+npx cuda-wasm transpile kernel.cu -o kernel.wasm
+
+# For files in other directories (use absolute or relative paths)
+npx cuda-wasm transpile ../path/to/kernel.cu -o ./kernel.wasm
+
+# With optimization
+npx cuda-wasm transpile kernel.cu -o kernel.wasm --optimize
 ```
 
-### NPM Global Installation
+#### NPM Global Installation
 ```bash
-npm install -g cuda-rust-wasm
+npm install -g cuda-wasm
+
+# Then use directly
+cuda-wasm transpile kernel.cu -o kernel.wasm
 ```
 
-### As a Project Dependency
+#### As a Project Dependency
 ```bash
-npm install cuda-rust-wasm
+npm install cuda-wasm
+```
+
+### For Rust Developers (Crates.io)
+
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+cuda-rust-wasm = "0.1.5"
 ```
 
 ## 🎯 Quick Start
@@ -64,22 +128,22 @@ npm install cuda-rust-wasm
 
 **Transpile a CUDA kernel:**
 ```bash
-npx cuda-rust-wasm transpile vector_add.cu -o vector_add.wasm --optimize
+npx cuda-wasm transpile vector_add.cu -o vector_add.wasm --optimize
 ```
 
 **Analyze kernel performance:**
 ```bash
-npx cuda-rust-wasm analyze matrix_multiply.cu
+npx cuda-wasm analyze matrix_multiply.cu
 ```
 
 **Run benchmarks:**
 ```bash
-npx cuda-rust-wasm benchmark kernel.cu --iterations 1000
+npx cuda-wasm benchmark kernel.cu --iterations 1000
 ```
 
 **Initialize a new project:**
 ```bash
-npx cuda-rust-wasm init --name my-gpu-project
+npx cuda-wasm init --name my-gpu-project
 cd my-gpu-project
 npm install
 npm run build
@@ -89,7 +153,7 @@ npm run build
 
 #### Basic Usage
 ```javascript
-const { transpileCuda, analyzeKernel, createWebGPUKernel } = require('cuda-rust-wasm');
+const { transpileCuda, analyzeKernel, createWebGPUKernel } = require('cuda-wasm');
 
 // Example CUDA kernel
 const cudaCode = `
@@ -121,7 +185,7 @@ example();
 
 #### Advanced Usage with Neural Networks
 ```javascript
-const { CudaRust, NeuralAccelerator } = require('cuda-rust-wasm');
+const { CudaRust, NeuralAccelerator } = require('cuda-wasm');
 const { RuvFANN } = require('ruv-fann');
 
 // Create neural network-accelerated transpiler
@@ -176,7 +240,7 @@ result.monitor.on('performance', (metrics) => {
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://unpkg.com/cuda-rust-wasm/dist/browser.js"></script>
+  <script src="https://unpkg.com/cuda-wasm/dist/browser.js"></script>
 </head>
 <body>
   <script>
@@ -379,7 +443,7 @@ __global__ void backpropagation(
 `;
 
 // Neural network setup with ruv-FANN
-const { RuvFANN, CudaRustWasm } = require('cuda-rust-wasm');
+const { RuvFANN, CudaRustWasm } = require('cuda-wasm');
 
 class NeuralAcceleratedNetwork {
   constructor(topology) {
@@ -1333,7 +1397,7 @@ Comprehensive documentation is available:
 ![GitHub issues](https://img.shields.io/github/issues/vibecast/cuda-rust-wasm)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/vibecast/cuda-rust-wasm)
 ![Code coverage](https://img.shields.io/codecov/c/github/vibecast/cuda-rust-wasm)
-![npm downloads](https://img.shields.io/npm/dm/cuda-rust-wasm)
+![npm downloads](https://img.shields.io/npm/dm/cuda-wasm)
 
 ## 📝 License
 
@@ -1358,39 +1422,6 @@ You may choose either license for your use case. See [LICENSE-MIT](LICENSE-MIT) 
 - **Rust GPU Working Group** for GPU computing in Rust
 - **ruv-FANN Contributors** for neural network integration
 
-### Special Thanks
-- All our **contributors** and **testers**
-- **VibeCast team** for continued support
-- **Open source community** for invaluable feedback
-
-## 📞 Support & Community
-
-### Get Help
-- 📖 **Documentation**: [docs.vibecast.io/cuda-rust-wasm](https://docs.vibecast.io/cuda-rust-wasm)
-- 💬 **Discord**: [Join our community](https://discord.gg/vibecast)
-- 📧 **Email**: support@vibecast.io
-- 🐛 **Issues**: [GitHub Issues](https://github.com/vibecast/cuda-rust-wasm/issues)
-- 💡 **Discussions**: [GitHub Discussions](https://github.com/vibecast/cuda-rust-wasm/discussions)
-
-### Stay Updated
-- 🐦 **Twitter**: [@VibeCastAI](https://twitter.com/VibeCastAI)
-- 📝 **Blog**: [vibecast.io/blog](https://vibecast.io/blog)
-- 📰 **Newsletter**: [Subscribe](https://vibecast.io/newsletter)
-- 📺 **YouTube**: [VibeCast Channel](https://youtube.com/@vibecast)
-
-### Professional Support
-- 🏢 **Enterprise**: enterprise@vibecast.io
-- 🎓 **Training**: training@vibecast.io
-- 🤝 **Consulting**: consulting@vibecast.io
-
 ---
 
-<div align="center">
-
-**Made with ❤️ by the VibeCast team**
-
-*Empowering developers to bring GPU computing to the web*
-
-[Website](https://vibecast.io) • [Documentation](https://docs.vibecast.io) • [Community](https://discord.gg/vibecast)
-
-</div>
+*Made with ❤️ by rUv*

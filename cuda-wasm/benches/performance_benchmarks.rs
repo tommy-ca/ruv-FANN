@@ -467,12 +467,12 @@ mod performance_tests {
         let stats = pool.stats();
         let hit_ratio = pool.hit_ratio();
         
-        println!("Memory Pool Hit Ratio: {:.1}%", hit_ratio);
+        println!("Memory Pool Hit Ratio: {hit_ratio:.1}%");
         println!("Total Allocations: {}", stats.total_allocations);
         println!("Cache Hits: {}", stats.cache_hits);
         
         // Should have good cache performance
-        assert!(hit_ratio > 50.0, "Cache hit ratio too low: {:.1}%", hit_ratio);
+        assert!(hit_ratio > 50.0, "Cache hit ratio too low: {hit_ratio:.1}%");
     }
     
     #[test]
@@ -490,10 +490,10 @@ mod performance_tests {
         let duration = start.elapsed();
         
         assert!(result.is_ok());
-        println!("Compilation time: {:?}", duration);
+        println!("Compilation time: {duration:?}");
         
         // Should compile reasonably fast
-        assert!(duration.as_millis() < 100, "Compilation too slow: {:?}", duration);
+        assert!(duration.as_millis() < 100, "Compilation too slow: {duration:?}");
     }
     
     #[test]
@@ -518,9 +518,9 @@ mod performance_tests {
         let monitored = start.elapsed();
         
         let overhead_ratio = monitored.as_nanos() as f64 / baseline.as_nanos() as f64;
-        println!("Monitoring overhead ratio: {:.2}x", overhead_ratio);
+        println!("Monitoring overhead ratio: {overhead_ratio:.2}x");
         
         // Overhead should be minimal
-        assert!(overhead_ratio < 2.0, "Monitoring overhead too high: {:.2}x", overhead_ratio);
+        assert!(overhead_ratio < 2.0, "Monitoring overhead too high: {overhead_ratio:.2}x");
     }
 }

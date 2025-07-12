@@ -299,7 +299,7 @@ impl BenchmarkSuite {
         let speedup_factor = cpu_time.as_secs_f64() / gpu_time.as_secs_f64();
         
         Ok(BenchmarkResult {
-            operation_name: format!("activation_{:?}", function),
+            operation_name: format!("activation_{function:?}"),
             input_size: size,
             gpu_time,
             cpu_time,
@@ -432,7 +432,7 @@ impl BenchmarkSuite {
         }
         
         let overall_avg_speedup: f64 = self.results.iter().map(|r| r.speedup_factor).sum::<f64>() / self.results.len() as f64;
-        println!("\nOverall Average Speedup: {:.2}x", overall_avg_speedup);
+        println!("\nOverall Average Speedup: {overall_avg_speedup:.2}x");
         
         // Memory usage summary
         let total_memory: usize = self.results.iter().map(|r| r.memory_usage).sum();
@@ -492,7 +492,7 @@ impl BenchmarkSuite {
             )?;
         }
         
-        println!("Benchmark results exported to {}", filename);
+        println!("Benchmark results exported to {filename}");
         Ok(())
     }
 }
@@ -560,7 +560,7 @@ mod tests {
     #[test]
     fn test_quick_benchmark() {
         let result = run_quick_benchmark();
-        assert!(result.is_ok(), "Quick benchmark failed: {:?}", result);
+        assert!(result.is_ok(), "Quick benchmark failed: {result:?}");
     }
     
     #[test]

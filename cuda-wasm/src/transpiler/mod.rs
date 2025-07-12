@@ -49,6 +49,12 @@ impl Default for Transpiler {
     }
 }
 
+impl Default for CudaTranspiler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CudaTranspiler {
     /// Create a new CUDA transpiler
     pub fn new() -> Self {

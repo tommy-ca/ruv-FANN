@@ -361,15 +361,15 @@ fn generate_matrix_multiply_kernel(a_rows: usize, a_cols: usize, b_cols: usize) 
             int row = blockIdx.y * blockDim.y + threadIdx.y;
             int col = blockIdx.x * blockDim.x + threadIdx.x;
             
-            if (row < {} && col < {}) {{
+            if (row < {a_rows} && col < {b_cols}) {{
                 float sum = 0.0f;
-                for (int k = 0; k < {}; k++) {{
-                    sum += a[row * {} + k] * b[k * {} + col];
+                for (int k = 0; k < {a_cols}; k++) {{
+                    sum += a[row * {a_cols} + k] * b[k * {b_cols} + col];
                 }}
-                c[row * {} + col] = sum;
+                c[row * {b_cols} + col] = sum;
             }}
         }}
-    "#, a_rows, b_cols, a_cols, a_cols, b_cols, b_cols)
+    "#)
 }
 
 /// Generate CUDA/WGSL kernel for vector addition
@@ -377,11 +377,11 @@ fn generate_vector_add_kernel(size: usize) -> String {
     format!(r#"
         __global__ void vector_add(float* a, float* b, float* c) {{
             int i = blockIdx.x * blockDim.x + threadIdx.x;
-            if (i < {}) {{
+            if (i < {size}) {{
                 c[i] = a[i] + b[i];
             }}
         }}
-    "#, size)
+    "#)
 }
 
 /// Generate CUDA/WGSL kernel for activation functions
@@ -398,12 +398,12 @@ fn generate_activation_kernel(function: ActivationFunction, size: usize) -> Stri
     format!(r#"
         __global__ void activation_function(float* input, float* output) {{
             int i = blockIdx.x * blockDim.x + threadIdx.x;
-            if (i < {}) {{
+            if (i < {size}) {{
                 float x = input[i];
-                output[i] = {};
+                output[i] = {activation_code};
             }}
         }}
-    "#, size, activation_code)
+    "#)
 }
 
 /// Generate CUDA/WGSL kernel for convolution
@@ -415,17 +415,17 @@ fn generate_convolution_kernel(channels: usize, kernel_size: usize, stride: usiz
             int out_y = blockIdx.y * blockDim.y + threadIdx.y;
             int channel = blockIdx.z;
             
-            if (out_x < output_width && out_y < output_height && channel < {}) {{
+            if (out_x < output_width && out_y < output_height && channel < {channels}) {{
                 float sum = 0.0f;
                 
-                for (int ky = 0; ky < {}; ky++) {{
-                    for (int kx = 0; kx < {}; kx++) {{
-                        int in_x = out_x * {} + kx;
-                        int in_y = out_y * {} + ky;
+                for (int ky = 0; ky < {kernel_size}; ky++) {{
+                    for (int kx = 0; kx < {kernel_size}; kx++) {{
+                        int in_x = out_x * {stride} + kx;
+                        int in_y = out_y * {stride} + ky;
                         
                         if (in_x < input_width && in_y < input_height) {{
                             int input_idx = channel * input_width * input_height + in_y * input_width + in_x;
-                            int kernel_idx = channel * {} * {} + ky * {} + kx;
+                            int kernel_idx = channel * {kernel_size} * {kernel_size} + ky * {kernel_size} + kx;
                             sum += input[input_idx] * kernel[kernel_idx];
                         }}
                     }}
@@ -435,7 +435,7 @@ fn generate_convolution_kernel(channels: usize, kernel_size: usize, stride: usiz
                 output[output_idx] = sum;
             }}
         }}
-    "#, channels, kernel_size, kernel_size, stride, stride, kernel_size, kernel_size, kernel_size)
+    "#)
 }
 
 /// Generate CUDA/WGSL kernel for forward propagation

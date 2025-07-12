@@ -201,7 +201,7 @@ impl PerformanceMonitor {
     /// Record a measurement with metadata
     fn record_measurement(&self, counter_type: CounterType, measurement: Measurement) {
         let mut counters = self.counters.lock().unwrap();
-        let measurements = counters.entry(counter_type).or_insert_with(Vec::new);
+        let measurements = counters.entry(counter_type).or_default();
         
         measurements.push(measurement);
         
@@ -338,7 +338,7 @@ impl PerformanceReport {
         report.push_str(&format!("Monitor Config: {:?}\n\n", self.monitor_config));
         
         for (counter_type, stats) in &self.stats {
-            report.push_str(&format!("{:?}:\n", counter_type));
+            report.push_str(&format!("{counter_type:?}:\n"));
             report.push_str(&format!("  Count: {}\n", stats.count));
             report.push_str(&format!("  Total Time: {:.2}ms\n", stats.total_time.as_millis()));
             report.push_str(&format!("  Avg Time: {:.2}ms\n", stats.avg_time.as_millis()));
@@ -371,7 +371,7 @@ static GLOBAL_MONITOR: std::sync::OnceLock<PerformanceMonitor> = std::sync::Once
 
 /// Get the global performance monitor
 pub fn global_monitor() -> &'static PerformanceMonitor {
-    GLOBAL_MONITOR.get_or_init(|| PerformanceMonitor::new())
+    GLOBAL_MONITOR.get_or_init(PerformanceMonitor::new)
 }
 
 /// Time an operation using the global monitor
