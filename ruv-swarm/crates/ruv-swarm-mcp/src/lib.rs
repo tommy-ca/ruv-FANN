@@ -72,6 +72,7 @@ use uuid::Uuid;
 pub mod error;
 pub mod handlers;
 pub mod limits;
+pub mod memory;
 pub mod orchestrator;
 pub mod service;
 pub mod tools;
