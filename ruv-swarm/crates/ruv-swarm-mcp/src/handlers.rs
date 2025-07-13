@@ -45,42 +45,34 @@ impl RequestHandler {
     fn is_valid_tool(&self, tool_name: &str) -> bool {
         matches!(
             tool_name,
-            "swarm_init"
-                | "agent_spawn"
-                | "task_orchestrate"
-                | "swarm_monitor"
-                | "swarm_status"
-                | "agent_list"
-                | "agent_metrics"
-                | "task_status"
-                | "task_results"
-                | "memory_usage"
-                | "benchmark_run"
-                | "features_detect"
-                | "neural_status"
-                | "neural_train"
-                | "neural_patterns"
+            "ruv-swarm.spawn"
+                | "ruv-swarm.orchestrate"
+                | "ruv-swarm.query"
+                | "ruv-swarm.monitor"
+                | "ruv-swarm.optimize"
+                | "ruv-swarm.memory.store"
+                | "ruv-swarm.memory.get"
+                | "ruv-swarm.task.create"
+                | "ruv-swarm.workflow.execute"
+                | "ruv-swarm.agent.list"
+                | "ruv-swarm.agent.metrics"
         )
     }
 
     /// Get list of available tools
     fn get_available_tools(&self) -> Vec<&'static str> {
         vec![
-            "swarm_init",
-            "agent_spawn",
-            "task_orchestrate",
-            "swarm_monitor",
-            "swarm_status",
-            "agent_list",
-            "agent_metrics",
-            "task_status",
-            "task_results",
-            "memory_usage",
-            "benchmark_run",
-            "features_detect",
-            "neural_status",
-            "neural_train",
-            "neural_patterns",
+            "ruv-swarm.spawn",
+            "ruv-swarm.orchestrate",
+            "ruv-swarm.query",
+            "ruv-swarm.monitor",
+            "ruv-swarm.optimize",
+            "ruv-swarm.memory.store",
+            "ruv-swarm.memory.get",
+            "ruv-swarm.task.create",
+            "ruv-swarm.workflow.execute",
+            "ruv-swarm.agent.list",
+            "ruv-swarm.agent.metrics",
         ]
     }
 
