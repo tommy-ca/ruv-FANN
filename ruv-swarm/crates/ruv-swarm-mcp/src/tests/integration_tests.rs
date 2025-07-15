@@ -17,6 +17,8 @@ use tokio::time::timeout;
 /// Test server creation
 #[tokio::test]
 async fn test_server_creation() {
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_server_creation_{}.db", Uuid::new_v4()));
     let orchestrator = Arc::new(SwarmOrchestrator::new(SwarmConfig::default()).await);
     let mcp_config = McpConfig::default();
 
@@ -110,7 +112,8 @@ async fn test_orchestrator_spawn_agent() {
 /// Test orchestrator task creation
 #[tokio::test]
 async fn test_orchestrator_task_creation() {
-
+    // Use unique database for this test
+    std::env::set_var("RUV_SWARM_DB_PATH", format!("test_task_creation_{}.db", Uuid::new_v4()));
     let swarm_config = SwarmConfig::default();
     let orchestrator = SwarmOrchestrator::new(swarm_config).await;
 
